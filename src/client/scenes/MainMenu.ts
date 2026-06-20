@@ -21,14 +21,58 @@ export class MainMenu extends Scene {
   }
 
   create() {
+
     this.refreshLayout();
 
-    // Re-calculate positions whenever the game canvas is resized (e.g. orientation change).
-    this.scale.on('resize', () => this.refreshLayout());
+    const width = this.scale.width;
+    const height = this.scale.height;
 
-    this.input.once('pointerdown', () => {
-      this.scene.start('Game');
-    });
+    const playButton =
+      this.add.text(
+        width / 2,
+        height * 0.75,
+        'PLAY',
+        {
+          fontFamily: 'Orbitron',
+          fontSize: '48px',
+          color: '#ffffff',
+        }
+      )
+        .setOrigin(0.5)
+        .setInteractive();
+
+    const collectionsButton =
+      this.add.text(
+        width / 2,
+        height * 0.85,
+        'COLLECTIONS',
+        {
+          fontFamily: 'Orbitron',
+          fontSize: '48px',
+          color: '#ffffff',
+        }
+      )
+        .setOrigin(0.5)
+        .setInteractive();
+
+    collectionsButton.on(
+      'pointerdown',
+      () => {
+        this.scene.start('Collections');
+      }
+    );
+
+    playButton.on(
+      'pointerdown',
+      () => {
+        this.scene.start('Game');
+      }
+    );
+
+    this.scale.on(
+      'resize',
+      () => this.refreshLayout()
+    );
   }
 
   /**
@@ -59,7 +103,7 @@ export class MainMenu extends Scene {
     const baseFontSize = 38;
     if (!this.title) {
       this.title = this.add
-        .text(0, 0, 'Main Menu', {
+        .text(0, 0, 'The Young Raider', {
           fontFamily: 'Arial Black',
           fontSize: `${baseFontSize}px`,
           color: '#ffffff',

@@ -1,6 +1,8 @@
 import { Boot } from './scenes/Boot';
 import { GameOver } from './scenes/GameOver';
 import { Game as MainGame } from './scenes/Game';
+import BattleUI from './game/BattleUI';
+import { Collections } from './scenes/Collections';
 import { MainMenu } from './scenes/MainMenu';
 import * as Phaser from 'phaser';
 import { AUTO, Game } from 'phaser';
@@ -20,7 +22,15 @@ const config: Phaser.Types.Core.GameConfig = {
     width: 1024,
     height: 768,
   },
-  scene: [Boot, Preloader, MainMenu, MainGame, GameOver],
+  scene: [
+    Boot,
+    Preloader,
+    MainMenu,
+    Collections,
+    MainGame,
+    BattleUI,
+    GameOver
+  ],
 };
 
 const StartGame = (parent: string) => {
