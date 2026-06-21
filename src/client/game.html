@@ -2,15 +2,26 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+
     <link rel="stylesheet" href="game.css" />
-    <title>Phaser - Template</title>
+
+    <title>The Young Raider</title>
   </head>
 
   <body>
     <div id="app">
-      <div id="game-container"></div>
+      <div id="rotation-host">
+        <div id="rotation-stage">
+          <div id="game-container"></div>
+        </div>
+      </div>
     </div>
+
     <script type="module" src="game.ts"></script>
   </body>
 </html>

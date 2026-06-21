@@ -129,7 +129,7 @@ class Player {
             'attacksoutheast', 'attacksouthwest',
             'attacksouth', 'attackeast',
             'attackwest', 'attacknortheast',
-            'attacknorthwest', 'attacknorth'
+            'attacknorthwest', 'attacknorth', 'death'
         ].forEach(key => {
             if (this.scene.anims.exists(key)) {
                 this.scene.anims.remove(key);

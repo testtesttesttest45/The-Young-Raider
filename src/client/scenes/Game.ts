@@ -7,6 +7,9 @@ import Player from '../game/Player';
 import Enemy from '../game/Enemy';
 import Catastrophe from '../game/Catastrophe';
 
+const WORLD_W = 1280;
+const WORLD_H = 720;
+
 export class Game extends Scene {
   camp1: any;
   camp2: any;
@@ -60,8 +63,29 @@ export class Game extends Scene {
 
     this.isWinterFrostActive = false;
     this.isTreasureHunterActive = false;
-    
-    this.cameras.main.setBackgroundColor('#222222');
+
+    const isPortrait =
+      this.scale.gameSize.height > this.scale.gameSize.width;
+
+    if (isPortrait) {
+      console.log("Mobile Portrait");
+    } else {
+      console.log("Landscape/Desktop");
+    }
+
+    const island = this.add.image(
+      WORLD_W / 2,
+      WORLD_H / 2,
+      'land'
+    );
+
+    const cover =
+      Math.max(
+        WORLD_W / island.width,
+        WORLD_H / island.height
+      );
+
+    island.setScale(cover);
 
     this.camp1 = new Camp(
       this,
@@ -124,6 +148,12 @@ export class Game extends Scene {
     this.catastrophe.drawstormShelter();
 
     this.scene.launch('BattleUI');
+
+    // Set up camera bounds + zoom-to-cover, then keep it in sync on resize
+    this.cameras.main.setBounds(0, 0, WORLD_W, WORLD_H);
+    this.handleResize(this.scale.gameSize);
+    this.scale.on('resize', this.handleResize, this);
+
     // Movement test
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
 
@@ -193,6 +223,23 @@ export class Game extends Scene {
         }
       }
     );
+  }
+
+  /**
+   * Keeps the camera viewport filling the canvas and zooms the world
+   * to cover it — no blue gaps past the 1280x720 design area.
+   */
+  private handleResize(gameSize: Phaser.Structs.Size) {
+    const w = gameSize.width;
+    const h = gameSize.height;
+    const cam = this.cameras.main;
+
+    cam.setSize(w, h);                               // viewport fills the canvas
+    cam.setZoom(Math.min(w / WORLD_W, h / WORLD_H)); // fit whole world — nothing cropped
+
+    if (!this.isCameraFollowingPlayer) {
+      cam.centerOn(WORLD_W / 2, WORLD_H / 2);
+    }
   }
 
   override update(time: number, delta: number) {
@@ -433,6 +480,8 @@ export class Game extends Scene {
   }
 
   shutdown() {
+
+    this.scale.off('resize', this.handleResize, this);
 
     this.enemies.forEach(enemy => {
 
