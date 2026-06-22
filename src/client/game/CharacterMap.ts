@@ -11,7 +11,7 @@ const characterMap: Record<number, any> = {
         range: 100,
         speed: 220,
         damage: 65,
-        health: 1,
+        health: 100,
         attackSpeed: 1.4,
         attackCount: 1,
         projectile: '',

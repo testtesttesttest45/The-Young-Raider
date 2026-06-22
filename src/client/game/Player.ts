@@ -78,6 +78,7 @@ class Player {
     attackIndicatorWidth: number;
     attackIndicatorOffset: number;
     hasAppliedAttackDamage: boolean;
+    isJoystickMoving: boolean;
     constructor(
         scene: any,
         initialX: number,
@@ -145,6 +146,7 @@ class Player {
         this.attackIndicatorWidth = 90;
         this.attackIndicatorOffset = 25;
         this.hasAppliedAttackDamage = false;
+        this.isJoystickMoving = false;
     }
 
     create(): void {
@@ -940,9 +942,15 @@ class Player {
 
         this.updateAttackIndicator();
 
-        const isMoving =
+        const isTweenMoving =
             this.currentTween &&
             this.currentTween.isPlaying();
+
+        const isMoving =
+            Boolean(
+                isTweenMoving ||
+                this.isJoystickMoving
+            );
 
         const currentAnimation =
             this.robotSprite.anims.currentAnim;
@@ -1354,6 +1362,226 @@ class Player {
             }
         }
     }
+
+    moveWithJoystick(
+        inputX: number,
+        inputY: number,
+        delta: number,
+        worldWidth: number,
+        worldHeight: number,
+        minimumY: number
+    ): void {
+        if (
+            this.isDead ||
+            this.isActionLocked ||
+            !this.robotSprite
+        ) {
+            this.stopJoystickMovement();
+            return;
+        }
+
+        const inputLength =
+            Math.sqrt(
+                inputX * inputX +
+                inputY * inputY
+            );
+
+        if (inputLength < 0.01) {
+            this.stopJoystickMovement();
+            return;
+        }
+
+        if (this.currentTween) {
+            this.currentTween.stop();
+            this.currentTween = null;
+        }
+
+        const normalizedX =
+            inputX / inputLength;
+
+        const normalizedY =
+            inputY / inputLength;
+
+        const strength =
+            Phaser.Math.Clamp(
+                inputLength,
+                0,
+                1
+            );
+
+        const movementDistance =
+            this.speed *
+            strength *
+            (delta / 1000);
+
+        const spritePadding = 35;
+
+        const nextX =
+            Phaser.Math.Clamp(
+                this.robotSprite.x +
+                normalizedX *
+                movementDistance,
+
+                spritePadding,
+                worldWidth -
+                spritePadding
+            );
+
+        const nextY =
+            Phaser.Math.Clamp(
+                this.robotSprite.y +
+                normalizedY *
+                movementDistance,
+
+                minimumY,
+                worldHeight -
+                spritePadding
+            );
+
+        const direction =
+            this.determineDirectionFromVector(
+                normalizedX,
+                normalizedY
+            );
+
+        if (!direction) {
+            this.stopJoystickMovement();
+            return;
+        }
+
+        this.isJoystickMoving = true;
+        this.lastDirection = direction;
+
+        const movementAnimationKey =
+            `move${direction}`;
+
+        const currentAnimationKey =
+            this.robotSprite
+                .anims
+                .currentAnim
+                ?.key;
+
+        if (
+            currentAnimationKey !==
+            movementAnimationKey
+        ) {
+            this.robotSprite.play(
+                movementAnimationKey,
+                true
+            );
+        }
+
+        this.robotSprite.setPosition(
+            nextX,
+            nextY
+        );
+
+        this.updatePosition();
+        this.updateAttackIndicator();
+
+        this.lastActionTime =
+            this.scene.activeGameTime;
+    }
+
+    stopJoystickMovement(): void {
+        if (!this.isJoystickMoving) {
+            return;
+        }
+
+        this.isJoystickMoving = false;
+
+        if (
+            this.isDead ||
+            this.isActionLocked
+        ) {
+            return;
+        }
+
+        const idleAnimationKey =
+            `idle${this.lastDirection ||
+            'south'
+            }`;
+
+        if (
+            this.robotSprite
+                .anims
+                .currentAnim
+                ?.key !==
+            idleAnimationKey
+        ) {
+            this.robotSprite.play(
+                idleAnimationKey,
+                true
+            );
+        }
+
+        this.updateAttackIndicator();
+    }
+
+    determineDirectionFromVector(
+        directionX: number,
+        directionY: number
+    ): string {
+        const angle =
+            Math.atan2(
+                directionY,
+                directionX
+            ) *
+            180 /
+            Math.PI;
+
+        if (
+            angle >= -22.5 &&
+            angle < 22.5
+        ) {
+            return 'east';
+        }
+
+        if (
+            angle >= 22.5 &&
+            angle < 67.5
+        ) {
+            return 'southeast';
+        }
+
+        if (
+            angle >= 67.5 &&
+            angle < 112.5
+        ) {
+            return 'south';
+        }
+
+        if (
+            angle >= 112.5 &&
+            angle < 157.5
+        ) {
+            return 'southwest';
+        }
+
+        if (
+            angle >= 157.5 ||
+            angle < -157.5
+        ) {
+            return 'west';
+        }
+
+        if (
+            angle >= -157.5 &&
+            angle < -112.5
+        ) {
+            return 'northwest';
+        }
+
+        if (
+            angle >= -112.5 &&
+            angle < -67.5
+        ) {
+            return 'north';
+        }
+
+        return 'northeast';
+    }
+
 }
 
 

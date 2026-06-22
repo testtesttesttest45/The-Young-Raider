@@ -41,6 +41,34 @@ export class Game extends Scene {
   characterInUse = 1;
 
   gold = 0;
+  isMobileLayout = false;
+
+  joystickBase:
+    Phaser.GameObjects.Arc | null = null;
+
+  joystickKnob:
+    Phaser.GameObjects.Arc | null = null;
+
+  joystickPointerId: number | null = null;
+
+  joystickVector = {
+    x: 0,
+    y: 0
+  };
+
+  joystickRadius = 70;
+  joystickDeadZone = 0.18;
+
+  attackButtonContainer:
+    Phaser.GameObjects.Container | null = null;
+
+  attackButtonBackground:
+    Phaser.GameObjects.Arc | null = null;
+
+  attackButtonIcon:
+    Phaser.GameObjects.Image | null = null;
+
+  attackCooldownGraphics: Phaser.GameObjects.Graphics | null = null;
 
   hasHandledPlayerDeath = false;
   attackKey!: Phaser.Input.Keyboard.Key;
@@ -72,15 +100,19 @@ export class Game extends Scene {
       this.shutdown,
       this
     );
+    this.isMobileLayout =
+      document
+        .getElementById('rotation-stage')
+        ?.classList.contains(
+          'mobile-rotated'
+        ) ?? false;
 
-    const isPortrait =
-      this.scale.gameSize.height > this.scale.gameSize.width;
+    this.joystickPointerId = null;
 
-    if (isPortrait) {
-      console.log("Mobile Portrait");
-    } else {
-      console.log("Landscape/Desktop");
-    }
+    this.joystickVector = {
+      x: 0,
+      y: 0
+    };
 
     const island = this.add.image(
       WORLD_W / 2,
@@ -122,7 +154,13 @@ export class Game extends Scene {
     );
 
     this.player.create();
+    this.setupMobileControls();
 
+    this.game.events.on(
+      'webview-resized',
+      this.handleWebviewResize,
+      this
+    );
     // Base
     this.base = new Base(
       this,
@@ -154,6 +192,9 @@ export class Game extends Scene {
     this.input.on(
       'pointerdown',
       (pointer: Phaser.Input.Pointer) => {
+        if (this.isMobileLayout) {
+          return;
+        }
         if (pointer.y <= HUD_HEIGHT) {
           return;
         }
@@ -225,9 +266,18 @@ export class Game extends Scene {
 
       battleUI?.pauseMultiplier?.();
 
-      if (this.player?.currentTween) {
-        this.player.currentTween.stop();
-        this.player.currentTween = null;
+      this.releaseJoystick();
+      this.updateMobileControlsVisibility();
+
+      if (
+        this.player?.currentTween
+      ) {
+        this.player
+          .currentTween
+          .stop();
+
+        this.player.currentTween =
+          null;
       }
     }
 
@@ -253,11 +303,31 @@ export class Game extends Scene {
         this.player?.attackOnce?.();
       }
     }
-
+    if (
+      this.isMobileLayout &&
+      !this.isGamePaused &&
+      !this.isGameOver &&
+      !playerDead &&
+      this.allowInput
+    ) {
+      this.player
+        ?.moveWithJoystick?.(
+          this.joystickVector.x,
+          this.joystickVector.y,
+          delta,
+          WORLD_W,
+          WORLD_H,
+          WORLD_TOP_PADDING
+        );
+    }
     this.player?.update?.(
       time,
       delta
     );
+
+    if (this.isMobileLayout) {
+      this.updateMobileAttackButtonState();
+    }
 
     const gameplayEnded =
       this.isGameOver ||
@@ -387,7 +457,7 @@ export class Game extends Scene {
     const camp = this.camps[0];
 
     if (!camp) {
-      
+
       return;
     }
 
@@ -462,8 +532,51 @@ export class Game extends Scene {
   }
 
   shutdown() {
+    this.game.events.off(
+      'webview-resized',
+      this.handleWebviewResize,
+      this
+    );
 
+    this.input.off(
+      'pointerdown',
+      this.handleJoystickDown,
+      this
+    );
+
+    this.input.off(
+      'pointermove',
+      this.handleJoystickMove,
+      this
+    );
+
+    this.input.off(
+      'pointerup',
+      this.handleJoystickUp,
+      this
+    );
+
+    this.input.off(
+      'pointerupoutside',
+      this.handleJoystickUp,
+      this
+    );
+
+    this.releaseJoystick();
+
+    this.joystickBase?.destroy();
+    this.joystickKnob?.destroy();
+
+    this.joystickBase = null;
+    this.joystickKnob = null;
     this.scale.off('resize', this.handleResize, this);
+
+    this.attackButtonContainer
+      ?.destroy(true);
+
+    this.attackButtonContainer = null;
+    this.attackButtonBackground = null;
+    this.attackButtonIcon = null;
 
     this.enemies.forEach(enemy => {
 
@@ -480,4 +593,552 @@ export class Game extends Scene {
 
     this.enemies = [];
   }
+
+  private handleWebviewResize(
+    layout: {
+      rotated: boolean;
+      availableWidth: number;
+      availableHeight: number;
+      stageWidth: number;
+      stageHeight: number;
+    }
+  ): void {
+    this.isMobileLayout =
+      layout.rotated;
+
+    this.updateMobileControlsVisibility();
+  }
+
+  private setupMobileControls(): void {
+    const joystickX = 115;
+    const joystickY =
+      this.scale.height - 115;
+
+    this.joystickBase =
+      this.add.circle(
+        joystickX,
+        joystickY,
+        this.joystickRadius,
+        0x101820,
+        0.52
+      );
+
+    this.joystickBase
+      .setStrokeStyle(
+        4,
+        0xffffff,
+        0.65
+      )
+      .setScrollFactor(0)
+      .setDepth(2000);
+
+    this.joystickKnob =
+      this.add.circle(
+        joystickX,
+        joystickY,
+        31,
+        0x50c8ff,
+        0.82
+      );
+
+    this.joystickKnob
+      .setStrokeStyle(
+        3,
+        0xffffff,
+        0.9
+      )
+      .setScrollFactor(0)
+      .setDepth(2001);
+
+    this.updateMobileControlsVisibility();
+
+    this.createMobileAttackButton();
+
+    this.input.on(
+      'pointerdown',
+      this.handleJoystickDown,
+      this
+    );
+
+    this.input.on(
+      'pointermove',
+      this.handleJoystickMove,
+      this
+    );
+
+    this.input.on(
+      'pointerup',
+      this.handleJoystickUp,
+      this
+    );
+
+    this.input.on(
+      'pointerupoutside',
+      this.handleJoystickUp,
+      this
+    );
+  }
+
+  private updateMobileControlsVisibility(): void {
+    const visible =
+      this.isMobileLayout &&
+      !this.isGameOver &&
+      !this.player?.isDead;
+
+    this.joystickBase?.setVisible(
+      visible
+    );
+
+    this.joystickKnob?.setVisible(
+      visible
+    );
+
+    this.attackButtonContainer
+      ?.setVisible(
+        visible
+      );
+
+    if (!visible) {
+      this.releaseJoystick();
+      this.resetMobileAttackButtonAppearance();
+    }
+  }
+
+  private handleJoystickDown(
+    pointer:
+      Phaser.Input.Pointer
+  ): void {
+    if (
+      !this.isMobileLayout ||
+      this.isGamePaused ||
+      this.isGameOver ||
+      !this.allowInput ||
+      this.player?.isDead ||
+      !this.joystickBase
+    ) {
+      return;
+    }
+
+    const distance =
+      Phaser.Math.Distance.Between(
+        pointer.x,
+        pointer.y,
+        this.joystickBase.x,
+        this.joystickBase.y
+      );
+
+    if (
+      distance >
+      this.joystickRadius * 1.35
+    ) {
+      return;
+    }
+
+    this.joystickPointerId =
+      pointer.id;
+
+    this.updateJoystickFromPointer(
+      pointer
+    );
+  }
+
+  private handleJoystickMove(
+    pointer:
+      Phaser.Input.Pointer
+  ): void {
+    if (
+      !this.isMobileLayout ||
+      this.joystickPointerId !==
+      pointer.id
+    ) {
+      return;
+    }
+
+    this.updateJoystickFromPointer(
+      pointer
+    );
+  }
+
+  private handleJoystickUp(
+    pointer:
+      Phaser.Input.Pointer
+  ): void {
+    if (
+      this.joystickPointerId !==
+      pointer.id
+    ) {
+      return;
+    }
+
+    this.releaseJoystick();
+  }
+
+  private updateJoystickFromPointer(
+    pointer:
+      Phaser.Input.Pointer
+  ): void {
+    if (
+      !this.joystickBase ||
+      !this.joystickKnob
+    ) {
+      return;
+    }
+
+    const differenceX =
+      pointer.x -
+      this.joystickBase.x;
+
+    const differenceY =
+      pointer.y -
+      this.joystickBase.y;
+
+    const distance =
+      Math.sqrt(
+        differenceX * differenceX +
+        differenceY * differenceY
+      );
+
+    if (distance <= 0) {
+      this.joystickVector.x = 0;
+      this.joystickVector.y = 0;
+
+      return;
+    }
+
+    const normalizedX =
+      differenceX / distance;
+
+    const normalizedY =
+      differenceY / distance;
+
+    const clampedDistance =
+      Math.min(
+        distance,
+        this.joystickRadius
+      );
+
+    this.joystickKnob.setPosition(
+      this.joystickBase.x +
+      normalizedX *
+      clampedDistance,
+
+      this.joystickBase.y +
+      normalizedY *
+      clampedDistance
+    );
+
+    const strength =
+      Phaser.Math.Clamp(
+        distance /
+        this.joystickRadius,
+        0,
+        1
+      );
+
+    if (
+      strength <
+      this.joystickDeadZone
+    ) {
+      this.joystickVector.x = 0;
+      this.joystickVector.y = 0;
+
+      return;
+    }
+
+    this.joystickVector.x =
+      normalizedX * strength;
+
+    this.joystickVector.y =
+      normalizedY * strength;
+  }
+
+  private releaseJoystick(): void {
+    this.joystickPointerId = null;
+
+    this.joystickVector.x = 0;
+    this.joystickVector.y = 0;
+
+    if (
+      this.joystickBase &&
+      this.joystickKnob
+    ) {
+      this.joystickKnob.setPosition(
+        this.joystickBase.x,
+        this.joystickBase.y
+      );
+    }
+
+    this.player
+      ?.stopJoystickMovement?.();
+  }
+
+  private createMobileAttackButton(): void {
+    const buttonX =
+      this.scale.width - 115;
+
+    const buttonY =
+      this.scale.height - 115;
+
+    const buttonRadius = 58;
+
+    this.attackButtonContainer =
+      this.add.container(
+        buttonX,
+        buttonY
+      );
+
+    this.attackButtonContainer
+      .setScrollFactor(0)
+      .setDepth(2001);
+
+    this.attackButtonBackground =
+      this.add.circle(
+        0,
+        0,
+        buttonRadius,
+        0xf2f2f2,
+        0.92
+      );
+
+    this.attackButtonBackground
+      .setStrokeStyle(
+        3,
+        0xffffff,
+        0.9
+      )
+      .setInteractive(
+        new Phaser.Geom.Circle(
+          buttonRadius,
+          buttonRadius,
+          buttonRadius
+        ),
+        Phaser.Geom.Circle.Contains
+      );
+
+    this.attackButtonIcon =
+      this.add.image(
+        0,
+        0,
+        'sword1'
+      );
+
+    this.attackButtonIcon
+      .setScale(0.58)
+      .disableInteractive();
+
+
+    this.attackCooldownGraphics =
+      this.add.graphics();
+
+    this.attackButtonContainer.add([
+      this.attackButtonBackground,
+      this.attackButtonIcon,
+      this.attackCooldownGraphics
+    ]);
+
+    this.attackButtonBackground.on(
+      'pointerdown',
+      (
+        _pointer:
+          Phaser.Input.Pointer,
+        _localX: number,
+        _localY: number,
+        event:
+          Phaser.Types.Input.EventData
+      ) => {
+        event.stopPropagation();
+
+        if (
+          !this.isMobileLayout ||
+          !this.allowInput ||
+          this.isGamePaused ||
+          this.isGameOver ||
+          this.player?.isDead ||
+          this.player?.isActionLocked
+        ) {
+          return;
+        }
+
+        this.attackButtonContainer
+          ?.setScale(0.92);
+
+        this.player?.attackOnce?.();
+
+        this.updateMobileAttackButtonState();
+      }
+    );
+
+    this.attackButtonBackground.on(
+      'pointerup',
+      (
+        _pointer:
+          Phaser.Input.Pointer,
+        _localX: number,
+        _localY: number,
+        event:
+          Phaser.Types.Input.EventData
+      ) => {
+        event.stopPropagation();
+
+        this.attackButtonContainer
+          ?.setScale(1);
+      }
+    );
+
+    this.attackButtonBackground.on(
+      'pointerout',
+      () => {
+        this.attackButtonContainer
+          ?.setScale(1);
+      }
+    );
+
+    this.attackButtonBackground.on(
+      'pointerupoutside',
+      () => {
+        this.attackButtonContainer
+          ?.setScale(1);
+      }
+    );
+
+    this.updateMobileControlsVisibility();
+    this.updateMobileAttackButtonState();
+  }
+
+  private updateMobileAttackButtonState(): void {
+    if (
+      !this.attackButtonContainer ||
+      !this.attackButtonBackground ||
+      !this.attackButtonIcon ||
+      !this.attackCooldownGraphics
+    ) {
+      return;
+    }
+
+    const buttonRadius = 58;
+    const ringRadius = buttonRadius + 7;
+
+    const isUnavailable =
+      !this.allowInput ||
+      this.isGamePaused ||
+      this.isGameOver ||
+      this.player?.isDead;
+
+    const isCoolingDown =
+      this.player?.isActionLocked === true;
+
+    this.attackCooldownGraphics.clear();
+
+    if (isUnavailable) {
+      this.attackButtonBackground.setFillStyle(
+        0x3d3d3d,
+        0.88
+      );
+
+      this.attackButtonIcon.setAlpha(0.28);
+
+      this.attackCooldownGraphics.lineStyle(
+        6,
+        0x555555,
+        0.8
+      );
+
+      this.attackCooldownGraphics.strokeCircle(
+        0,
+        0,
+        ringRadius
+      );
+
+      return;
+    }
+
+    if (isCoolingDown) {
+      this.attackButtonBackground.setFillStyle(
+        0x4f1717,
+        0.95
+      );
+
+      this.attackButtonIcon.setAlpha(0.48);
+
+      this.attackCooldownGraphics.lineStyle(
+        7,
+        0x2b0b0b,
+        0.95
+      );
+
+      this.attackCooldownGraphics.strokeCircle(
+        0,
+        0,
+        ringRadius
+      );
+
+      const animationProgress =
+        Phaser.Math.Clamp(
+          this.player?.robotSprite
+            ?.anims
+            ?.getProgress?.() ?? 0,
+          0,
+          1
+        );
+
+      const startAngle =
+        -Math.PI / 2;
+
+      const endAngle =
+        startAngle +
+        animationProgress *
+        Math.PI *
+        2;
+
+      this.attackCooldownGraphics.lineStyle(
+        7,
+        0xff3b30,
+        1
+      );
+
+      this.attackCooldownGraphics.beginPath();
+
+      this.attackCooldownGraphics.arc(
+        0,
+        0,
+        ringRadius,
+        startAngle,
+        endAngle,
+        false
+      );
+
+      this.attackCooldownGraphics.strokePath();
+
+      return;
+    }
+
+    this.attackButtonBackground.setFillStyle(
+      0xf2f2f2,
+      0.94
+    );
+
+    this.attackButtonIcon.setAlpha(1);
+
+    this.attackCooldownGraphics.lineStyle(
+      7,
+      0xffffff,
+      1
+    );
+
+    this.attackCooldownGraphics.strokeCircle(
+      0,
+      0,
+      ringRadius
+    );
+  }
+
+
+  private resetMobileAttackButtonAppearance(): void {
+    this.attackButtonContainer
+      ?.setScale(1);
+
+    this.updateMobileAttackButtonState();
+  }
+
+
 }
