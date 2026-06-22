@@ -198,6 +198,15 @@ export class Preloader extends Scene {
         frameHeight: 128
       }
     );
+
+    this.load.spritesheet(
+      'test_slash',
+      'images/test_slash.png',
+      {
+        frameWidth: 128,
+        frameHeight: 128
+      }
+    );
     // this.load.image('dino', 'images/characterIcons/dino.png');
     // this.load.image('burningSlayer', 'images/characterIcons/burningSlayer.png');
     // this.load.image('spectreMech', 'images/characterIcons/spectreMech.png');

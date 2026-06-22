@@ -4,7 +4,7 @@ const characterMap: Record<number, any> = {
         movingSpritesheetKey: 'test_moving',
         attackSpritesheetKey: 'test_attack',
         deathSpritesheetKey: 'test_death',
-
+        slashSpritesheetKey: 'test_slash',
         name: 'Dark Ether Messiah',
         cost: 100,
         tier: 'hard',

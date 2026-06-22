@@ -72,7 +72,18 @@ export class Game extends Scene {
 
   hasHandledPlayerDeath = false;
   attackKey!: Phaser.Input.Keyboard.Key;
+  slashKey!: Phaser.Input.Keyboard.Key;
+  slashButtonContainer:
+    Phaser.GameObjects.Container | null = null;
 
+  slashButtonBackground:
+    Phaser.GameObjects.Arc | null = null;
+
+  slashButtonIcon:
+    Phaser.GameObjects.Image | null = null;
+
+  slashCooldownGraphics:
+    Phaser.GameObjects.Graphics | null = null;
   constructor() {
     super('Game');
   }
@@ -228,6 +239,11 @@ export class Game extends Scene {
         this.input.keyboard.addKey(
           Phaser.Input.Keyboard.KeyCodes.Q
         );
+
+      this.slashKey =
+        this.input.keyboard.addKey(
+          Phaser.Input.Keyboard.KeyCodes.E
+        );
     }
   }
 
@@ -304,6 +320,21 @@ export class Game extends Scene {
       }
     }
     if (
+      this.slashKey &&
+      Phaser.Input.Keyboard.JustDown(
+        this.slashKey
+      )
+    ) {
+      if (
+        this.allowInput &&
+        !this.isGamePaused &&
+        !this.isGameOver &&
+        !playerDead
+      ) {
+        this.player?.slashOnce?.();
+      }
+    }
+    if (
       this.isMobileLayout &&
       !this.isGamePaused &&
       !this.isGameOver &&
@@ -327,6 +358,7 @@ export class Game extends Scene {
 
     if (this.isMobileLayout) {
       this.updateMobileAttackButtonState();
+      this.updateMobileSlashButtonState();
     }
 
     const gameplayEnded =
@@ -578,6 +610,14 @@ export class Game extends Scene {
     this.attackButtonBackground = null;
     this.attackButtonIcon = null;
 
+    this.slashButtonContainer
+      ?.destroy(true);
+
+    this.slashButtonContainer = null;
+    this.slashButtonBackground = null;
+    this.slashButtonIcon = null;
+    this.slashCooldownGraphics = null;
+
     this.enemies.forEach(enemy => {
 
       enemy.moveTween?.stop();
@@ -653,6 +693,7 @@ export class Game extends Scene {
     this.updateMobileControlsVisibility();
 
     this.createMobileAttackButton();
+    this.createMobileSlashButton();
 
     this.input.on(
       'pointerdown',
@@ -698,9 +739,16 @@ export class Game extends Scene {
         visible
       );
 
+    this.slashButtonContainer
+      ?.setVisible(
+        visible
+      );
     if (!visible) {
       this.releaseJoystick();
       this.resetMobileAttackButtonAppearance();
+
+      this.slashButtonContainer
+        ?.setScale(1);
     }
   }
 
@@ -1004,6 +1052,286 @@ export class Game extends Scene {
     this.updateMobileControlsVisibility();
     this.updateMobileAttackButtonState();
   }
+
+  private createMobileSlashButton(): void {
+    const buttonX =
+      this.scale.width - 255;
+
+    const buttonY =
+      this.scale.height - 135;
+
+    const buttonRadius = 50;
+
+    this.slashButtonContainer =
+      this.add.container(
+        buttonX,
+        buttonY
+      );
+
+    this.slashButtonContainer
+      .setScrollFactor(0)
+      .setDepth(2001);
+
+    this.slashButtonBackground =
+      this.add.circle(
+        0,
+        0,
+        buttonRadius,
+        0xf2f2f2,
+        0.92
+      );
+
+    this.slashButtonBackground
+      .setStrokeStyle(
+        3,
+        0xffffff,
+        0.9
+      )
+      .setInteractive(
+        new Phaser.Geom.Circle(
+          buttonRadius,
+          buttonRadius,
+          buttonRadius
+        ),
+        Phaser.Geom.Circle.Contains
+      );
+
+    this.slashButtonIcon =
+      this.add.image(
+        0,
+        0,
+        'sword1'
+      );
+
+    this.slashButtonIcon
+      .setScale(0.52)
+      .setTint(0xc38cff)
+      .setRotation(-0.55)
+      .disableInteractive();
+
+    this.slashCooldownGraphics =
+      this.add.graphics();
+
+    this.slashButtonContainer.add([
+      this.slashButtonBackground,
+      this.slashButtonIcon,
+      this.slashCooldownGraphics
+    ]);
+
+    this.slashButtonBackground.on(
+      'pointerdown',
+      (
+        _pointer:
+          Phaser.Input.Pointer,
+        _localX: number,
+        _localY: number,
+        event:
+          Phaser.Types.Input.EventData
+      ) => {
+        event.stopPropagation();
+
+        if (
+          !this.isMobileLayout ||
+          !this.allowInput ||
+          this.isGamePaused ||
+          this.isGameOver ||
+          this.player?.isDead ||
+          !this.player?.isSlashReady?.()
+        ) {
+          return;
+        }
+
+        this.slashButtonContainer
+          ?.setScale(0.92);
+
+        this.player?.slashOnce?.();
+
+        this.updateMobileSlashButtonState();
+      }
+    );
+
+    this.slashButtonBackground.on(
+      'pointerup',
+      (
+        _pointer:
+          Phaser.Input.Pointer,
+        _localX: number,
+        _localY: number,
+        event:
+          Phaser.Types.Input.EventData
+      ) => {
+        event.stopPropagation();
+
+        this.slashButtonContainer
+          ?.setScale(1);
+      }
+    );
+
+    this.slashButtonBackground.on(
+      'pointerout',
+      () => {
+        this.slashButtonContainer
+          ?.setScale(1);
+      }
+    );
+
+    this.slashButtonBackground.on(
+      'pointerupoutside',
+      () => {
+        this.slashButtonContainer
+          ?.setScale(1);
+      }
+    );
+
+    this.updateMobileControlsVisibility();
+    this.updateMobileSlashButtonState();
+  }
+
+  private updateMobileSlashButtonState(): void {
+    if (
+      !this.slashButtonContainer ||
+      !this.slashButtonBackground ||
+      !this.slashButtonIcon ||
+      !this.slashCooldownGraphics
+    ) {
+      return;
+    }
+
+    const buttonRadius = 50;
+    const ringRadius =
+      buttonRadius + 7;
+
+    const isUnavailable =
+      !this.allowInput ||
+      this.isGamePaused ||
+      this.isGameOver ||
+      this.player?.isDead;
+
+    const cooldownRemaining =
+      this.player
+        ?.getSlashCooldownRemaining?.() ??
+      0;
+
+    const isCoolingDown =
+      cooldownRemaining > 0;
+
+    this.slashCooldownGraphics.clear();
+
+    if (isUnavailable) {
+      this.slashButtonBackground
+        .setFillStyle(
+          0x333333,
+          0.9
+        );
+
+      this.slashButtonIcon
+        .setAlpha(0.25);
+
+      this.slashCooldownGraphics
+        .lineStyle(
+          6,
+          0x555555,
+          0.85
+        );
+
+      this.slashCooldownGraphics
+        .strokeCircle(
+          0,
+          0,
+          ringRadius
+        );
+
+      return;
+    }
+
+    if (isCoolingDown) {
+      this.slashButtonBackground
+        .setFillStyle(
+          0x24142f,
+          0.96
+        );
+
+      this.slashButtonIcon
+        .setAlpha(0.42);
+
+      this.slashCooldownGraphics
+        .lineStyle(
+          7,
+          0x160b1e,
+          0.95
+        );
+
+      this.slashCooldownGraphics
+        .strokeCircle(
+          0,
+          0,
+          ringRadius
+        );
+
+      const cooldownProgress =
+        this.player
+          ?.getSlashCooldownProgress?.() ??
+        0;
+
+      const startAngle =
+        -Math.PI / 2;
+
+      const endAngle =
+        startAngle +
+        cooldownProgress *
+        Math.PI *
+        2;
+
+      this.slashCooldownGraphics
+        .lineStyle(
+          7,
+          0xb85cff,
+          1
+        );
+
+      this.slashCooldownGraphics
+        .beginPath();
+
+      this.slashCooldownGraphics.arc(
+        0,
+        0,
+        ringRadius,
+        startAngle,
+        endAngle,
+        false
+      );
+
+      this.slashCooldownGraphics
+        .strokePath();
+
+      return;
+    }
+
+    // slash ready
+    this.slashButtonBackground
+      .setFillStyle(
+        0xf2f2f2,
+        0.94
+      );
+
+    this.slashButtonIcon
+      .setAlpha(1);
+
+    this.slashCooldownGraphics
+      .lineStyle(
+        7,
+        0xffffff,
+        1
+      );
+
+    this.slashCooldownGraphics
+      .strokeCircle(
+        0,
+        0,
+        ringRadius
+      );
+  }
+
 
   private updateMobileAttackButtonState(): void {
     if (
