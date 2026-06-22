@@ -453,7 +453,7 @@ class Player {
             }
         );
 
-        const slashFrameRate = 45;
+        const slashFrameRate = 70;
 
         // 76 frames per direction.
        
