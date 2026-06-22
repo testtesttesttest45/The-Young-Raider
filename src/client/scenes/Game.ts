@@ -9,11 +9,11 @@ import Catastrophe from '../game/Catastrophe';
 
 const WORLD_W = 1280;
 const WORLD_H = 720;
+const HUD_HEIGHT = 120;
+const WORLD_TOP_PADDING = 130;
 
 export class Game extends Scene {
   camp1: any;
-  camp2: any;
-  camp3: any;
 
   player: any;
 
@@ -42,19 +42,22 @@ export class Game extends Scene {
 
   gold = 0;
 
+  hasHandledPlayerDeath = false;
+  attackKey!: Phaser.Input.Keyboard.Key;
+
   constructor() {
     super('Game');
   }
 
+
   create() {
-    this.events.once(
-      Phaser.Scenes.Events.SHUTDOWN,
-      this.shutdown,
-      this
-    );
-    this.gold = 0;
+    this.isGamePaused = false;
+    this.isGameOver = false;
+    this.allowInput = true;
+    this.hasHandledPlayerDeath = false;
 
     this.activeGameTime = 0;
+    this.gold = 0;
 
     this.enemies = [];
     this.camps = [];
@@ -63,6 +66,12 @@ export class Game extends Scene {
 
     this.isWinterFrostActive = false;
     this.isTreasureHunterActive = false;
+
+    this.events.once(
+      Phaser.Scenes.Events.SHUTDOWN,
+      this.shutdown,
+      this
+    );
 
     const isPortrait =
       this.scale.gameSize.height > this.scale.gameSize.width;
@@ -90,28 +99,13 @@ export class Game extends Scene {
     this.camp1 = new Camp(
       this,
       250,
-      250
+      300
     );
+
     this.camp1.create();
 
-    this.camp2 = new Camp(
-      this,
-      800,
-      250
-    );
-    this.camp2.create();
-
-    this.camp3 = new Camp(
-      this,
-      525,
-      650
-    );
-    this.camp3.create();
-
     this.camps = [
-      this.camp1,
-      this.camp2,
-      this.camp3
+      this.camp1
     ];
     this.characterInUse =
       parseInt(
@@ -147,88 +141,55 @@ export class Game extends Scene {
     this.catastrophe.startStormTimer();
     this.catastrophe.drawstormShelter();
 
+    if (this.scene.isActive('BattleUI')) {
+      this.scene.stop('BattleUI');
+    }
+
     this.scene.launch('BattleUI');
 
-    // Set up camera bounds + zoom-to-cover, then keep it in sync on resize
     this.cameras.main.setBounds(0, 0, WORLD_W, WORLD_H);
     this.handleResize(this.scale.gameSize);
     this.scale.on('resize', this.handleResize, this);
 
-    // Movement test
-    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-
-      if (this.enemyClicked) {
-        this.enemyClicked = false;
-        return;
-      }
-
-      this.player.targetedEnemy = null;
-
-      this.player.moveStraight(
-        pointer.worldX,
-        pointer.worldY
-      );
-    });
-
-
-
     this.input.on(
-      'gameobjectdown',
-      (
-        pointer: Phaser.Input.Pointer,
-        gameObject: Phaser.GameObjects.GameObject
-      ) => {
-
-        const enemy = this.enemies.find(
-          e => e.sprite === gameObject
-        );
-
-        if (enemy) {
-
-          console.log('Enemy clicked');
-
-          this.enemyClicked = true;
-          this.player.targetedEnemy = enemy;
-
-          const pos = enemy.getPosition();
-
-          this.player.moveStraight(
-            pos.x,
-            pos.y
-          );
-
+      'pointerdown',
+      (pointer: Phaser.Input.Pointer) => {
+        if (pointer.y <= HUD_HEIGHT) {
           return;
         }
 
-        const baseClicked =
-          this.base &&
-          this.base.sprite === gameObject;
-
-        if (baseClicked) {
-
-          console.log('Base clicked');
-
-          this.enemyClicked = true;
-
-          this.player.targetedEnemy =
-            this.base;
-
-          const pos =
-            this.base.getPosition();
-
-          this.player.moveStraight(
-            pos.x,
-            pos.y
-          );
+        if (
+          !this.allowInput ||
+          this.isGamePaused ||
+          this.isGameOver
+        ) {
+          return;
         }
+
+        if (this.player.isActionLocked) {
+          return;
+        }
+
+        this.enemyClicked = false;
+        this.player.targetedEnemy = null;
+        this.player.isMovingTowardsEnemy = false;
+        this.player.continueAttacking = false;
+
+        this.player.moveStraight(
+          pointer.worldX,
+          pointer.worldY
+        );
       }
     );
+
+    if (this.input.keyboard) {
+      this.attackKey =
+        this.input.keyboard.addKey(
+          Phaser.Input.Keyboard.KeyCodes.Q
+        );
+    }
   }
 
-  /**
-   * Keeps the camera viewport filling the canvas and zooms the world
-   * to cover it — no blue gaps past the 1280x720 design area.
-   */
   private handleResize(gameSize: Phaser.Structs.Size) {
     const w = gameSize.width;
     const h = gameSize.height;
@@ -242,56 +203,122 @@ export class Game extends Scene {
     }
   }
 
-  override update(time: number, delta: number) {
-    if (!this.isGamePaused) {
-      this.activeGameTime += delta;
-    }
-
-    this.player?.update?.(time, delta);
-
-    this.enemies.forEach(enemy => {
-      enemy.update?.(time, delta);
-    });
-
-    this.base?.update?.(time, delta);
-
-    this.catastrophe?.update?.(time, delta);
+  override update(
+    time: number,
+    delta: number
+  ): void {
+    const playerDead =
+      this.player?.isDead === true;
 
     const battleUI =
-      this.scene.get('BattleUI') as any;
+      this.scene.get(
+        'BattleUI'
+      ) as any;
 
-    if (battleUI) {
+    if (
+      playerDead &&
+      !this.hasHandledPlayerDeath
+    ) {
+      this.hasHandledPlayerDeath = true;
+      this.isGameOver = true;
+      this.allowInput = false;
 
-      battleUI.updateTimer(
-        this.catastrophe.getTimeUntilNextStorm()
-      );
+      battleUI?.pauseMultiplier?.();
 
-      if (this.enemies.length > 0) {
+      if (this.player?.currentTween) {
+        this.player.currentTween.stop();
+        this.player.currentTween = null;
+      }
+    }
 
-        const aliveEnemies =
-          this.enemies.filter(
-            e => !e.isDead
-          );
+    if (
+      !this.isGamePaused &&
+      !this.isGameOver &&
+      !playerDead
+    ) {
+      this.activeGameTime += delta;
+    }
+    if (
+      this.attackKey &&
+      Phaser.Input.Keyboard.JustDown(
+        this.attackKey
+      )
+    ) {
+      if (
+        this.allowInput &&
+        !this.isGamePaused &&
+        !this.isGameOver &&
+        !playerDead
+      ) {
+        this.player?.attackOnce?.();
+      }
+    }
 
-        if (aliveEnemies.length > 0) {
+    this.player?.update?.(
+      time,
+      delta
+    );
 
-          const highestLevelEnemy =
-            aliveEnemies.reduce(
-              (a, b) =>
-                a.strengthenLevel >
-                  b.strengthenLevel
-                  ? a
-                  : b
-            );
+    const gameplayEnded =
+      this.isGameOver ||
+      playerDead;
 
-          battleUI.updateStrengthenTimer(
-            highestLevelEnemy
-              .getTimeUntilNextStrengthen()
+    if (!gameplayEnded) {
+      this.enemies.forEach(
+        enemy => {
+          enemy.update?.(
+            time,
+            delta
           );
         }
+      );
+
+      this.base?.update?.(
+        time,
+        delta
+      );
+
+      this.catastrophe?.update?.(
+        time,
+        delta
+      );
+    }
+    if (
+      battleUI &&
+      !gameplayEnded
+    ) {
+      battleUI.updateTimer(
+        this.catastrophe
+          .getTimeUntilNextStorm()
+      );
+
+      const aliveEnemies =
+        this.enemies.filter(
+          enemy =>
+            !enemy.isDead
+        );
+
+      if (aliveEnemies.length > 0) {
+        const highestLevelEnemy =
+          aliveEnemies.reduce(
+            (
+              firstEnemy,
+              secondEnemy
+            ) =>
+              firstEnemy.strengthenLevel >
+                secondEnemy.strengthenLevel
+                ? firstEnemy
+                : secondEnemy
+          );
+
+        battleUI.updateStrengthenTimer(
+          highestLevelEnemy
+            .getTimeUntilNextStrengthen()
+        );
       }
     }
   }
+
 
   toggleCameraLock() {
     this.isCameraLocked = !this.isCameraLocked;
@@ -343,105 +370,60 @@ export class Game extends Scene {
     cash.destroy();
   }
 
-  createEnemy(baseLevel: number) {
+  createEnemy(baseLevel: number): void {
+    this.enemies = this.enemies.filter(
+      enemy => !enemy.isDead
+    );
 
-    // Remove dead enemies first
-    this.enemies =
-      this.enemies.filter(
+    const existingAliveEnemy =
+      this.enemies.find(
         enemy => !enemy.isDead
       );
 
-    const campEnemyCount =
-      baseLevel === 1
-        ? 1
-        : Math.min(
-          3,
-          1 + Math.floor(baseLevel / 3)
-        );
-
-    const patrolEnemyCount =
-      baseLevel === 1
-        ? 1
-        : Math.min(
-          2,
-          Math.floor(baseLevel / 5)
-        );
-
-    // CAMP ENEMIES
-    this.camps.forEach((camp: any) => {
-
-      for (
-        let i = 0;
-        i < campEnemyCount;
-        i++
-      ) {
-
-        const spawnPos =
-          camp.getRandomPositionInRadius();
-
-        const enemy =
-          new Enemy(
-            this,
-            spawnPos.x,
-            spawnPos.y,
-            this.selectEnemyCharacterCode(),
-            camp,
-            this.player,
-            baseLevel,
-            this.base,
-            this.isWinterFrostActive,
-            this.isTreasureHunterActive
-          );
-
-        enemy.create();
-        enemy.startTimer();
-
-        this.enemies.push(enemy);
-      }
-    });
-
-    // PATROLLERS
-    for (
-      let i = 0;
-      i < patrolEnemyCount;
-      i++
-    ) {
-
-      const basePos =
-        this.base.getPosition();
-
-      const enemy =
-        new Enemy(
-          this,
-          basePos.x,
-          basePos.y,
-          1,
-          null,
-          this.player,
-          baseLevel,
-          this.base,
-          this.isWinterFrostActive,
-          this.isTreasureHunterActive
-        );
-
-      enemy.patrolling = true;
-
-      enemy.patrolBounds = {
-        minX: 50,
-        maxX: 974,
-        minY: 50,
-        maxY: 718
-      };
-
-      enemy.create();
-      enemy.startTimer();
-
-      this.enemies.push(enemy);
+    if (existingAliveEnemy) {
+      return;
     }
 
-    console.log(
-      `Spawned ${this.enemies.length} enemies`
+    const camp = this.camps[0];
+
+    if (!camp) {
+      
+      return;
+    }
+
+    const spawnPos =
+      camp.getRandomPositionInRadius();
+
+    spawnPos.x = Phaser.Math.Clamp(
+      spawnPos.x,
+      50,
+      WORLD_W - 50
     );
+
+    spawnPos.y = Phaser.Math.Clamp(
+      spawnPos.y,
+      WORLD_TOP_PADDING,
+      WORLD_H - 50
+    );
+    const enemyCharacterCode = 2;
+
+    const enemy = new Enemy(
+      this,
+      spawnPos.x,
+      spawnPos.y,
+      enemyCharacterCode,
+      camp,
+      this.player,
+      baseLevel,
+      this.base,
+      this.isWinterFrostActive,
+      this.isTreasureHunterActive
+    );
+
+    enemy.create();
+    enemy.startTimer();
+
+    this.enemies.push(enemy);
   }
 
   selectEnemyCharacterCode() {

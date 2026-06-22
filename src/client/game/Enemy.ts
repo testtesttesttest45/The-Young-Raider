@@ -2,6 +2,10 @@ import characterMap from './CharacterMap';
 import chroma from 'chroma-js';
 import * as Phaser from 'phaser';
 
+const WORLD_W = 1280;
+const WORLD_H = 720;
+const WORLD_TOP_PADDING = 130;
+
 class Enemy {
     scene: any;
 
@@ -113,6 +117,7 @@ class Enemy {
     firePixelSize: any;
     fireGradient: any;
     fireGraphics: any;
+
     constructor(
         scene: any,
         x: number,
@@ -180,15 +185,20 @@ class Enemy {
         this.enemyStrengthenInterval = 15000;
         this.attackCount = character.attackCount;
         this.patrolling = false;
+
         this.patrolBounds = {
             minX: 50,
-            maxX: 974,
-            minY: 50,
-            maxY: 718
+            maxX: WORLD_W - 50,
+            minY: WORLD_TOP_PADDING,
+            maxY: WORLD_H - 50
         };
+
         this.nextPatrolTime = 0;
-        this.patrolInterval = 2000; // Change direction every 2000 milliseconds
-        this.destination = { x: this.x, y: this.y };
+        this.patrolInterval = 2000;
+        this.destination = {
+            x: this.x,
+            y: this.y
+        };
         this.isWinterFrosted = isWinterFrostActive;
         this.goldValue = 100;
         this.isTreasureHunted = isTreasureHunterActive;

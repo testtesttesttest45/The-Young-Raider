@@ -1,27 +1,33 @@
 const characterMap: Record<number, any> = {
-        1: {
-        spritesheetKey: 'character1',
+    1: {
+        spritesheetKey: 'test_idle',
+        movingSpritesheetKey: 'test_moving',
+        attackSpritesheetKey: 'test_attack',
+        deathSpritesheetKey: 'test_death',
+
         name: 'Dark Ether Messiah',
         cost: 100,
         tier: 'hard',
-        range: 200,
+        range: 100,
         speed: 220,
         damage: 65,
-        health: 375,
+        health: 1,
         attackSpeed: 1.4,
         attackCount: 1,
         projectile: '',
         icon: 'darkEtherMessiah',
-        idle: 'character1Idle',
-        description: 'Defender of the Dark Ether. Versatile and powerful, he is a force to be reckoned with.'
+        idle: 'testIdle',
+
+        description:
+            'Defender of the Dark Ether. Versatile and powerful, he is a force to be reckoned with.'
     },
     2: {
         spritesheetKey: 'character2',
         name: 'Orc',
         cost: 55,
         tier: 'easy',
-        health: 170,
-        damage: 22,
+        health: 17000,
+        damage: 20,
         range: 150,
         speed: 180,
         attackSpeed: 1.08,

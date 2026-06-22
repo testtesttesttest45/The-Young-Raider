@@ -1,5 +1,5 @@
 // import musicManager from './music_manager.js';
-
+const HUD_HEIGHT = 110;
 import { Scene } from 'phaser';
 import * as Phaser from 'phaser';
 declare global {
@@ -44,7 +44,9 @@ export default class BattleUI extends Scene {
     scrollbarTrack: any;
     scrollbarHandle: any;
     scrollPosition: number;
-
+    shopHeaderContainer: Phaser.GameObjects.Container;
+    shopContentCamera:
+        Phaser.Cameras.Scene2D.Camera | null = null;
     buyButtons: any[];
 
     currentFeedbackText: any;
@@ -122,12 +124,6 @@ export default class BattleUI extends Scene {
     attackSpeedSectionTitle: any;
     movementSpeedSectionTitle: any;
     legendaryUpgradesSectionTitle: any;
-
-    cameraIconGraphics: any;
-    cameraTooltip: any;
-
-    locationIconGraphics: any;
-    locationTooltip: any;
 
     upgradeTooltip: any;
 
@@ -263,706 +259,1741 @@ export default class BattleUI extends Scene {
     }
 
     updateCashDisplay() {
-        this.cashText.setText(`Cash:   ${this.cash}`);
+        if (this.cashText) {
+            this.cashText.setText(
+                String(this.cash)
+            );
+        }
     }
 
-    create() {
+    create(): void {
         this.resetState();
-        const panel = this.add.rectangle(this.scale.width - 30, 120, 350, 700, 0x000000, 0.5);
-        panel.setOrigin(1, 0);
-        panel.setScrollFactor(0);
 
-        const panelCenterX = this.scale.width - 30 - panel.width / 2;
-        const headerTextY = 150;
-        this.add.text(panelCenterX - 50, headerTextY, "Battle Panel", {
-            font: '20px Orbitron',
-            color: '#ffffff'
-        }).setOrigin(0.5, 0).setScrollFactor(0);
+        const width = this.scale.width;
+        const gameScene = this.scene.get('Game') as any;
+        const player = gameScene.player;
+        const enemy = gameScene.enemies[0];
 
-        const pauseButtonX = panelCenterX + 150; // 1865
-        const pauseButtonY = headerTextY; // 150
-        const pauseButtonRadius = 20;
-        const pauseButtonBackground = this.add.graphics();
-        pauseButtonBackground.fillStyle(0xff0000, 1);
-        pauseButtonBackground.fillCircle(pauseButtonX, pauseButtonY, pauseButtonRadius);
+        const HUD_DEPTH = 100;
+        const CONTENT_DEPTH = 102;
 
-        const pauseButtonText = this.add.text(pauseButtonX, pauseButtonY, '||', {
-            font: '24px Orbitron',
-            color: '#ffffff'
-        }).setOrigin(0.5, 0.5);
+        const hudBackground = this.add
+            .rectangle(
+                0,
+                0,
+                width,
+                HUD_HEIGHT,
+                0x111a26,
+                0.62
+            )
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(HUD_DEPTH)
+            .setInteractive();
 
-        pauseButtonBackground.setInteractive(
-            new Phaser.Geom.Circle(
-                pauseButtonX,
-                pauseButtonY,
-                pauseButtonRadius
-            ),
-            Phaser.Geom.Circle.Contains
-        );
-        pauseButtonBackground.on(
+        hudBackground.on(
             'pointerdown',
-            () => {
-
-                this.scene.pause('Game');
-
-                this.createPauseScreen();
+            (
+                _pointer: Phaser.Input.Pointer,
+                _localX: number,
+                _localY: number,
+                event: Phaser.Types.Input.EventData
+            ) => {
+                event.stopPropagation();
             }
         );
 
-        this.createCameraIcon();
-        this.input.keyboard?.on('keydown-L', () => {
-            this.toggleCameraLock();
-        });
+        // Bottom border
+        this.add
+            .rectangle(
+                0,
+                HUD_HEIGHT - 3,
+                width,
+                3,
+                0x31b8ff,
+                0.55
+            )
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(HUD_DEPTH + 1);
 
-        this.createLocationIcon();
-        this.input.keyboard?.on('keydown-SPACE', () => {
-            this.toggleCameraFollow();
-        });
+        const sectionY = 8;
+        const sectionHeight = HUD_HEIGHT - 18;
 
-        const approachingTextY = headerTextY + 50;
-        this.approachingText = this.add.text(panelCenterX + 10, approachingTextY, "Catastrophe approaches", {
-            font: '16px Orbitron',
-            color: '#ffffff',
-        }).setOrigin(0.5, 0).setScrollFactor(0);
+        const leftSectionX = 12;
+        const leftSectionWidth = 360;
 
-        this.catastropheIcon = this.add.image(panelCenterX - 150, approachingTextY + 15, 'catastrophe').setScale(0.5).setScrollFactor(0).setOrigin(0, 0.5);
+        const rightSectionWidth = 300;
+        const rightSectionX =
+            width - rightSectionWidth - 12;
+
+        const centerSectionX =
+            leftSectionX + leftSectionWidth + 12;
+
+        const centerSectionWidth =
+            rightSectionX - centerSectionX - 12;
+        // Section backgrounds
+        this.add
+            .rectangle(
+                leftSectionX,
+                sectionY,
+                leftSectionWidth,
+                sectionHeight,
+                0x162231,
+                0.9
+            )
+            .setOrigin(0, 0)
+            .setStrokeStyle(1, 0x3b6685, 0.9)
+            .setScrollFactor(0)
+            .setDepth(HUD_DEPTH + 1);
+
+        this.add
+            .rectangle(
+                centerSectionX,
+                sectionY,
+                centerSectionWidth,
+                sectionHeight,
+                0x162231,
+                0.9
+            )
+            .setOrigin(0, 0)
+            .setStrokeStyle(1, 0x3b6685, 0.9)
+            .setScrollFactor(0)
+            .setDepth(HUD_DEPTH + 1);
+
+        this.add
+            .rectangle(
+                rightSectionX,
+                sectionY,
+                rightSectionWidth,
+                sectionHeight,
+                0x162231,
+                0.9
+            )
+            .setOrigin(0, 0)
+            .setStrokeStyle(1, 0x3b6685, 0.9)
+            .setScrollFactor(0)
+            .setDepth(HUD_DEPTH + 1);
+
+        const playerIconX = leftSectionX + 12;
+        const playerTextX = leftSectionX + 78;
+
+        this.playerIcon = this.add
+            .image(
+                playerIconX,
+                sectionY + sectionHeight / 2,
+                player.icon
+            )
+            .setOrigin(0, 0.5)
+            .setScale(0.46)
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        this.playerNameText = this.add
+            .text(
+                playerTextX,
+                15,
+                player.name,
+                {
+                    font: 'bold 15px Orbitron',
+                    color: '#ffffff'
+                }
+            )
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        this.playerHealthText = this.add
+            .text(
+                playerTextX,
+                39,
+                'Health: --/--',
+                {
+                    font: '13px Orbitron',
+                    color: '#7dff8b'
+                }
+            )
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        this.playerHealthBonusText = this.add
+            .text(
+                playerTextX + 160,
+                39,
+                '',
+                {
+                    font: '11px Orbitron',
+                    color: '#31b8ff'
+                }
+            )
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        this.playerDamageText = this.add
+            .text(
+                playerTextX,
+                64,
+                'Damage: --',
+                {
+                    font: '12px Orbitron',
+                    color: '#ffffff'
+                }
+            )
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        this.playerDamageBonusText = this.add
+            .text(
+                playerTextX + 92,
+                64,
+                '',
+                {
+                    font: '10px Orbitron',
+                    color: '#31b8ff'
+                }
+            )
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        this.playerAttackSpeedText = this.add
+            .text(
+                playerTextX + 165,
+                64,
+                'Attack: --',
+                {
+                    font: '12px Orbitron',
+                    color: '#ffffff'
+                }
+            )
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        this.playerAttackSpeedBonusText = this.add
+            .text(
+                playerTextX + 255,
+                64,
+                '',
+                {
+                    font: '10px Orbitron',
+                    color: '#31b8ff'
+                }
+            )
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        this.playerSpeedText = this.add
+            .text(
+                playerTextX,
+                87,
+                'Speed: --',
+                {
+                    font: '12px Orbitron',
+                    color: '#ffffff'
+                }
+            )
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        this.playerSpeedBonusText = this.add
+            .text(
+                playerTextX + 85,
+                87,
+                '',
+                {
+                    font: '10px Orbitron',
+                    color: '#31b8ff'
+                }
+            )
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+        const timerIconX =
+            centerSectionX + 28;
+
+        const timerBarX =
+            centerSectionX + 55;
+
+        const timerBarWidth = 280;
+        const timerBarHeight = 12;
+
+        const multiplierAreaWidth = 120;
+
+        const multiplierX =
+            centerSectionX +
+            centerSectionWidth -
+            multiplierAreaWidth / 2 -
+            8;
+
+        // Catastrophe row
+        this.catastropheIcon = this.add
+            .image(
+                timerIconX,
+                29,
+                'catastrophe'
+            )
+            .setScale(0.29)
+            .setOrigin(0.5)
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        this.approachingText = this.add
+            .text(
+                timerBarX,
+                14,
+                'Catastrophe',
+                {
+                    font: '12px Orbitron',
+                    color: '#ffffff'
+                }
+            )
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        this.timerBarBackground = this.add
+            .rectangle(
+                timerBarX,
+                36,
+                timerBarWidth,
+                timerBarHeight,
+                0xffffff,
+                0.18
+            )
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        this.timerBarFill = this.add
+            .rectangle(
+                timerBarX,
+                36,
+                0,
+                timerBarHeight,
+                0x00ff66
+            )
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH + 1);
+
+        this.stormMaxTime =
+            gameScene.catastrophe.stormInterval;
+
+        this.currentTime = 0;
+
+        // Strengthen row
+        this.strengthenIcon = this.add
+            .image(
+                timerIconX,
+                77,
+                'strengthen'
+            )
+            .setScale(0.29)
+            .setOrigin(0.5)
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        this.add
+            .text(
+                timerBarX,
+                62,
+                'Enemy strengthens',
+                {
+                    font: '12px Orbitron',
+                    color: '#ffffff'
+                }
+            )
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        this.strengthenBarBackground = this.add
+            .rectangle(
+                timerBarX,
+                84,
+                timerBarWidth,
+                timerBarHeight,
+                0xffffff,
+                0.18
+            )
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        this.strengthenBarFill = this.add
+            .rectangle(
+                timerBarX,
+                84,
+                0,
+                timerBarHeight,
+                0xff3c3c
+            )
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH + 1);
+
+        this.strengthenMaxTime =
+            enemy?.enemyStrengthenInterval ?? 1;
+
+        this.strengthenCurrentTime = 0;
+
+        // Strength level hexagon
+        this.strengthenedSquare = this.add.graphics();
+
+        const strengthenLevelX =
+            timerBarX + timerBarWidth + 24;
+
+        const strengthenLevelY =
+            84 + timerBarHeight / 2;
+
+        this.strengthenedSquareContainer = this.add
+            .container(
+                strengthenLevelX,
+                strengthenLevelY
+            )
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH + 1);
+
+        this.drawHexagon();
+
+        this.strengthenedSquareContainer.add(
+            this.strengthenedSquare
+        );
+
+        this.strengthenedSquareText = this.add
+            .text(
+                0,
+                0,
+                '1',
+                {
+                    font: '13px Orbitron',
+                    color: '#ffffff'
+                }
+            )
+            .setOrigin(0.5);
+
+        this.strengthenedSquareContainer.add(
+            this.strengthenedSquareText
+        );
+
+        // Multiplier title
+        this.add
+            .text(
+                multiplierX,
+                14,
+                'SCORE MULTIPLIER',
+                {
+                    font: '10px Orbitron',
+                    color: '#b9c8d6'
+                }
+            )
+            .setOrigin(0.5, 0)
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        this.multiplierText = this.add
+            .text(
+                multiplierX,
+                31,
+                `x${this.multiplier}`,
+                {
+                    font: 'bold 18px Orbitron',
+                    color: '#ffe866'
+                }
+            )
+            .setOrigin(0.5, 0)
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        const multiplierBarWidth = 92;
+
+        const multiplierBarBackground = this.add
+            .rectangle(
+                multiplierX - multiplierBarWidth / 2,
+                57,
+                multiplierBarWidth,
+                10,
+                0xffffff,
+                0.18
+            )
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        this.multiplierBarFill = this.add
+            .rectangle(
+                multiplierBarBackground.x,
+                multiplierBarBackground.y,
+                multiplierBarWidth,
+                10,
+                0xffd900
+            )
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH + 1);
+
+        this.lastMultiplierUpdate =
+            gameScene.activeGameTime;
+
+
+        const rightContentX =
+            rightSectionX + 14;
+
+        // Score
+        this.scoreText = this.add
+            .text(
+                rightContentX,
+                16,
+                'Score: 0',
+                {
+                    font: 'bold 15px Orbitron',
+                    color: '#ffffff'
+                }
+            )
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        // Gold
+        this.shopIcon = this.add
+            .image(
+                rightContentX + 12,
+                53,
+                'gold'
+            )
+            .setScale(0.38)
+            .setOrigin(0.5)
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        this.goldText = this.add
+            .text(
+                rightContentX + 30,
+                43,
+                String(this.gold),
+                {
+                    font: '14px Orbitron',
+                    color: '#ffd84a'
+                }
+            )
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        // Cash
+        this.cashIcon = this.add
+            .image(
+                rightContentX + 115,
+                53,
+                'cash'
+            )
+            .setScale(0.38)
+            .setOrigin(0.5)
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        this.cashText = this.add
+            .text(
+                rightContentX + 133,
+                43,
+                String(this.cash),
+                {
+                    font: '14px Orbitron',
+                    color: '#82e6ff'
+                }
+            )
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH);
+
+        // Shop button
+        this.shopButtonContainer = this.add
+            .container(
+                rightSectionX + 68,
+                91
+            )
+            .setSize(105, 32)
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH + 1)
+            .setInteractive({
+                useHandCursor: true
+            });
+
+        const shopButtonBackground = this.add
+            .rectangle(
+                0,
+                0,
+                105,
+                32,
+                0x1d6f94,
+                1
+            )
+            .setStrokeStyle(
+                2,
+                0x63d5ff
+            );
+
+        this.shopText = this.add
+            .text(
+                0,
+                0,
+                'SHOP',
+                {
+                    font: 'bold 14px Orbitron',
+                    color: '#ffffff'
+                }
+            )
+            .setOrigin(0.5);
+
+        this.shopButtonContainer.add([
+            shopButtonBackground,
+            this.shopText
+        ]);
+
+        this.shopButtonContainer.on(
+            'pointerdown',
+            (
+                _pointer: Phaser.Input.Pointer,
+                _localX: number,
+                _localY: number,
+                event: Phaser.Types.Input.EventData
+            ) => {
+                event.stopPropagation();
+
+                if (!this.shopModalContainer) {
+                    this.createShopModal();
+                }
+
+                this.toggleShopModal(true);
+            }
+        );
+
+        // Pause button
+        const pauseButton = this.add
+            .text(
+                rightSectionX +
+                rightSectionWidth -
+                42,
+                59,
+                'Ⅱ',
+                {
+                    font: 'bold 22px Orbitron',
+                    color: '#ffffff',
+                    backgroundColor: '#a92e2e',
+                    padding: {
+                        x: 11,
+                        y: 8
+                    }
+                }
+            )
+            .setOrigin(0.5)
+            .setScrollFactor(0)
+            .setDepth(CONTENT_DEPTH + 1)
+            .setInteractive({
+                useHandCursor: true
+            });
+
+        pauseButton.on(
+            'pointerdown',
+            (
+                _pointer: Phaser.Input.Pointer,
+                _localX: number,
+                _localY: number,
+                event: Phaser.Types.Input.EventData
+            ) => {
+                event.stopPropagation();
+                this.pauseGame();
+            }
+        );
 
         this.flashing = false;
         this.flashingTween = null;
-
-        this.timerBarBackground = this.add.rectangle(panelCenterX, approachingTextY + 40, 300, 20, 0xffffff, 0.2).setOrigin(0.5, 0).setScrollFactor(0);
-        this.timerBarFill = this.add.rectangle(this.timerBarBackground.x - this.timerBarBackground.width / 2, approachingTextY + 40, 0, 20, 0x00ff00).setOrigin(0, 0).setScrollFactor(0);
-
-        this.stormMaxTime = (this.scene.get('Game') as any).catastrophe.stormInterval;
-        this.currentTime = 0;
-
-        const strengthenTextY = approachingTextY + 80;
-        this.add.text(panelCenterX, strengthenTextY, "Enemy strengthens", {
-            font: '16px Orbitron',
-            color: '#ffffff'
-        }).setOrigin(0.5, 0).setScrollFactor(0);
-
-        this.strengthenIcon = this.add.image(panelCenterX - 150, strengthenTextY + 15, 'strengthen').setScale(0.5).setScrollFactor(0).setOrigin(0, 0.5);
-
-        this.strengthenBarBackground = this.add.rectangle(panelCenterX, strengthenTextY + 40, 300, 20, 0xffffff, 0.2).setOrigin(0.5, 0).setScrollFactor(0);
-        this.strengthenBarFill = this.add.rectangle(this.strengthenBarBackground.x - this.strengthenBarBackground.width / 2, strengthenTextY + 40, 0, 20, 0xff0000).setOrigin(0, 0).setScrollFactor(0);
-
-        this.strengthenMaxTime = (this.scene.get('Game') as any).enemies[0].enemyStrengthenInterval;
-        this.strengthenCurrentTime = 0;
-
-        this.strengthenedSquare = this.add.graphics();
-        this.strengthenedSquareContainer = this.add.container(panelCenterX + 130, strengthenTextY + 15);
-        this.drawHexagon();
-        this.strengthenedSquareContainer.add(this.strengthenedSquare);
-        this.strengthenedSquareText = this.add.text(0, 0, '1', {
-            font: '16px Orbitron',
-            color: '#ffffff',
-        }).setOrigin(0.5, 0.5);
-        this.strengthenedSquareContainer.add(this.strengthenedSquareText);
-        this.strengthenedSquareContainer.setDepth(1);
-
-        const multiplierTextY = strengthenTextY + 80;
-        this.multiplierText = this.add.text(panelCenterX, multiplierTextY, `Score Multiplier: x${this.multiplier}`, {
-            font: '16px Orbitron',
-            color: '#ffffff'
-        }).setOrigin(0.5, 0).setScrollFactor(0);
-
-        const multiplierBarBackground = this.add.rectangle(panelCenterX, multiplierTextY + 30, 300, 20, 0x000000, 0.5).setOrigin(0.5, 0);
-        this.multiplierBarFill = this.add.rectangle(multiplierBarBackground.x - multiplierBarBackground.width / 2, multiplierTextY + 30, 300, 20, 0x00ff00).setOrigin(0, 0).setScrollFactor(0);
-
-        this.lastMultiplierUpdate = (this.scene.get('Game') as any).activeGameTime;
-
-        const statsTextY = this.multiplierText.y + 90;
-        this.add.text(panelCenterX, statsTextY, "Player Stats", {
-            font: '20px Orbitron',
-            color: '#ffffff'
-        }).setOrigin(0.5, 0).setScrollFactor(0);
-
-
-        let partTimeX = this.scale.width - 350;
-        let partTimeY = 500;
-        const playerName = (this.scene.get('Game') as any).player.name;
-        const playerIcon = (this.scene.get('Game') as any).player.icon;
-        this.playerIcon = this.add.image(panelCenterX - 150, statsTextY + 10, playerIcon).setScale(0.75).setScrollFactor(0).setOrigin(0, 0.5);
-        this.playerNameText = this.add.text(partTimeX + 50, partTimeY, playerName, { font: '18px Orbitron', color: '#ffffff' });
-        this.playerHealthText = this.add.text(partTimeX, partTimeY + 30, 'Health: --/--', { font: '16px Orbitron', color: '#ffffff' });
-        this.playerDamageText = this.add.text(partTimeX, partTimeY + 50, 'Damage: --', { font: '16px Orbitron', color: '#ffffff' });
-        this.playerAttackSpeedText = this.add.text(partTimeX, partTimeY + 70, 'Attack Speed: --', { font: '16px Orbitron', color: '#ffffff' });
-        this.playerSpeedText = this.add.text(partTimeX, partTimeY + 90, 'Speed: --', { font: '16px Orbitron', color: '#ffffff' });
-
-        this.playerHealthBonusText = this.add.text(this.playerHealthText.x + 200, partTimeY + 30, '', { font: '16px Orbitron', color: '#00BFFF' });
-        this.playerDamageBonusText = this.add.text(this.playerDamageText.x + 200, partTimeY + 50, '', { font: '16px Orbitron', color: '#00BFFF' });
-        this.playerAttackSpeedBonusText = this.add.text(this.playerAttackSpeedText.x + 200, partTimeY + 70, '', { font: '16px Orbitron', color: '#00BFFF' });
-        this.playerSpeedBonusText = this.add.text(this.playerSpeedText.x + 200, partTimeY + 90, '', { font: '16px Orbitron', color: '#00BFFF' });
-
-        const shopTextY = statsTextY + 300;
-
-        this.shopButtonContainer = this.add.container(panelCenterX, shopTextY).setScrollFactor(0);
-
-        this.shopText = this.add.text(-40, -40, 'Shop', {
-            font: '20px Orbitron',
-            color: '#ffffff'
-        });
-
-        this.goldText = this.add.text(-80, 10, String(this.gold), {
-            font: '24px Orbitron',
-            color: '#ffffff'
-        });
-
-        this.shopIcon = this.add.image(this.goldText.width - 80, 25, 'gold').setOrigin(0, 0.5).setScale(0.75);
-
-        this.shopButtonContainer.add([this.shopIcon, this.goldText, this.shopText]);
-
-        this.shopButtonContainer.setSize(300, 100);
-
-        this.shopButtonContainer.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
-            this.createShopModal();
-            this.toggleShopModal(true);
-        });
-
-        let outline = this.add.graphics();
-        outline.lineStyle(2, 0xffffff, 1); // white
-        outline.strokeRect(
-            this.shopButtonContainer.x - this.shopButtonContainer.width / 2,
-            this.shopButtonContainer.y - this.shopButtonContainer.height / 2,
-            this.shopButtonContainer.width,
-            this.shopButtonContainer.height
-        );
-
-        const scorePanelX = this.scale.width - 30;
-        const scorePanelY = this.scale.height - 120;
-        const scorePanelWidth = 350;
-        const scorePanelHeight = 100;
-
-        const scorePanelBackground = this.add.rectangle(scorePanelX, scorePanelY, scorePanelWidth, scorePanelHeight, 0x000000, 0.5);
-        scorePanelBackground.setOrigin(1, 1);
-
-        const scoreTextX = scorePanelX - scorePanelWidth + 20;
-        const scoreTextY = scorePanelY - scorePanelHeight / 2 - 20;
-        this.scoreText = this.add.text(scoreTextX, scoreTextY, 'Score: 0', {
-            font: '20px Orbitron',
-            color: '#ffffff'
-        }).setOrigin(0, 0.5);
-
-
-        const cashTextX = scorePanelX - scorePanelWidth + 20;
-        const cashTextY = scorePanelY - scorePanelHeight / 2 + 30;
-        this.cashText = this.add.text(cashTextX, cashTextY, 'Cash:   0', {
-            font: '20px Orbitron',
-            color: '#ffffff'
-        }).setOrigin(0, 0.5);
-
-        this.cashIcon = this.add.image(cashTextX + 200, cashTextY, 'cash').setScrollFactor(0).setOrigin(1, 0.5);
-
 
         this.createBaseRebuildTimer();
         this.startMultiplierTimer();
     }
 
-    createCameraIcon() {
-        const cameraButtonX = 1820;
-        const cameraButtonY = 150;
-        const cameraButtonRadius = 20;
-
-        const cameraButtonBackground = this.add.graphics();
-        cameraButtonBackground.fillStyle(0x000000, 0.5);
-        cameraButtonBackground.fillCircle(cameraButtonX, cameraButtonY, cameraButtonRadius);
-
-        this.cameraIconGraphics = this.add.graphics({ x: cameraButtonX, y: cameraButtonY });
-        this.updateCameraIcon();
-
-        this.cameraTooltip = this.add.text(cameraButtonX, cameraButtonY - 25, 'Toggle Camera Lock [L]', {
-            font: '14px Orbitron',
-            color: '#ffffff',
-            backgroundColor: '#000000',
-            padding: {
-                left: 5,
-                right: 5,
-                top: 2,
-                bottom: 2
-            }
-        }).setOrigin(1, 0).setVisible(false).setDepth(1);
-
-        cameraButtonBackground.setInteractive(new Phaser.Geom.Circle(cameraButtonX, cameraButtonY, cameraButtonRadius), Phaser.Geom.Circle.Contains)
-            .on('pointerdown', () => {
-                this.toggleCameraLock();
-            })
-            .on('pointerover', () => {
-                this.cameraTooltip.setVisible(true);
-            })
-            .on('pointerout', () => {
-                this.cameraTooltip.setVisible(false);
-            });
+    hasHealthBelowThreshold(currentHealth: number, maxHealth: number): boolean {
+        const threshold = 0.2;
+        return currentHealth / maxHealth < threshold;
     }
 
-    createLocationIcon() {
-        const locationButtonX = 1775;
-        const locationButtonY = 150;
-        const locationButtonRadius = 20;
+    displayPlayerStats(x: number, y: number): void {
+        const {
+            originalHealth,
+            currentHealth,
+            maxHealth,
+            damage,
+            originalDamage,
+            attackSpeed,
+            originalAttackSpeed,
+            speed,
+            originalSpeed
+        } = (this.scene.get('Game') as any).player;
 
-        const locationButtonBackground = this.add.graphics();
-        locationButtonBackground.fillStyle(0x000000, 0.5);
-        locationButtonBackground.fillCircle(locationButtonX, locationButtonY, locationButtonRadius);
+        const bonusHealth =
+            maxHealth - originalHealth;
 
-        this.locationIconGraphics = this.add.graphics({ x: locationButtonX, y: locationButtonY - 5 });
-        this.drawLocationIcon(this.locationIconGraphics, 0x999999);
+        const bonusDamage =
+            damage - originalDamage;
 
-        this.locationTooltip = this.add.text(locationButtonX, locationButtonY - 25, 'Toggle Camera Follow [SPACE]', {
-            font: '14px Orbitron',
-            color: '#ffffff',
-            backgroundColor: '#000000',
-            padding: {
-                left: 5,
-                right: 5,
-                top: 2,
-                bottom: 2
-            }
-        }).setOrigin(1, 0).setVisible(false).setDepth(1);
+        const bonusAttackSpeed =
+            Math.round(
+                (attackSpeed - originalAttackSpeed) * 100
+            ) / 100;
 
-        locationButtonBackground.setInteractive(new Phaser.Geom.Circle(locationButtonX, locationButtonY, locationButtonRadius), Phaser.Geom.Circle.Contains)
-            .on('pointerdown', () => {
-                this.toggleCameraFollow();
-            }
+        const bonusSpeed =
+            speed - originalSpeed;
+
+        this.playerHealthText.setText(
+            `Health: ${currentHealth}/${maxHealth}`
+        );
+
+        this.playerHealthText.setColor(
+            this.hasHealthBelowThreshold(
+                currentHealth,
+                maxHealth
             )
-            .on('pointerover', () => {
-                this.locationTooltip.setVisible(true);
-            }
-            )
-            .on('pointerout', () => {
-                this.locationTooltip.setVisible(false);
-            }
-            );
+                ? '#ff0000'
+                : '#7dff8b'
+        );
+
+        this.playerDamageText.setText(
+            `Damage: ${damage}`
+        );
+
+        this.playerAttackSpeedText.setText(
+            `Attack Speed: ${attackSpeed}`
+        );
+
+        this.playerSpeedText.setText(
+            `Speed: ${speed}`
+        );
+
+        this.playerHealthBonusText.setText(
+            bonusHealth > 0
+                ? `(+${bonusHealth})`
+                : ''
+        );
+
+        this.playerDamageBonusText.setText(
+            bonusDamage > 0
+                ? `(+${bonusDamage})`
+                : ''
+        );
+
+        this.playerAttackSpeedBonusText.setText(
+            bonusAttackSpeed > 0
+                ? `(+${bonusAttackSpeed})`
+                : ''
+        );
+
+        this.playerSpeedBonusText.setText(
+            bonusSpeed > 0
+                ? `(+${bonusSpeed})`
+                : ''
+        );
     }
 
-    updateCameraIcon() {
-        const gameScene = this.scene.get('Game') as any;
-        if (!gameScene) return;
-
-        const isCameraLocked = gameScene.isCameraLocked;
-        this.drawCameraIcon(this.cameraIconGraphics, isCameraLocked ? 0xffff00 : 0x999999);
-    }
-
-    updateLocationIcon() {
-        const gameScene = this.scene.get('Game') as any;
-        if (!gameScene) return;
-
-        const isCameraFollowingPlayer = gameScene.isCameraFollowingPlayer;
-        this.drawLocationIcon(this.locationIconGraphics, isCameraFollowingPlayer ? 0xffff00 : 0x999999);
-    }
-
-    drawCameraIcon(graphics: any, fillColor: number) {
-        graphics.clear();
-
-        // Camera body
-        graphics.fillStyle(fillColor, 1);
-        graphics.fillRect(-15, -10, 30, 20);
-
-        // Camera lens
-        graphics.fillStyle(0x000000, 1);
-        graphics.fillCircle(0, 0, 8);
-
-        // Lens reflection (smaller circle inside the lens to give a bit of a glossy effect)
-        graphics.fillStyle(0xffffff, 0.5);
-        graphics.fillCircle(3, -3, 3);
-
-        // Flash
-        graphics.fillStyle(0xffffff, 1);
-        graphics.fillRect(-20, -15, 8, 8);
-
-        // Detail on the body (to suggest buttons or camera details)
-        graphics.fillStyle(0x777777, 1);
-        graphics.fillRect(10, -7, 2, 4);
-        graphics.fillRect(10, 3, 2, 4);
-    }
-
-    drawLocationIcon(graphics: any, fillColor: number) {
-        graphics.clear();
-
-        const pinRadius = 10;
-        const pinHeight = 20;
-        const holeRadius = 3;
-
-        graphics.fillStyle(fillColor, 1);
-
-        graphics.fillCircle(0, 0, pinRadius);
-
-        graphics.beginPath();
-        graphics.moveTo(-pinRadius, 0);
-        graphics.lineTo(0, pinHeight);
-        graphics.lineTo(pinRadius, 0);
-        graphics.closePath();
-        graphics.fillPath();
-
-        graphics.fillStyle(0x000000, 1);
-        graphics.fillCircle(0, 0, holeRadius);
-    }
-
-
-    toggleCameraLock() {
-        const gameScene = this.scene.get('Game');
-        if (!gameScene) return;
-
-        (gameScene as any).toggleCameraLock();
-
-        this.updateCameraIcon();
-    }
-
-    toggleCameraFollow() {
-        const gameScene = this.scene.get('Game');
-        if (!gameScene) return;
-
-        (gameScene as any).toggleCameraFollow();
-
-        this.updateLocationIcon();
-    }
-
-
-    displayPlayerStats(x: number, y: number) {
-        const { originalHealth, currentHealth, maxHealth, damage, originalDamage, attackSpeed, originalAttackSpeed, speed, originalSpeed } = (this.scene.get('Game') as any).player;
-        const bonusHealth = maxHealth - originalHealth;
-        const bonusDamage = damage - originalDamage;
-        const bonusAttackSpeed = Math.round((attackSpeed - originalAttackSpeed) * 100) / 100;
-        const bonusSpeed = speed - originalSpeed;
-
-        this.playerHealthText.setText(`Health: ${currentHealth}/${maxHealth}`);
-        this.playerDamageText.setText(`Damage: ${damage}`);
-        this.playerAttackSpeedText.setText(`Attack Speed: ${attackSpeed}`);
-        this.playerSpeedText.setText(`Speed: ${speed}`);
-
-        this.playerHealthBonusText.setText(bonusHealth > 0 ? `(+${bonusHealth})` : '');
-        this.playerDamageBonusText.setText(bonusDamage > 0 ? `(+${bonusDamage})` : '');
-        this.playerAttackSpeedBonusText.setText(bonusAttackSpeed > 0 ? `(+${bonusAttackSpeed})` : '');
-        this.playerSpeedBonusText.setText(bonusSpeed > 0 ? `(+${bonusSpeed})` : '');
-    }
-
-    createShopModal() {
+    createShopModal(): void {
         const screenWidth = this.scale.width;
         const screenHeight = this.scale.height;
 
-        this.shopModalContainer = this.add.container(0, 0).setDepth(10).setVisible(false);
+        const modalWidth = 840;
+        const modalHeight = 560;
 
-        const modalWidth = 1000;
-        const modalHeight = 800;
-        const modalX = (screenWidth - modalWidth) / 2;
-        const modalY = (screenHeight - modalHeight) / 2;
+        const modalX =
+            (screenWidth - modalWidth) / 2;
 
-        this.invisibleBackground = this.add.rectangle(0, 0, screenWidth, screenHeight, 0x000000, 0.5)
+        const modalY =
+            (screenHeight - modalHeight) / 2;
+
+        const headerHeight = 58;
+        const contentPadding = 20;
+        const scrollbarWidth = 12;
+
+        const viewportX =
+            modalX + contentPadding;
+
+        const viewportY =
+            modalY + headerHeight + 12;
+
+        const viewportWidth =
+            modalWidth -
+            contentPadding * 2 -
+            scrollbarWidth -
+            8;
+
+        const viewportHeight =
+            modalHeight -
+            headerHeight -
+            28;
+
+        this.shopModalContainer = this.add
+            .container(0, 0)
+            .setDepth(1000)
+            .setVisible(false);
+
+        this.invisibleBackground = this.add
+            .rectangle(
+                0,
+                0,
+                screenWidth,
+                screenHeight,
+                0x000000,
+                0.72
+            )
             .setOrigin(0, 0)
-            .setInteractive()
-            .setDepth(-1)
-            .on('pointerdown', () => { });
+            .setInteractive();
 
-        this.modalBackground = this.add.graphics()
-            .fillStyle(0x222222, 0.95)
-            .fillRoundedRect(modalX, modalY, modalWidth, modalHeight, 20);
+        this.invisibleBackground.on(
+            'pointerdown',
+            (
+                _pointer: Phaser.Input.Pointer,
+                _localX: number,
+                _localY: number,
+                event: Phaser.Types.Input.EventData
+            ) => {
+                event.stopPropagation();
+            }
+        );
 
-        const viewportWidth = modalWidth;
-        const viewportHeight = modalHeight;
-        const viewportX = modalX;
-        const viewportY = modalY;
+        this.modalBackground = this.add
+            .graphics()
+            .fillStyle(0x111923, 0.98)
+            .fillRoundedRect(
+                modalX,
+                modalY,
+                modalWidth,
+                modalHeight,
+                16
+            )
+            .lineStyle(
+                2,
+                0x50c8ff,
+                0.9
+            )
+            .strokeRoundedRect(
+                modalX,
+                modalY,
+                modalWidth,
+                modalHeight,
+                16
+            );
 
-        this.mask = this.add.graphics({ fillStyle: { color: 0xffffff } });
-        this.mask.beginPath();
-        this.mask.fillRoundedRect(viewportX, viewportY, viewportWidth, viewportHeight, 20);
-        this.mask.closePath();
+        this.headerBackground = this.add
+            .graphics()
+            .fillStyle(0x1d3447, 1)
+            .fillRoundedRect(
+                modalX,
+                modalY,
+                modalWidth,
+                headerHeight,
+                {
+                    tl: 16,
+                    tr: 16,
+                    bl: 0,
+                    br: 0
+                }
+            );
 
-        this.scrollableContainer = this.add.container(0, 0);
-        this.scrollableContainer.setMask(new Phaser.Display.Masks.GeometryMask(this, this.mask));
+        const shopTitle = this.add
+            .text(
+                modalX + modalWidth / 2,
+                modalY + headerHeight / 2,
+                'UPGRADE SHOP',
+                {
+                    font: 'bold 22px Orbitron',
+                    color: '#ffffff'
+                }
+            )
+            .setOrigin(0.5);
 
-        this.shopModalContainer.add([this.mask, this.invisibleBackground, this.modalBackground, this.scrollableContainer]);
-        const headerBackgroundHeight = 50;
-        const headerY = modalY;
+        const goldIcon = this.add
+            .image(
+                modalX + 26,
+                modalY + headerHeight / 2,
+                'gold'
+            )
+            .setScale(0.42)
+            .setOrigin(0.5);
 
-        this.headerBackground = this.add.graphics()
-            .fillStyle(0xffffff, 0.5)
-            .fillRect(modalX, headerY, modalWidth, headerBackgroundHeight)
-            .setDepth(9);
+        this.goldTextShop = this.add
+            .text(
+                modalX + 47,
+                modalY + headerHeight / 2,
+                String(this.gold),
+                {
+                    font: '17px Orbitron',
+                    color: '#ffd84a'
+                }
+            )
+            .setOrigin(0, 0.5);
 
-        this.shopModalContainer.add([this.headerBackground]);
+        this.closeButtonText = this.add
+            .text(
+                modalX + modalWidth - 18,
+                modalY + headerHeight / 2,
+                '✕',
+                {
+                    font: 'bold 22px Arial',
+                    color: '#ffffff',
+                    backgroundColor: '#9e3030',
+                    padding: {
+                        x: 10,
+                        y: 5
+                    }
+                }
+            )
+            .setOrigin(1, 0.5)
+            .setInteractive({
+                useHandCursor: true
+            });
 
-        this.closeButtonText = this.add.text(modalX + modalWidth - 40, modalY + 20, 'CLOSE', {
-            font: '24px Orbitron',
-            color: '#ff0000'
-        }).setInteractive({ useHandCursor: true }).setOrigin(1, 0)
-            .on('pointerdown', () => this.toggleShopModal(false));
+        this.closeButtonText.on(
+            'pointerdown',
+            (
+                _pointer: Phaser.Input.Pointer,
+                _localX: number,
+                _localY: number,
+                event: Phaser.Types.Input.EventData
+            ) => {
+                event.stopPropagation();
+                this.toggleShopModal(false);
+            }
+        );
+        this.shopModalContainer.add([
+            this.invisibleBackground,
+            this.modalBackground
+        ]);
 
-        this.goldTextShop = this.add.text(modalX + 20, modalY + 20, String(this.gold), {
-            font: '24px Orbitron',
-            color: '#FFA500'
-        }).setOrigin(0, 0);
-        const sectionWidth = modalWidth / 2 - 60;
-        const damageSectionX = modalX + 30;
-        const healthSectionX = modalX + sectionWidth + 90;
-        const sectionY = modalY + 120;
+        this.scrollableContainer = this.add
+            .container(0, 0)
+            .setDepth(1001)
+            .setVisible(false);
 
-        const itemsPerColumn = 2;
-        const spacingBetweenItems = 200;
-        const attackSpeedSectionY = sectionY + (itemsPerColumn * spacingBetweenItems);
+        this.shopContentCamera = this.cameras.add(
+            viewportX,
+            viewportY,
+            viewportWidth,
+            viewportHeight
+        );
 
-        this.damageSectionTitle = this.add.text(damageSectionX, sectionY, "Damage Upgrades", {
-            font: '28px Orbitron',
-            color: '#FFD700'
-        });
+        this.shopContentCamera
+            .setScroll(
+                viewportX,
+                viewportY
+            )
+            .setBackgroundColor(
+                'rgba(0,0,0,0)'
+            )
+            .setVisible(false);
 
-        this.healthSectionTitle = this.add.text(healthSectionX, sectionY, "Health Upgrades", {
-            font: '28px Orbitron',
-            color: '#FFD700'
-        });
+        this.shopHeaderContainer = this.add
+            .container(0, 0)
+            .setDepth(1002)
+            .setVisible(false);
 
-        this.attackSpeedSectionTitle = this.add.text(damageSectionX, attackSpeedSectionY + 50, "Attack Speed Upgrades", {
-            font: '28px Orbitron',
-            color: '#FFD700'
-        });
+        this.shopHeaderContainer.add([
+            this.headerBackground,
+            shopTitle,
+            goldIcon,
+            this.goldTextShop,
+            this.closeButtonText
+        ]);
 
-        this.movementSpeedSectionTitle = this.add.text(healthSectionX, attackSpeedSectionY + 50, "Movement Speed Upgrades", {
-            font: '28px Orbitron',
-            color: '#FFD700'
-        });
-        const legendarySectionY = this.attackSpeedSectionTitle.y + 450;
-        // this.legendaryUpgradesSectionTitle = this.add.text(damageSectionX, legendarySectionY, "Legendary Upgrades", {
-        // place title in centre of the modal
-        this.legendaryUpgradesSectionTitle = this.add.text(modalX + 300, legendarySectionY, "Legendary Upgrades", {
-            font: '28px Orbitron',
-            color: '#FFD700'
-        })
-
-        // Upgrades definition
         const damageUpgrades = [
-            { name: "Penknife", description: "Increase damage by 1", cost: 55, icon: 'sword1' },
-            { name: "Hunter's Blade", description: "Increase damage by 2%", cost: 200, icon: 'sword2' }
+            {
+                name: 'Penknife',
+                description: 'Increase damage by 1',
+                cost: 55,
+                icon: 'sword1'
+            },
+            {
+                name: "Hunter's Blade",
+                description: 'Increase damage by 2%',
+                cost: 200,
+                icon: 'sword2'
+            }
         ];
 
         const healthUpgrades = [
-            { name: "Heaven's Rain", description: "Increase max health by 12%", cost: 750, icon: 'health1' },
-            { name: "Health Potion", description: "Instantly heal back 50% Max Health", cost: 300, icon: 'health2' },
+            {
+                name: "Heaven's Rain",
+                description: 'Increase max health by 12%',
+                cost: 750,
+                icon: 'health1'
+            },
+            {
+                name: 'Health Potion',
+                description: 'Restore 50% of maximum health',
+                cost: 300,
+                icon: 'health2'
+            }
         ];
 
         const attackSpeedUpgrades = [
-            { name: "Energy Gun", description: "Increase attack speed by 9%", cost: 660, icon: 'attackSpeed1' },
-            { name: "Quickblade", description: "Increase attack speed by 18%", cost: 1250, icon: 'attackSpeed2' },
+            {
+                name: 'Energy Gun',
+                description: 'Increase attack speed by 9%',
+                cost: 660,
+                icon: 'attackSpeed1'
+            },
+            {
+                name: 'Quickblade',
+                description: 'Increase attack speed by 18%',
+                cost: 1250,
+                icon: 'attackSpeed2'
+            }
         ];
 
         const movementSpeedUpgrades = [
-            { name: "Lightning Core", description: "Increase movement speed by 6%", cost: 700, icon: 'moveSpeed1' },
-            { name: "Mecha Sneakers", description: "Increase movement speed by 12%", cost: 1300, icon: 'moveSpeed2' },
+            {
+                name: 'Lightning Core',
+                description: 'Increase movement speed by 6%',
+                cost: 700,
+                icon: 'moveSpeed1'
+            },
+            {
+                name: 'Mecha Sneakers',
+                description: 'Increase movement speed by 12%',
+                cost: 1300,
+                icon: 'moveSpeed2'
+            }
         ];
 
         const legendaryUpgrades = [
-            { name: "Cash", description: "Exchange 300 Gold for 1 Cash", cost: 300, icon: 'cash' },
-            { name: "Thunderlord Seal", description: "Permanent Immunity to Catastrophe storms", cost: 7000, icon: 'thunderlordSeal' },
-            { name: "Elixir of Life", description: "Triple passive Heal amount", cost: 5400, icon: 'elixirOfLife' },
-            { name: "Winter Frost", description: "Enraged enemies gain 1.1x original movement speed instead of 2x", cost: 5600, icon: 'winterFrost' },
-            { name: "Treasure Hunter", description: "Every Gold is worth 2 times more value", cost: 4800, icon: 'treasureFinder' },
-            { name: "Forbidden Excalibur", description: "Gain Double Damage and Health for the next 5 Bases", cost: 9999, icon: 'sword2' },
-            { name: "Soul of the Phoenix", description: "Revive once", cost: 9999, icon: 'attackSpeed2' },
-            { name: "Cosmic Scimitar", description: "Gain additional 12% damage and max health for every bases destroyed", cost: 9999, icon: 'sword2' },
+            {
+                name: 'Cash',
+                description: 'Exchange 300 Gold for 1 Cash',
+                cost: 300,
+                icon: 'cash'
+            },
+            {
+                name: 'Thunderlord Seal',
+                description: 'Permanent immunity to catastrophe storms',
+                cost: 7000,
+                icon: 'thunderlordSeal'
+            },
+            {
+                name: 'Elixir of Life',
+                description: 'Triple passive healing',
+                cost: 5400,
+                icon: 'elixirOfLife'
+            },
+            {
+                name: 'Winter Frost',
+                description: 'Greatly reduces enraged enemy movement speed',
+                cost: 5600,
+                icon: 'winterFrost'
+            },
+            {
+                name: 'Treasure Hunter',
+                description: 'Every Gold drop is worth twice as much',
+                cost: 4800,
+                icon: 'treasureFinder'
+            },
+            {
+                name: 'Forbidden Excalibur',
+                description: 'Double damage and health for the next 5 bases',
+                cost: 9999,
+                icon: 'sword2'
+            },
+            {
+                name: 'Soul of the Phoenix',
+                description: 'Revive once after being defeated',
+                cost: 9999,
+                icon: 'attackSpeed2'
+            },
+            {
+                name: 'Cosmic Scimitar',
+                description: 'Gain damage and health after each destroyed base',
+                cost: 9999,
+                icon: 'sword2'
+            }
         ];
+        const columnGap = 16;
 
-        this.createItems(damageUpgrades, damageSectionX, sectionY + 60, sectionWidth);
-        this.createItems(healthUpgrades, healthSectionX, sectionY + 60, sectionWidth);
-        this.createItems(attackSpeedUpgrades, damageSectionX, attackSpeedSectionY + 100, sectionWidth);
-        this.createItems(movementSpeedUpgrades, healthSectionX, attackSpeedSectionY + 100, sectionWidth);
+        const columnWidth =
+            (viewportWidth - columnGap) / 2;
 
-        const fullWidth = modalWidth - 60;
+        const leftColumnX = viewportX;
 
-        this.createItems(legendaryUpgrades, damageSectionX, legendarySectionY + 60, fullWidth);
+        const rightColumnX =
+            viewportX +
+            columnWidth +
+            columnGap;
 
-        this.shopModalContainer.add([this.closeButtonText, this.goldTextShop]);
-        this.scrollableContainer.add([this.damageSectionTitle, this.healthSectionTitle, this.attackSpeedSectionTitle, this.movementSpeedSectionTitle, this.legendaryUpgradesSectionTitle]);
+        let leftY = viewportY;
+        let rightY = viewportY;
+
+        this.damageSectionTitle = this.createShopSectionTitle(
+            leftColumnX,
+            leftY,
+            'DAMAGE'
+        );
+
+        leftY += 34;
+
+        leftY = this.createItems(
+            damageUpgrades,
+            leftColumnX,
+            leftY,
+            columnWidth
+        );
+
+        leftY += 18;
+
+        this.attackSpeedSectionTitle =
+            this.createShopSectionTitle(
+                leftColumnX,
+                leftY,
+                'ATTACK SPEED'
+            );
+
+        leftY += 34;
+
+        leftY = this.createItems(
+            attackSpeedUpgrades,
+            leftColumnX,
+            leftY,
+            columnWidth
+        );
+
+        this.healthSectionTitle =
+            this.createShopSectionTitle(
+                rightColumnX,
+                rightY,
+                'HEALTH'
+            );
+
+        rightY += 34;
+
+        rightY = this.createItems(
+            healthUpgrades,
+            rightColumnX,
+            rightY,
+            columnWidth
+        );
+
+        rightY += 18;
+
+        this.movementSpeedSectionTitle =
+            this.createShopSectionTitle(
+                rightColumnX,
+                rightY,
+                'MOVEMENT SPEED'
+            );
+
+        rightY += 34;
+
+        rightY = this.createItems(
+            movementSpeedUpgrades,
+            rightColumnX,
+            rightY,
+            columnWidth
+        );
+
+        let legendaryY =
+            Math.max(leftY, rightY) + 26;
+
+        this.legendaryUpgradesSectionTitle =
+            this.createShopSectionTitle(
+                viewportX,
+                legendaryY,
+                'LEGENDARY UPGRADES'
+            );
+
+        legendaryY += 38;
+
+        const contentBottom = this.createItems(
+            legendaryUpgrades,
+            viewportX,
+            legendaryY,
+            viewportWidth
+        );
+
+        this.scrollableContainer.add([
+            this.damageSectionTitle,
+            this.healthSectionTitle,
+            this.attackSpeedSectionTitle,
+            this.movementSpeedSectionTitle,
+            this.legendaryUpgradesSectionTitle
+        ]);
+
+        const contentTop = viewportY;
+
+        const contentHeight =
+            contentBottom - contentTop;
+
+        const minimumScrollY =
+            Math.min(
+                0,
+                viewportHeight - contentHeight - 16
+            );
+
+        const trackX =
+            modalX +
+            modalWidth -
+            contentPadding -
+            scrollbarWidth / 2;
+
+        const trackY = viewportY;
+
+        this.scrollbarTrack = this.add
+            .rectangle(
+                trackX,
+                trackY,
+                scrollbarWidth,
+                viewportHeight,
+                0xffffff,
+                0.16
+            )
+            .setOrigin(0.5, 0);
+
+        const visibleRatio =
+            Math.min(
+                1,
+                viewportHeight / contentHeight
+            );
+
+        const handleHeight =
+            Math.max(
+                54,
+                viewportHeight * visibleRatio
+            );
+
+        this.scrollbarHandle = this.add
+            .rectangle(
+                trackX,
+                trackY,
+                scrollbarWidth,
+                handleHeight,
+                0x50c8ff,
+                0.9
+            )
+            .setOrigin(0.5, 0)
+            .setInteractive({
+                useHandCursor: true
+            });
+
+        this.scrollbarTrack
+            .setDepth(1002)
+            .setVisible(false);
+
+        this.scrollbarHandle
+            .setDepth(1003)
+            .setVisible(false);
+
+        const handleRange =
+            viewportHeight - handleHeight;
+
+        let isDraggingContent = false;
+        let isDraggingHandle = false;
         let lastPointerY = 0;
-        let isScrolling = false;
 
-        this.invisibleBackground.setInteractive().on('pointerdown', function (pointer: any) {
-            isScrolling = true;
-            lastPointerY = pointer.y;
-        });
+        const updateScrollbarFromContent = () => {
+            if (minimumScrollY === 0) {
+                this.scrollbarHandle.y = trackY;
+                return;
+            }
 
-        const handleHeight = 300;
-        const scrollbarTrackHeight = viewportHeight;
-        const scrollbarTrackWidth = 20;
-        const scrollbarMargin = 0;
+            const ratio =
+                this.scrollableContainer.y /
+                minimumScrollY;
 
-        this.scrollbarTrack = this.add.graphics({ fillStyle: { color: 0x888888 } })
-        this.scrollbarTrack.fillRect(viewportX + viewportWidth, viewportY + 150, scrollbarTrackWidth, scrollbarTrackHeight - 200);
+            this.scrollbarHandle.y =
+                trackY +
+                Phaser.Math.Clamp(
+                    ratio,
+                    0,
+                    1
+                ) *
+                handleRange;
+        };
 
-        const scrollbarHandleWidth = scrollbarTrackWidth;
-        const scrollbarHandleHeight = handleHeight - 100;
+        const updateContentFromScrollbar = () => {
+            if (handleRange <= 0) {
+                this.scrollableContainer.y = 0;
+                return;
+            }
 
-        this.scrollbarHandle = this.add.graphics({ fillStyle: { color: 0xff0000 } })
-            .fillRect(viewportX + viewportWidth, viewportY, scrollbarTrackWidth, scrollbarHandleHeight);
+            const ratio =
+                (this.scrollbarHandle.y - trackY) /
+                handleRange;
 
-        this.scrollbarHandle.setInteractive(new Phaser.Geom.Rectangle(viewportX + viewportWidth + scrollbarMargin, viewportY, scrollbarTrackWidth, scrollbarTrackHeight), Phaser.Geom.Rectangle.Contains);
-        this.scrollbarHandle.setDepth(10)
-        this.shopModalContainer.add([this.scrollbarTrack, this.scrollbarHandle]);
-        const initialHandleY = 150;
-        this.scrollbarHandle.y = initialHandleY;
-        let isScrollbarHandleDragging = false;
-        let initialPointerY = 0;
+            this.scrollableContainer.y =
+                Phaser.Math.Clamp(
+                    ratio,
+                    0,
+                    1
+                ) *
+                minimumScrollY;
+        };
 
-        this.scrollbarHandle.on('pointerdown', (pointer: any) => {
-            isScrollbarHandleDragging = true;
-            initialPointerY = pointer.y;
-        });
-        this.input.on('pointermove', (pointer: any) => {
-            const handleRange = 550 - 150;
-            const contentRange = -1900 - 0;
-            const handleMinY = 150;
-            const handleMaxY = 550;
-            const contentMinY = -1900;
-            const contentMaxY = 0;
-            if (isScrolling) {
-                const deltaY = pointer.y - lastPointerY;
+        this.input.on(
+            'pointerdown',
+            (
+                pointer: Phaser.Input.Pointer
+            ) => {
+                if (!this.shopModalContainer.visible) {
+                    return;
+                }
+
+                const insideViewport =
+                    pointer.x >= viewportX &&
+                    pointer.x <=
+                    viewportX + viewportWidth &&
+                    pointer.y >= viewportY &&
+                    pointer.y <=
+                    viewportY + viewportHeight;
+
+                if (!insideViewport) {
+                    return;
+                }
+
+                isDraggingContent = true;
                 lastPointerY = pointer.y;
-                let newY = this.scrollableContainer.y + deltaY;
-                newY = Phaser.Math.Clamp(newY, contentMinY, contentMaxY);
-                this.scrollableContainer.y = newY;
-
-                const contentScrollRatio = (newY - contentMaxY) / (contentMinY - contentMaxY);
-                const handleNewY = handleMinY + (contentScrollRatio * handleRange);
-                this.scrollbarHandle.y = handleNewY;
-                // console.log(`Scrolling Content: newY=${newY} HandleY=${this.scrollbarHandle.y}`);
             }
+        );
 
-            else if (isScrollbarHandleDragging) {
-                const deltaY = pointer.y - initialPointerY;
-                initialPointerY = pointer.y;
+        this.scrollbarHandle.on(
+            'pointerdown',
+            (
+                pointer: Phaser.Input.Pointer,
+                _localX: number,
+                _localY: number,
+                event: Phaser.Types.Input.EventData
+            ) => {
+                event.stopPropagation();
 
-                let handleNewY = this.scrollbarHandle.y + deltaY;
-                handleNewY = Phaser.Math.Clamp(handleNewY, handleMinY, handleMaxY);
-                this.scrollbarHandle.y = handleNewY;
-
-                const handlePositionRatio = (handleNewY - handleMinY) / handleRange;
-                const contentNewY = contentMaxY + (handlePositionRatio * contentRange);
-                this.scrollableContainer.y = contentNewY;
-                // console.log(`Dragging Handle: handleNewY=${handleNewY}, ContentY=${this.scrollableContainer.y}`);
+                isDraggingHandle = true;
+                isDraggingContent = false;
+                lastPointerY = pointer.y;
             }
+        );
+
+        this.input.on(
+            'pointermove',
+            (
+                pointer: Phaser.Input.Pointer
+            ) => {
+                if (!this.shopModalContainer.visible) {
+                    return;
+                }
+
+                if (isDraggingHandle) {
+                    const deltaY =
+                        pointer.y - lastPointerY;
+
+                    lastPointerY = pointer.y;
+
+                    this.scrollbarHandle.y =
+                        Phaser.Math.Clamp(
+                            this.scrollbarHandle.y +
+                            deltaY,
+                            trackY,
+                            trackY + handleRange
+                        );
+
+                    updateContentFromScrollbar();
+                    return;
+                }
+
+                if (isDraggingContent) {
+                    const deltaY =
+                        pointer.y - lastPointerY;
+
+                    lastPointerY = pointer.y;
+
+                    this.scrollableContainer.y =
+                        Phaser.Math.Clamp(
+                            this.scrollableContainer.y +
+                            deltaY,
+                            minimumScrollY,
+                            0
+                        );
+
+                    updateScrollbarFromContent();
+                }
+            }
+        );
+
+        this.input.on('pointerup', () => {
+            isDraggingContent = false;
+            isDraggingHandle = false;
         });
 
-        this.input.on('pointerup', (pointer: any) => {
-            if (isScrollbarHandleDragging) {
-                isScrollbarHandleDragging = false;
+        this.input.on(
+            'wheel',
+            (
+                pointer: Phaser.Input.Pointer,
+                _gameObjects: Phaser.GameObjects.GameObject[],
+                _deltaX: number,
+                deltaY: number
+            ) => {
+                if (!this.shopModalContainer.visible) {
+                    return;
+                }
+
+                const insideViewport =
+                    pointer.x >= viewportX &&
+                    pointer.x <=
+                    viewportX + viewportWidth &&
+                    pointer.y >= viewportY &&
+                    pointer.y <=
+                    viewportY + viewportHeight;
+
+                if (!insideViewport) {
+                    return;
+                }
+
+                this.scrollableContainer.y =
+                    Phaser.Math.Clamp(
+                        this.scrollableContainer.y -
+                        deltaY * 0.65,
+                        minimumScrollY,
+                        0
+                    );
+
+                updateScrollbarFromContent();
             }
-            if (isScrolling) {
-                isScrolling = false;
-            }
-        });
+        );
 
-        // add mousewheel support
-        this.input.on('wheel', (pointer: any, gameObjects: any[], deltaX: number, deltaY: number, deltaZ: number) => {
-            if (gameObjects.length > 0) {
-                const handleRange = 550 - 150;
-                const contentRange = -1900 - 0;
-                const handleMinY = 150;
-                const handleMaxY = 550;
-                const contentMinY = -1900;
-                const contentMaxY = 0;
+        this.cameras.main.ignore(
+            this.scrollableContainer
+        );
 
-                let newY = this.scrollableContainer.y + (-deltaY * 2);
-                newY = Phaser.Math.Clamp(newY, contentMinY, contentMaxY);
-                this.scrollableContainer.y = newY;
+        const objectsIgnoredByShopCamera =
+            this.children.list.filter(
+                gameObject =>
+                    gameObject !==
+                    this.scrollableContainer
+            );
 
-                const contentScrollRatio = (newY - contentMaxY) / (contentMinY - contentMaxY);
-                const handleNewY = handleMinY + (contentScrollRatio * handleRange);
-                this.scrollbarHandle.y = handleNewY;
-            }
-        });
+        this.shopContentCamera.ignore(
+            objectsIgnoredByShopCamera
+        );
+    }
+    private createShopSectionTitle(
+        x: number,
+        y: number,
+        text: string
+    ): Phaser.GameObjects.Text {
+        const title = this.add
+            .text(
+                x,
+                y,
+                text,
+                {
+                    font: 'bold 16px Orbitron',
+                    color: '#ffd84a'
+                }
+            );
 
-
+        return title;
     }
 
-    createItems(upgrades: any[], startX: number, startY: number, sectionWidth: number) {
-        upgrades.forEach((upgrade, index) => {
-            const itemY = startY + (index * 200);
-            const itemWidth = sectionWidth - 20;
-            const itemHeight = 150;
+    createItems(
+        upgrades: any[],
+        startX: number,
+        startY: number,
+        sectionWidth: number
+    ): number {
+        const itemHeight = 104;
+        const itemGap = 12;
 
-            const itemBg = this.add.graphics()
-                .fillStyle(0x333333, 0.8)
-                .fillRoundedRect(startX, itemY, itemWidth, itemHeight, 10);
+        let bottomY = startY;
 
-            const icon = this.add.image(startX + 40, itemY + 40, upgrade.icon).setScale(upgrade.icon === 'cash' ? 0.75 : 0.5);
+        upgrades.forEach(
+            (
+                upgrade,
+                index
+            ) => {
+                const itemY =
+                    startY +
+                    index *
+                    (itemHeight + itemGap);
 
-            const nameText = this.add.text(startX + 80, itemY + 10, upgrade.name, {
-                font: '18px Orbitron',
-                color: '#00d4FF',
-            });
+                const itemWidth =
+                    sectionWidth;
 
-            const descText = this.add.text(startX + 80, itemY + 40, upgrade.description, {
-                font: '16px Orbitron',
-                color: '#FFFFFF',
-                wordWrap: {
-                    width: itemWidth - 140
+                const itemBackground = this.add
+                    .graphics()
+                    .fillStyle(
+                        0x202c38,
+                        0.96
+                    )
+                    .fillRoundedRect(
+                        startX,
+                        itemY,
+                        itemWidth,
+                        itemHeight,
+                        10
+                    )
+                    .lineStyle(
+                        1,
+                        0x3c6682,
+                        0.85
+                    )
+                    .strokeRoundedRect(
+                        startX,
+                        itemY,
+                        itemWidth,
+                        itemHeight,
+                        10
+                    );
+
+                const iconScale =
+                    upgrade.icon === 'cash'
+                        ? 0.46
+                        : 0.36;
+
+                const icon = this.add
+                    .image(
+                        startX + 31,
+                        itemY + 34,
+                        upgrade.icon
+                    )
+                    .setScale(iconScale);
+
+                const nameText = this.add
+                    .text(
+                        startX + 58,
+                        itemY + 10,
+                        upgrade.name,
+                        {
+                            font: 'bold 14px Orbitron',
+                            color: '#50c8ff'
+                        }
+                    );
+
+                const descriptionText = this.add
+                    .text(
+                        startX + 58,
+                        itemY + 35,
+                        upgrade.description,
+                        {
+                            font: '11px Orbitron',
+                            color: '#ffffff',
+                            wordWrap: {
+                                width:
+                                    itemWidth - 76
+                            }
+                        }
+                    );
+
+                const costIcon = this.add
+                    .image(
+                        startX + 22,
+                        itemY + itemHeight - 24,
+                        'gold'
+                    )
+                    .setScale(0.26)
+                    .setOrigin(0.5);
+
+                const costText = this.add
+                    .text(
+                        startX + 38,
+                        itemY + itemHeight - 24,
+                        String(upgrade.cost),
+                        {
+                            font: 'bold 13px Orbitron',
+                            color: '#ffd84a'
+                        }
+                    )
+                    .setOrigin(0, 0.5);
+
+                let buyButton:
+                    Phaser.GameObjects.Text;
+
+                if (upgrade.cost === 9999) {
+                    buyButton = this.add
+                        .text(
+                            startX + itemWidth - 14,
+                            itemY + itemHeight - 25,
+                            'LOCKED',
+                            {
+                                font: 'bold 12px Orbitron',
+                                color: '#ff6666'
+                            }
+                        )
+                        .setOrigin(1, 0.5);
+                } else {
+                    buyButton = this.add
+                        .text(
+                            startX + itemWidth - 14,
+                            itemY + itemHeight - 25,
+                            'BUY',
+                            {
+                                font: 'bold 13px Orbitron',
+                                color: '#ffffff',
+                                backgroundColor: '#247f4c',
+                                padding: {
+                                    x: 9,
+                                    y: 4
+                                }
+                            }
+                        )
+                        .setOrigin(1, 0.5)
+                        .setInteractive({
+                            useHandCursor: true
+                        });
+
+                    buyButton.on(
+                        'pointerdown',
+                        (
+                            _pointer: Phaser.Input.Pointer,
+                            _localX: number,
+                            _localY: number,
+                            event: Phaser.Types.Input.EventData
+                        ) => {
+                            event.stopPropagation();
+
+                            this.purchaseUpgrade(
+                                upgrade.name,
+                                upgrade.cost,
+                                upgrade.icon
+                            );
+                        }
+                    );
                 }
-            });
-
-            const costText = this.add.text(startX + 60, itemY + itemHeight - 50, String(upgrade.cost), {
-                font: '16px Orbitron',
-                color: '#FFD700'
-            });
-
-            const buyButton = upgrade.cost === 9999 ? this.add.text(startX + itemWidth - 100, itemY + itemHeight - 40, 'Not for sale', {
-                font: '20px Orbitron',
-                color: '#FF0000'
-            }).setOrigin(1, 0) : this.add.text(startX + itemWidth - 40, itemY + itemHeight - 50, 'BUY', {
-                font: '20px Orbitron',
-                color: '#4CAF50'
-            }).setInteractive({ useHandCursor: true }).setOrigin(1, 0)
-                .on('pointerdown', () => this.purchaseUpgrade(upgrade.name, upgrade.cost, upgrade.icon));
-            this.buyButtons.push({ button: buyButton, cost: upgrade.cost });
-
-            this.scrollableContainer.add([itemBg, icon, nameText, descText, costText, buyButton]);
-
-            if (upgrade.name === "Penknife") {
-                this.penknifeBulkBuyButton = this.add.text(startX + itemWidth - 150, itemY + itemHeight - 50, 'BULK BUY', {
-                    font: '20px Orbitron',
-                    color: '#0000ff'
-                }).setInteractive({ useHandCursor: true }).setOrigin(1, 0)
-                    .on('pointerdown', () => this.bulkPurchasePenknife(upgrade.cost));
-
-                this.scrollableContainer.add(this.penknifeBulkBuyButton);
-            }
-
-            if (this.purchaseCounts.hasOwnProperty(upgrade.name)) {
-                // Create purchase count text for special items
-                const purchaseCountText = this.add.text(startX + itemWidth - 20, itemY + 10, `(${this.purchaseCounts[upgrade.name] || 0}/${this.itemPurchaseLimit})`, {
-                    font: '16px Orbitron',
-                    color: '#FFD700'
-                }).setOrigin(1, 0);
-
-                this.scrollableContainer.add(purchaseCountText);
 
                 this.buyButtons.push({
                     button: buyButton,
                     cost: upgrade.cost,
-                    upgradeName: upgrade.name,
-                    purchaseCountText: purchaseCountText
+                    upgradeName: upgrade.name
                 });
-            } else if (this.legendaryPurchaseCount.hasOwnProperty(upgrade.name)) {
-                // Create purchase count text for special items
-                const purchaseCountText = this.add.text(startX + itemWidth - 20, itemY + 10, `(${this.legendaryPurchaseCount[upgrade.name] || 0}/${this.legendaryPurchaseLimit})`, {
-                    font: '16px Orbitron',
-                    color: '#FFD700'
-                }).setOrigin(1, 0);
 
-                this.scrollableContainer.add(purchaseCountText);
+                this.scrollableContainer.add([
+                    itemBackground,
+                    icon,
+                    nameText,
+                    descriptionText,
+                    costIcon,
+                    costText,
+                    buyButton
+                ]);
 
-                this.buyButtons.push({
-                    button: buyButton,
-                    cost: upgrade.cost,
-                    upgradeName: upgrade.name,
-                    purchaseCountText: purchaseCountText
-                });
+                if (
+                    upgrade.name ===
+                    'Penknife'
+                ) {
+                    this.penknifeBulkBuyButton =
+                        this.add
+                            .text(
+                                startX +
+                                itemWidth -
+                                72,
+                                itemY +
+                                itemHeight -
+                                25,
+                                'BULK',
+                                {
+                                    font: 'bold 11px Orbitron',
+                                    color: '#8ac7ff'
+                                }
+                            )
+                            .setOrigin(1, 0.5)
+                            .setInteractive({
+                                useHandCursor: true
+                            });
+
+                    this.penknifeBulkBuyButton.on(
+                        'pointerdown',
+                        (
+                            _pointer:
+                                Phaser.Input.Pointer,
+                            _localX: number,
+                            _localY: number,
+                            event:
+                                Phaser.Types.Input.EventData
+                        ) => {
+                            event.stopPropagation();
+
+                            this.bulkPurchasePenknife(
+                                upgrade.cost
+                            );
+                        }
+                    );
+
+                    this.scrollableContainer.add(
+                        this.penknifeBulkBuyButton
+                    );
+                }
+
+                if (
+                    this.purchaseCounts
+                        .hasOwnProperty(
+                            upgrade.name
+                        )
+                ) {
+                    const purchaseCountText =
+                        this.add
+                            .text(
+                                startX +
+                                itemWidth -
+                                10,
+                                itemY + 8,
+                                `(${this.purchaseCounts[
+                                upgrade.name
+                                ] ?? 0
+                                }/${this.itemPurchaseLimit})`,
+                                {
+                                    font: '10px Orbitron',
+                                    color: '#ffd84a'
+                                }
+                            )
+                            .setOrigin(1, 0);
+
+                    this.scrollableContainer.add(
+                        purchaseCountText
+                    );
+
+                    this.buyButtons.push({
+                        button: buyButton,
+                        cost: upgrade.cost,
+                        upgradeName:
+                            upgrade.name,
+                        purchaseCountText
+                    });
+                } else if (
+                    this.legendaryPurchaseCount
+                        .hasOwnProperty(
+                            upgrade.name
+                        )
+                ) {
+                    const purchaseCountText =
+                        this.add
+                            .text(
+                                startX +
+                                itemWidth -
+                                10,
+                                itemY + 8,
+                                `(${this.legendaryPurchaseCount[
+                                upgrade.name
+                                ] ?? 0
+                                }/${this.legendaryPurchaseLimit})`,
+                                {
+                                    font: '10px Orbitron',
+                                    color: '#ffd84a'
+                                }
+                            )
+                            .setOrigin(1, 0);
+
+                    this.scrollableContainer.add(
+                        purchaseCountText
+                    );
+
+                    this.buyButtons.push({
+                        button: buyButton,
+                        cost: upgrade.cost,
+                        upgradeName:
+                            upgrade.name,
+                        purchaseCountText
+                    });
+                }
+
+                bottomY =
+                    itemY +
+                    itemHeight +
+                    itemGap;
             }
-            else { // non special items
-                this.buyButtons.push({
-                    button: buyButton,
-                    cost: upgrade.cost,
-                    upgradeName: upgrade.name,
-                });
-            }
+        );
 
-
-        });
+        return bottomY;
     }
 
     bulkPurchasePenknife(cost: number) {
@@ -974,13 +2005,48 @@ export default class BattleUI extends Scene {
             this.showPurchaseFeedback(`Bought ${maxPurchases} Penknives! +${maxPurchases} Damage`, '#00ff00');
         }
     }
-
-
-    toggleShopModal(visible: boolean) {
-        if (visible === false) {
-            this.buyButtons = [];
+    toggleShopModal(
+        visible: boolean
+    ): void {
+        if (
+            !this.shopModalContainer ||
+            !this.shopContentCamera
+        ) {
+            return;
         }
-        this.shopModalContainer.setVisible(visible); // include all children
+
+        this.shopModalContainer.setVisible(
+            visible
+        );
+
+        this.scrollableContainer.setVisible(
+            visible
+        );
+
+        this.shopHeaderContainer.setVisible(
+            visible
+        );
+
+        this.scrollbarTrack.setVisible(
+            visible
+        );
+
+        this.scrollbarHandle.setVisible(
+            visible
+        );
+
+        this.shopContentCamera.setVisible(
+            visible
+        );
+
+        if (visible) {
+            this.scrollableContainer.y = 0;
+
+            this.scrollbarHandle.y =
+                this.scrollbarTrack.y;
+        } else {
+            this.hideUpgradeTooltip();
+        }
     }
 
     purchaseUpgrade(upgradeName: string, cost: number, upgradeIcon: string) {
@@ -1120,27 +2186,77 @@ export default class BattleUI extends Scene {
         }
     }
 
-    showPurchaseFeedback(message: string, color = '#ffffff') {
+    showPurchaseFeedback(
+        message: string,
+        color: string = '#ffffff'
+    ): void {
         if (this.currentFeedbackText) {
             this.currentFeedbackText.destroy();
             this.currentFeedbackText = null;
         }
-        this.currentFeedbackText = this.add.text(this.scale.width / 2, this.scale.height / 2 - 375, message, {
-            font: '22px Orbitron',
-            color: color,
-            padding: {
-                left: 10,
-                right: 10,
-                top: 5,
-                bottom: 5
-            }
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(20);
+
+        const modalHeight = 560;
+        const modalY =
+            (this.scale.height - modalHeight) / 2;
+
+        const feedbackX =
+            this.scale.width / 2;
+
+        const feedbackY =
+            modalY - 18;
+
+        this.currentFeedbackText = this.add
+            .text(
+                feedbackX,
+                feedbackY,
+                message,
+                {
+                    font: 'bold 16px Orbitron',
+                    color,
+                    backgroundColor: '#101820',
+                    align: 'center',
+
+                    padding: {
+                        left: 16,
+                        right: 16,
+                        top: 8,
+                        bottom: 8
+                    },
+
+                    stroke: '#000000',
+                    strokeThickness: 3
+                }
+            )
+            .setOrigin(0.5, 1)
+            .setScrollFactor(0)
+            .setDepth(5000);
+
+        /*
+         * The scrolling-content camera must not render it.
+         */
+        if (this.shopContentCamera) {
+            this.shopContentCamera.ignore(
+                this.currentFeedbackText
+            );
+        }
 
         this.tweens.add({
             targets: this.currentFeedbackText,
-            alpha: { from: 1, to: 0 },
-            ease: 'Linear',
-            duration: 2000,
+
+            y: feedbackY - 12,
+
+            alpha: {
+                from: 1,
+                to: 0
+            },
+
+            duration: 1800,
+            ease: 'Sine.easeOut',
+
+            onComplete: () => {
+                this.currentFeedbackText?.destroy();
+                this.currentFeedbackText = null;
+            }
         });
     }
 
@@ -1220,12 +2336,13 @@ export default class BattleUI extends Scene {
 
         this.baseRebuildGraphics.clear();
         this.baseRebuildGraphics.fillStyle(0x000000, 0.5);
-        this.baseRebuildGraphics.fillRoundedRect(this.scale.width / 2 - 150, 200, 300, 30, 10);
+        this.baseRebuildGraphics.fillRect(this.scale.width / 2 - 150, 200, 300, 30);
         this.baseRebuildBarFillWidth = Math.max(0, (1 - rebuildProgress) * 300);
         this.baseRebuildBarFillWidth = Math.min(this.baseRebuildBarFillWidth, 300);
 
         this.baseRebuildGraphics.fillStyle(0x00ff00, 1);
-        this.baseRebuildGraphics.fillRoundedRect(this.scale.width / 2 - 150, 200, this.baseRebuildBarFillWidth + 10, 30, 10);
+        // this.baseRebuildGraphics.fillRoundedRect(this.scale.width / 2 - 150, 200, this.baseRebuildBarFillWidth + 10, 30, 10);
+        this.baseRebuildGraphics.fillRect(this.scale.width / 2 - 150, 200, this.baseRebuildBarFillWidth, 30);
     }
 
     resetBaseRebuildUI() {
@@ -1284,14 +2401,14 @@ export default class BattleUI extends Scene {
     updateMultiplierFill() {
         if (!this.timerStarted || this.isMultiplierPaused) return;
         if (this.multiplier === this.multiplierMin) {
-            this.multiplierBarFill.width = 300; // Keep the bar full
+            this.multiplierBarFill.width = 92; // Keep the bar full
             return; // Stop further processing
         }
         const currentTime = (this.scene.get('Game') as any).activeGameTime;
         const elapsedTime = currentTime - this.lastMultiplierUpdate;
         const remainingTime = this.multiplierDuration - elapsedTime;
         const fillPercentage = remainingTime / this.multiplierDuration;
-        const newWidth = fillPercentage * 300; // Assuming full width is 300.
+        const newWidth = fillPercentage * 92;
         this.multiplierBarFill.width = newWidth;
 
         // Check if it's time to decrement the multiplier
@@ -1299,26 +2416,31 @@ export default class BattleUI extends Scene {
             if (this.multiplier > this.multiplierMin) {
                 this.multiplier -= 0.5; // Decrement by 0.5
                 this.multiplier = Math.max(this.multiplier, this.multiplierMin); // Ensure it doesn't go below 0.5
-                this.multiplierText.setText(`Score Multiplier: x${this.multiplier}`);
+                this.multiplierText.setText(`x${this.multiplier}`);
                 this.lastMultiplierUpdate = currentTime;
             }
 
             // If the multiplier is at its minimum, reset the fill width to full
             if (this.multiplier === this.multiplierMin) {
-                this.multiplierBarFill.width = 300;
+                this.multiplierBarFill.width = 92;
             }
         }
     }
 
     resetMultiplier() {
         this.multiplier = 5;
-        this.multiplierText.setText(`Score Multiplier: x${this.multiplier}`);
+        this.multiplierText.setText(`x${this.multiplier}`);
         this.isMultiplierPaused = false;
 
-        this.multiplierBarFill.width = 300;
+        this.multiplierBarFill.width = 92;
 
         this.lastMultiplierUpdate = (this.scene.get('Game') as any).activeGameTime;
     }
+
+    pauseMultiplier(): void {
+        this.isMultiplierPaused = true;
+    }
+
 
     updateStrengthenTimer(currentTime: number) {
         this.strengthenCurrentTime = currentTime;
@@ -1336,7 +2458,7 @@ export default class BattleUI extends Scene {
         this.strengthenedSquare.fillStyle('#000', 1); // black, 100% opacity
 
         // Draw a hexagon
-        const radius = 25;
+        const radius = 15;
         this.strengthenedSquare.beginPath();
         for (let i = 0; i < 6; i++) {
             // calculate vertex positions
@@ -1426,12 +2548,23 @@ export default class BattleUI extends Scene {
         return button;
     }
 
-    restartGameScene() {
+    restartGameScene(): void {
+        const gameScene =
+            this.scene.get('Game') as any;
+
+        if (this.scene.isPaused('Game')) {
+            this.scene.resume('Game');
+        }
+
+        if (gameScene) {
+            gameScene.isGamePaused = false;
+        }
+
+        this.closePauseScreen();
 
         this.scene.stop('BattleUI');
 
         this.scene.stop('Game');
-
         this.scene.start('Game');
     }
 
@@ -1444,97 +2577,154 @@ export default class BattleUI extends Scene {
         this.scene.start('MainMenu');
     }
 
-    pauseGame() {
+    pauseGame(): void {
+        const gameScene =
+            this.scene.get('Game') as any;
+
+        if (
+            this.pauseContainer &&
+            this.pauseContainer.active
+        ) {
+            return;
+        }
+
         console.log('pausing game');
-        this.createPauseScreen();
+
         this.scene.pause('Game');
-        (this.scene.get('Game') as any).isGamePaused = true;
+        gameScene.isGamePaused = true;
+
+        this.createPauseScreen();
     }
 
-    createPauseScreen() {
+    createPauseScreen(): void {
+        if (
+            this.pauseContainer &&
+            this.pauseContainer.active
+        ) {
+            return;
+        }
 
-        const overlay =
-            this.add.rectangle(
+        const width = this.scale.width;
+        const height = this.scale.height;
+
+        this.pauseContainer = this.add
+            .container(0, 0)
+            .setDepth(3000);
+
+        const overlay = this.add
+            .rectangle(
                 0,
                 0,
-                this.scale.width,
-                this.scale.height,
+                width,
+                height,
                 0x000000,
-                0.75
+                0.78
             )
-                .setOrigin(0);
+            .setOrigin(0, 0)
+            .setInteractive();
 
-        const title =
-            this.add.text(
-                this.scale.width / 2,
-                200,
-                'PAUSED',
-                {
-                    fontSize: '64px'
-                }
-            )
-                .setOrigin(0.5);
-
-        const resumeButton =
-            this.add.text(
-                this.scale.width / 2,
-                350,
-                'Resume',
-                {
-                    fontSize: '32px'
-                }
-            )
-                .setOrigin(0.5)
-                .setInteractive();
-
-        const retryButton =
-            this.add.text(
-                this.scale.width / 2,
-                430,
-                'Retry',
-                {
-                    fontSize: '32px'
-                }
-            )
-                .setOrigin(0.5)
-                .setInteractive();
-
-        const mainMenuButton =
-            this.add.text(
-                this.scale.width / 2,
-                510,
-                'Main Menu',
-                {
-                    fontSize: '32px'
-                }
-            )
-                .setOrigin(0.5)
-                .setInteractive();
-
-        resumeButton.on(
+        overlay.on(
             'pointerdown',
-            () => {
-
-                overlay.destroy();
-                title.destroy();
-
-                resumeButton.destroy();
-                retryButton.destroy();
-                mainMenuButton.destroy();
-
-                this.scene.resume('Game');
+            (
+                _pointer: Phaser.Input.Pointer,
+                _localX: number,
+                _localY: number,
+                event: Phaser.Types.Input.EventData
+            ) => {
+                event.stopPropagation();
             }
         );
 
-        retryButton.on(
-            'pointerdown',
-            () => this.restartGameScene()
-        );
+        const panelWidth = 420;
+        const panelHeight = 360;
 
-        mainMenuButton.on(
-            'pointerdown',
-            () => this.goToMainMenu()
-        );
+        const panelX = width / 2;
+        const panelY = height / 2;
+
+        const panel = this.add
+            .rectangle(
+                panelX,
+                panelY,
+                panelWidth,
+                panelHeight,
+                0x121b24,
+                0.98
+            )
+            .setStrokeStyle(
+                3,
+                0x50c8ff,
+                1
+            );
+
+        const title = this.add
+            .text(
+                panelX,
+                panelY - 125,
+                'PAUSED',
+                {
+                    font: 'bold 48px Orbitron',
+                    color: '#ffffff'
+                }
+            )
+            .setOrigin(0.5);
+
+        const resumeButton =
+            this.createStyledButton(
+                panelX,
+                panelY - 35,
+                'Resume',
+                '#247f4c',
+                () => {
+                    this.closePauseScreen();
+                    this.scene.resume('Game');
+
+                    const gameScene =
+                        this.scene.get('Game') as any;
+
+                    gameScene.isGamePaused = false;
+                }
+            );
+
+        const retryButton =
+            this.createStyledButton(
+                panelX,
+                panelY + 45,
+                'Retry',
+                '#1d6f94',
+                () => {
+                    this.restartGameScene();
+                }
+            );
+
+        const mainMenuButton =
+            this.createStyledButton(
+                panelX,
+                panelY + 125,
+                'Main Menu',
+                '#8f2d2d',
+                () => {
+                    this.closePauseScreen();
+                    this.goToMainMenu();
+                }
+            );
+
+        this.pauseContainer.add([
+            overlay,
+            panel,
+            title,
+            resumeButton,
+            retryButton,
+            mainMenuButton
+        ]);
+    }
+
+    private closePauseScreen(): void {
+        if (!this.pauseContainer) {
+            return;
+        }
+
+        this.pauseContainer.destroy(true);
+        this.pauseContainer = null;
     }
 
     resumeGame() {
@@ -1543,7 +2733,7 @@ export default class BattleUI extends Scene {
         (this.scene.get('Game') as any).isGamePaused = false;
     }
 
-    async saveGameData() { // got await, so i use async
+    async saveGameData() {
         const gameData = {
             incomingCash: this.cash,
             score: this.score,

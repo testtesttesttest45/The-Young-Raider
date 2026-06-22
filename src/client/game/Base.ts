@@ -48,7 +48,7 @@ class Base {
         this.player = player;
         this.camps = camps;
         this.sprite = null;
-        this.safeDistanceFromPlayer = 500; // not too close to player
+        this.safeDistanceFromPlayer = 200; // not too close to player
         this.minX = 200; this.maxX = 900;
         this.minY = 150; this.maxY = 600;
         this.totalHealth = Math.round(this.originalHealth * Math.pow(1.35, this.baseLevel - 1));
@@ -79,20 +79,120 @@ class Base {
     }
 
 
-    findSuitableBaseLocation() {
-        let baseX: any, baseY: any, tooCloseToPlayer: any, tooCloseToCamp: any;
-        do { // keep execute until the base is not too close to player or camp
-            baseX = Phaser.Math.Between(this.minX, this.maxX);
-            baseY = Phaser.Math.Between(this.minY, this.maxY);
-            tooCloseToPlayer = Phaser.Math.Distance.Between(this.player.position.x, this.player.position.y, baseX, baseY) < this.safeDistanceFromPlayer;
+    findSuitableBaseLocation(): {
+        x: number;
+        y: number;
+    } {
+        const maximumAttempts = 200;
 
-            tooCloseToCamp = this.camps.some((camp: any) => {
-                const distanceToCamp = Phaser.Math.Distance.Between(camp.x, camp.y, baseX, baseY);
-                return distanceToCamp <= camp.radius;
-            });
-        } while (tooCloseToPlayer || tooCloseToCamp); // as long as the base is too close to player or camp, keep execute
+        let bestX = Phaser.Math.Between(
+            this.minX,
+            this.maxX
+        );
 
-        return { x: baseX, y: baseY }; // where the base is located
+        let bestY = Phaser.Math.Between(
+            this.minY,
+            this.maxY
+        );
+
+        let bestScore = -Infinity;
+
+        for (
+            let attempt = 0;
+            attempt < maximumAttempts;
+            attempt++
+        ) {
+            const baseX = Phaser.Math.Between(
+                this.minX,
+                this.maxX
+            );
+
+            const baseY = Phaser.Math.Between(
+                this.minY,
+                this.maxY
+            );
+
+            const distanceFromPlayer =
+                Phaser.Math.Distance.Between(
+                    this.player.position.x,
+                    this.player.position.y,
+                    baseX,
+                    baseY
+                );
+
+            let minimumCampClearance = Infinity;
+            let tooCloseToCamp = false;
+
+            for (const camp of this.camps) {
+                const distanceToCamp =
+                    Phaser.Math.Distance.Between(
+                        camp.x,
+                        camp.y,
+                        baseX,
+                        baseY
+                    );
+
+                const campClearance =
+                    distanceToCamp - camp.radius;
+
+                minimumCampClearance =
+                    Math.min(
+                        minimumCampClearance,
+                        campClearance
+                    );
+
+                if (distanceToCamp <= camp.radius) {
+                    tooCloseToCamp = true;
+                }
+            }
+
+            const tooCloseToPlayer =
+                distanceFromPlayer <
+                this.safeDistanceFromPlayer;
+
+            if (
+                !tooCloseToPlayer &&
+                !tooCloseToCamp
+            ) {
+                return {
+                    x: baseX,
+                    y: baseY
+                };
+            }
+
+            const campScore =
+                this.camps.length > 0
+                    ? minimumCampClearance
+                    : 1000;
+
+            const score =
+                distanceFromPlayer +
+                campScore;
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestX = baseX;
+                bestY = baseY;
+            }
+        }
+
+        console.warn(
+            '[Base] No fully valid spawn location found. ' +
+            'Using the safest attempted location instead.',
+            {
+                x: bestX,
+                y: bestY,
+                playerPosition:
+                    this.player.position,
+                campCount:
+                    this.camps.length
+            }
+        );
+
+        return {
+            x: bestX,
+            y: bestY
+        };
     }
 
     getPosition() {
@@ -349,29 +449,54 @@ class Base {
         );
     }
 
-    update(time: any, delta: any) {
-        if (this.isDestroyed && this.isRebuilding) {
+    update(time: number, delta: number): void {
+        if (
+            !this.isDestroyed ||
+            !this.isRebuilding
+        ) {
+            return;
+        }
 
-            const rebuildProgress =
-                (this.scene.activeGameTime - this.destroyedTime)
-                / this.rebuildTime;
+        const elapsedRebuildTime =
+            this.scene.activeGameTime -
+            this.destroyedTime;
 
-            this.scene.scene
-                .get('BattleUI')
-                .updateBaseRebuildUI(
-                    rebuildProgress
+        const rebuildProgress =
+            Phaser.Math.Clamp(
+                elapsedRebuildTime /
+                this.rebuildTime,
+                0,
+                1
+            );
+
+        const battleUI =
+            this.scene.scene.get(
+                'BattleUI'
+            );
+
+        battleUI?.updateBaseRebuildUI?.(
+            rebuildProgress
+        );
+
+        if (
+            elapsedRebuildTime >=
+            this.rebuildTime
+        ) {
+            this.isRebuilding = false;
+
+            try {
+                this.recreateBaseAndEnemies();
+
+                battleUI?.resetMultiplier?.();
+            } catch (error) {
+                console.error(
+                    '[Base] Failed to rebuild base:',
+                    error
                 );
 
-            if (
-                this.scene.activeGameTime -
-                this.destroyedTime >
-                this.rebuildTime
-            ) {
-                this.isRebuilding = false;
-                this.recreateBaseAndEnemies();
-                this.scene.scene
-                    .get('BattleUI')
-                    .resetMultiplier();
+                this.isRebuilding = true;
+                this.destroyedTime =
+                    this.scene.activeGameTime;
             }
         }
     }

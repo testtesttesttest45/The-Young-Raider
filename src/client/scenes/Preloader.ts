@@ -114,28 +114,28 @@ export class Preloader extends Scene {
 
     this.load.spritesheet('character1', 'sprites/character_1.png', { frameWidth: 400, frameHeight: 400 });
     this.load.spritesheet('character2', 'sprites/character_2.png', { frameWidth: 400, frameHeight: 400 });
-    this.load.spritesheet('character3', 'sprites/character_3.png', { frameWidth: 400, frameHeight: 320 });
-    this.load.spritesheet('character4', 'sprites/character_4.png', { frameWidth: 400, frameHeight: 400 });
-    this.load.spritesheet('character5', 'sprites/character_5.png', { frameWidth: 400, frameHeight: 264 });
-    this.load.spritesheet('character6', 'sprites/character_6.png', { frameWidth: 400, frameHeight: 400 });
-    this.load.spritesheet('character7', 'sprites/character_7.png', { frameWidth: 400, frameHeight: 400 });
-    this.load.spritesheet('character8', 'sprites/character_8.png', { frameWidth: 400, frameHeight: 400 });
-    this.load.spritesheet('character9', 'sprites/character_9.png', { frameWidth: 400, frameHeight: 400 });
-    this.load.spritesheet('character10', 'sprites/character_10.png', { frameWidth: 400, frameHeight: 400 });
-    this.load.spritesheet('character11', 'sprites/character_11.png', { frameWidth: 400, frameHeight: 400 });
-    this.load.spritesheet('character12', 'sprites/character_12.png', { frameWidth: 400, frameHeight: 400 });
-    this.load.spritesheet('character13', 'sprites/character_13.png', { frameWidth: 400, frameHeight: 400 });
-    this.load.spritesheet('character14', 'sprites/character_14.png', { frameWidth: 400, frameHeight: 400 });
-    this.load.spritesheet('character15', 'sprites/character_15.png', { frameWidth: 400, frameHeight: 400 });
-    this.load.spritesheet('character16', 'sprites/character_16.png', { frameWidth: 400, frameHeight: 400 });
-    this.load.spritesheet('character17', 'sprites/character_17.png', { frameWidth: 400, frameHeight: 400 });
-    this.load.spritesheet('character18', 'sprites/character_18.png', { frameWidth: 400, frameHeight: 400 });
-    this.load.spritesheet('character19', 'sprites/character_19.png', { frameWidth: 400, frameHeight: 400 });
-    this.load.spritesheet('character20', 'sprites/character_20.png', { frameWidth: 400, frameHeight: 400 });
-    this.load.spritesheet('character21', 'sprites/character_21.png', { frameWidth: 400, frameHeight: 400 });
-    this.load.spritesheet('character22', 'sprites/character_22.png', { frameWidth: 400, frameHeight: 400 });
-    this.load.spritesheet('character23', 'sprites/character_23.png', { frameWidth: 400, frameHeight: 400 });
-    this.load.spritesheet('character24', 'sprites/character_24.png', { frameWidth: 400, frameHeight: 400 });
+    // this.load.spritesheet('character3', 'sprites/character_3.png', { frameWidth: 400, frameHeight: 320 });
+    // this.load.spritesheet('character4', 'sprites/character_4.png', { frameWidth: 400, frameHeight: 400 });
+    // this.load.spritesheet('character5', 'sprites/character_5.png', { frameWidth: 400, frameHeight: 264 });
+    // this.load.spritesheet('character6', 'sprites/character_6.png', { frameWidth: 400, frameHeight: 400 });
+    // this.load.spritesheet('character7', 'sprites/character_7.png', { frameWidth: 400, frameHeight: 400 });
+    // this.load.spritesheet('character8', 'sprites/character_8.png', { frameWidth: 400, frameHeight: 400 });
+    // this.load.spritesheet('character9', 'sprites/character_9.png', { frameWidth: 400, frameHeight: 400 });
+    // this.load.spritesheet('character10', 'sprites/character_10.png', { frameWidth: 400, frameHeight: 400 });
+    // this.load.spritesheet('character11', 'sprites/character_11.png', { frameWidth: 400, frameHeight: 400 });
+    // this.load.spritesheet('character12', 'sprites/character_12.png', { frameWidth: 400, frameHeight: 400 });
+    // this.load.spritesheet('character13', 'sprites/character_13.png', { frameWidth: 400, frameHeight: 400 });
+    // this.load.spritesheet('character14', 'sprites/character_14.png', { frameWidth: 400, frameHeight: 400 });
+    // this.load.spritesheet('character15', 'sprites/character_15.png', { frameWidth: 400, frameHeight: 400 });
+    // this.load.spritesheet('character16', 'sprites/character_16.png', { frameWidth: 400, frameHeight: 400 });
+    // this.load.spritesheet('character17', 'sprites/character_17.png', { frameWidth: 400, frameHeight: 400 });
+    // this.load.spritesheet('character18', 'sprites/character_18.png', { frameWidth: 400, frameHeight: 400 });
+    // this.load.spritesheet('character19', 'sprites/character_19.png', { frameWidth: 400, frameHeight: 400 });
+    // this.load.spritesheet('character20', 'sprites/character_20.png', { frameWidth: 400, frameHeight: 400 });
+    // this.load.spritesheet('character21', 'sprites/character_21.png', { frameWidth: 400, frameHeight: 400 });
+    // this.load.spritesheet('character22', 'sprites/character_22.png', { frameWidth: 400, frameHeight: 400 });
+    // this.load.spritesheet('character23', 'sprites/character_23.png', { frameWidth: 400, frameHeight: 400 });
+    // this.load.spritesheet('character24', 'sprites/character_24.png', { frameWidth: 400, frameHeight: 400 });
 
     this.load.image('blueBullet', 'projectiles/blue_bullet.png');
     this.load.image('fireball', 'projectiles/fireball.png');
@@ -164,27 +164,61 @@ export class Preloader extends Scene {
 
     this.load.image('darkEtherMessiah', 'images/characterIcons/darkEtherMessiah.png');
     this.load.image('orc', 'images/characterIcons/orc.png');
-    this.load.image('dino', 'images/characterIcons/dino.png');
-    this.load.image('burningSlayer', 'images/characterIcons/burningSlayer.png');
-    this.load.image('spectreMech', 'images/characterIcons/spectreMech.png');
-    this.load.image('samuraiMech', 'images/characterIcons/samuraiMech.png');
-    this.load.image('bahamutDragon', 'images/characterIcons/bahamutDragon.png');
-    this.load.image('protowingedMech', 'images/characterIcons/protowingedMech.png');
-    this.load.image('brutusMech', 'images/characterIcons/brutusMech.png');
-    this.load.image('ravenMech', 'images/characterIcons/ravenMech.png');
-    this.load.image('thunderEpicDragon', 'images/characterIcons/thunderEpicDragon.png');
-    this.load.image('avengerMech', 'images/characterIcons/avengerMech.png');
-    this.load.image('ninja', 'images/characterIcons/ninja.png');
-    this.load.image('spartanWarriorMech', 'images/characterIcons/spartanWarriorMech.png');
-    this.load.image('executionerMech', 'images/characterIcons/executionerMech.png');
-    this.load.image('primeAutomech', 'images/characterIcons/primeAutomech.png');
-    this.load.image('ignition', 'images/characterIcons/ignition.png');
-    this.load.image('razorMech', 'images/characterIcons/razorMech.png');
-    this.load.image('harvester', 'images/characterIcons/harvester.png');
-    this.load.image('fireGodzillaMech', 'images/characterIcons/fireGodzillaMech.png');
-    this.load.image('steelGladiator', 'images/characterIcons/steelGladiator.png');
-    this.load.image('zProjectMech', 'images/characterIcons/zProjectMech.png');
-    this.load.image('glaivestormMech', 'images/characterIcons/glaivestormMech.png');
+
+    this.load.spritesheet(
+      'test_idle',
+      'images/test_idle.png',
+      {
+        frameWidth: 128,
+        frameHeight: 128
+      }
+    );
+    this.load.spritesheet(
+      'test_moving',
+      'images/test_moving.png',
+      {
+        frameWidth: 128,
+        frameHeight: 128
+      }
+    );
+    this.load.spritesheet(
+      'test_attack',
+      'images/test_attack.png',
+      {
+        frameWidth: 128,
+        frameHeight: 128
+      }
+    );
+
+    this.load.spritesheet(
+      'test_death',
+      'images/test_death.png',
+      {
+        frameWidth: 128,
+        frameHeight: 128
+      }
+    );
+    // this.load.image('dino', 'images/characterIcons/dino.png');
+    // this.load.image('burningSlayer', 'images/characterIcons/burningSlayer.png');
+    // this.load.image('spectreMech', 'images/characterIcons/spectreMech.png');
+    // this.load.image('samuraiMech', 'images/characterIcons/samuraiMech.png');
+    // this.load.image('bahamutDragon', 'images/characterIcons/bahamutDragon.png');
+    // this.load.image('protowingedMech', 'images/characterIcons/protowingedMech.png');
+    // this.load.image('brutusMech', 'images/characterIcons/brutusMech.png');
+    // this.load.image('ravenMech', 'images/characterIcons/ravenMech.png');
+    // this.load.image('thunderEpicDragon', 'images/characterIcons/thunderEpicDragon.png');
+    // this.load.image('avengerMech', 'images/characterIcons/avengerMech.png');
+    // this.load.image('ninja', 'images/characterIcons/ninja.png');
+    // this.load.image('spartanWarriorMech', 'images/characterIcons/spartanWarriorMech.png');
+    // this.load.image('executionerMech', 'images/characterIcons/executionerMech.png');
+    // this.load.image('primeAutomech', 'images/characterIcons/primeAutomech.png');
+    // this.load.image('ignition', 'images/characterIcons/ignition.png');
+    // this.load.image('razorMech', 'images/characterIcons/razorMech.png');
+    // this.load.image('harvester', 'images/characterIcons/harvester.png');
+    // this.load.image('fireGodzillaMech', 'images/characterIcons/fireGodzillaMech.png');
+    // this.load.image('steelGladiator', 'images/characterIcons/steelGladiator.png');
+    // this.load.image('zProjectMech', 'images/characterIcons/zProjectMech.png');
+    // this.load.image('glaivestormMech', 'images/characterIcons/glaivestormMech.png');
   }
 
   create() {
