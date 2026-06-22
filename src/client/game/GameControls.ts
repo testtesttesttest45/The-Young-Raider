@@ -41,6 +41,8 @@ export default class GameControls {
 
     attackKey!: Phaser.Input.Keyboard.Key;
     slashKey!: Phaser.Input.Keyboard.Key;
+    dashKey!: Phaser.Input.Keyboard.Key;
+
     slashButtonContainer:
         Phaser.GameObjects.Container | null = null;
 
@@ -79,6 +81,31 @@ export default class GameControls {
 
     desktopSlashCooldown:
         Phaser.GameObjects.Graphics | null = null;
+
+    private dashButtonContainer:
+        Phaser.GameObjects.Container | null = null;
+
+    private dashButtonBackground:
+        Phaser.GameObjects.Arc | null = null;
+
+    private dashButtonIcon:
+        Phaser.GameObjects.Image | null = null;
+
+    private dashCooldownGraphics:
+        Phaser.GameObjects.Graphics | null = null;
+
+    private desktopDashContainer:
+        Phaser.GameObjects.Container | null = null;
+
+    private desktopDashBackground:
+        Phaser.GameObjects.Arc | null = null;
+
+    private desktopDashIcon:
+        Phaser.GameObjects.Image | null = null;
+
+    private desktopDashCooldown:
+        Phaser.GameObjects.Graphics | null = null;
+
 
     constructor(scene: Game) {
         this.scene = scene;
@@ -130,6 +157,7 @@ export default class GameControls {
         if (this.isMobileLayout) {
             this.updateMobileAttackButtonState();
             this.updateMobileSlashButtonState();
+            this.updateMobileDashButtonState();
         } else {
             this.updateDesktopAbilityState();
         }
@@ -176,6 +204,7 @@ export default class GameControls {
 
         this.attackKey?.destroy();
         this.slashKey?.destroy();
+        this.dashKey?.destroy();
 
         this.joystickBase?.destroy();
         this.joystickKnob?.destroy();
@@ -213,6 +242,19 @@ export default class GameControls {
         this.desktopSlashBackground = null;
         this.desktopSlashIcon = null;
         this.desktopSlashCooldown = null;
+
+        this.dashButtonContainer
+            ?.destroy(true);
+
+        this.dashButtonContainer = null;
+        this.dashButtonBackground = null;
+        this.dashButtonIcon = null;
+        this.dashCooldownGraphics = null;
+
+        this.desktopDashContainer = null;
+        this.desktopDashBackground = null;
+        this.desktopDashIcon = null;
+        this.desktopDashCooldown = null;
     }
 
     public onPlayerDeath(): void {
@@ -259,9 +301,15 @@ export default class GameControls {
                 height - 135
             );
 
+        this.dashButtonContainer
+            ?.setPosition(
+                width - 385,
+                height - 115
+            );
+
         this.desktopAbilityContainer
             ?.setPosition(
-                width - 190,
+                width - 255,
                 height - 82
             );
     }
@@ -290,6 +338,11 @@ export default class GameControls {
         this.slashKey =
             this.scene.input.keyboard.addKey(
                 Phaser.Input.Keyboard.KeyCodes.E
+            );
+
+        this.dashKey =
+            this.scene.input.keyboard.addKey(
+                Phaser.Input.Keyboard.KeyCodes.R
             );
     }
 
@@ -323,6 +376,16 @@ export default class GameControls {
             this.scene.player
                 ?.slashOnce?.();
         }
+        if (
+            this.dashKey &&
+            Phaser.Input.Keyboard.JustDown(
+                this.dashKey
+            )
+        ) {
+            this.scene.player
+                ?.dashOnce?.();
+        }
+
     }
 
     private setupDesktopMovementInput(): void {
@@ -431,6 +494,7 @@ export default class GameControls {
 
         this.createMobileAttackButton();
         this.createMobileSlashButton();
+        this.createMobileDashButton();
 
         this.scene.input.on(
             'pointerdown',
@@ -480,11 +544,19 @@ export default class GameControls {
             ?.setVisible(
                 visible
             );
+
+        this.dashButtonContainer
+            ?.setVisible(
+                visible
+            );
         if (!visible) {
             this.releaseJoystick();
             this.resetMobileAttackButtonAppearance();
 
             this.slashButtonContainer
+                ?.setScale(1);
+
+            this.dashButtonContainer
                 ?.setScale(1);
         }
     }
@@ -1205,7 +1277,7 @@ export default class GameControls {
 
     private createDesktopAbilityUI(): void {
         const hudX =
-            this.scene.scale.width - 190;
+            this.scene.scale.width - 255;
 
         const hudY =
             this.scene.scale.height - 82;
@@ -1222,7 +1294,7 @@ export default class GameControls {
 
         this.desktopAttackContainer =
             this.createDesktopAbilitySlot(
-                -62,
+                -120,
                 0,
                 'sword1',
                 'Q',
@@ -1231,16 +1303,34 @@ export default class GameControls {
 
         this.desktopSlashContainer =
             this.createDesktopAbilitySlot(
-                62,
+                0,
                 0,
                 'sword1',
                 'E',
                 true
             );
 
+        this.desktopDashContainer =
+            this.createDesktopAbilitySlot(
+                120,
+                0,
+                'sword1',
+                'R',
+                false
+            );
+
+        this.desktopDashIcon
+            ?.setTint(
+                0x50c8ff
+            )
+            .setRotation(
+                0.75
+            );
+
         this.desktopAbilityContainer.add([
             this.desktopAttackContainer,
-            this.desktopSlashContainer
+            this.desktopSlashContainer,
+            this.desktopDashContainer
         ]);
 
         this.updateDesktopAbilityVisibility();
@@ -1343,7 +1433,7 @@ export default class GameControls {
             keyText
         ]);
 
-        if (isSlash) {
+        if (keyboardKey === 'E') {
             this.desktopSlashBackground =
                 background;
 
@@ -1351,6 +1441,15 @@ export default class GameControls {
                 icon;
 
             this.desktopSlashCooldown =
+                cooldown;
+        } else if (keyboardKey === 'R') {
+            this.desktopDashBackground =
+                background;
+
+            this.desktopDashIcon =
+                icon;
+
+            this.desktopDashCooldown =
                 cooldown;
         } else {
             this.desktopAttackBackground =
@@ -1381,6 +1480,7 @@ export default class GameControls {
     private updateDesktopAbilityState(): void {
         this.updateDesktopAttackState();
         this.updateDesktopSlashState();
+        this.updateDesktopDashState();
     }
 
     private updateDesktopAttackState(): void {
@@ -1660,6 +1760,416 @@ export default class GameControls {
             );
 
         this.desktopSlashCooldown
+            .strokeCircle(
+                0,
+                0,
+                ringRadius
+            );
+    }
+
+    private createMobileDashButton(): void {
+        const buttonX =
+            this.scene.scale.width - 385;
+
+        const buttonY =
+            this.scene.scale.height - 115;
+
+        const buttonRadius = 48;
+
+        this.dashButtonContainer =
+            this.scene.add.container(
+                buttonX,
+                buttonY
+            );
+
+        this.dashButtonContainer
+            .setScrollFactor(0)
+            .setDepth(2001);
+
+        this.dashButtonBackground =
+            this.scene.add.circle(
+                0,
+                0,
+                buttonRadius,
+                0xf2f2f2,
+                0.92
+            );
+
+        this.dashButtonBackground
+            .setStrokeStyle(
+                3,
+                0xffffff,
+                0.9
+            )
+            .setInteractive(
+                new Phaser.Geom.Circle(
+                    buttonRadius,
+                    buttonRadius,
+                    buttonRadius
+                ),
+                Phaser.Geom.Circle.Contains
+            );
+
+        this.dashButtonIcon =
+            this.scene.add.image(
+                0,
+                0,
+                'sword1'
+            );
+
+        this.dashButtonIcon
+            .setScale(0.48)
+            .setTint(0x50c8ff)
+            .setRotation(0.75)
+            .disableInteractive();
+
+        this.dashCooldownGraphics =
+            this.scene.add.graphics();
+
+        this.dashButtonContainer.add([
+            this.dashButtonBackground,
+            this.dashButtonIcon,
+            this.dashCooldownGraphics
+        ]);
+
+        this.dashButtonBackground.on(
+            'pointerdown',
+            (
+                _pointer:
+                    Phaser.Input.Pointer,
+                _localX: number,
+                _localY: number,
+                event:
+                    Phaser.Types.Input.EventData
+            ) => {
+                event.stopPropagation();
+
+                if (
+                    !this.isMobileLayout ||
+                    !this.scene.allowInput ||
+                    this.scene.isGamePaused ||
+                    this.scene.isGameOver ||
+                    this.scene.player?.isDead ||
+                    !this.scene.player?.isDashReady?.()
+                ) {
+                    return;
+                }
+
+                this.dashButtonContainer
+                    ?.setScale(0.92);
+
+                this.scene.player
+                    ?.dashOnce?.();
+
+                this.updateMobileDashButtonState();
+            }
+        );
+
+        this.dashButtonBackground.on(
+            'pointerup',
+            (
+                _pointer:
+                    Phaser.Input.Pointer,
+                _localX: number,
+                _localY: number,
+                event:
+                    Phaser.Types.Input.EventData
+            ) => {
+                event.stopPropagation();
+
+                this.dashButtonContainer
+                    ?.setScale(1);
+            }
+        );
+
+        this.dashButtonBackground.on(
+            'pointerout',
+            () => {
+                this.dashButtonContainer
+                    ?.setScale(1);
+            }
+        );
+
+        this.dashButtonBackground.on(
+            'pointerupoutside',
+            () => {
+                this.dashButtonContainer
+                    ?.setScale(1);
+            }
+        );
+
+        this.updateMobileControlsVisibility();
+        this.updateMobileDashButtonState();
+    }
+
+    private updateMobileDashButtonState(): void {
+        if (
+            !this.dashButtonContainer ||
+            !this.dashButtonBackground ||
+            !this.dashButtonIcon ||
+            !this.dashCooldownGraphics
+        ) {
+            return;
+        }
+
+        const buttonRadius = 48;
+        const ringRadius =
+            buttonRadius + 7;
+
+        const unavailable =
+            !this.scene.allowInput ||
+            this.scene.isGamePaused ||
+            this.scene.isGameOver ||
+            this.scene.player?.isDead;
+
+        const cooldownRemaining =
+            this.scene.player
+                ?.getDashCooldownRemaining?.() ??
+            0;
+
+        const coolingDown =
+            cooldownRemaining > 0;
+
+        this.dashCooldownGraphics.clear();
+
+        if (unavailable) {
+            this.dashButtonBackground
+                .setFillStyle(
+                    0x333333,
+                    0.9
+                );
+
+            this.dashButtonIcon
+                .setAlpha(0.25);
+
+            this.dashCooldownGraphics
+                .lineStyle(
+                    6,
+                    0x555555,
+                    0.85
+                )
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
+
+            return;
+        }
+
+        if (coolingDown) {
+            this.dashButtonBackground
+                .setFillStyle(
+                    0x102c3d,
+                    0.96
+                );
+
+            this.dashButtonIcon
+                .setAlpha(0.42);
+
+            this.dashCooldownGraphics
+                .lineStyle(
+                    7,
+                    0x071820,
+                    0.95
+                )
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
+
+            const progress =
+                this.scene.player
+                    ?.getDashCooldownProgress?.() ??
+                0;
+
+            const startAngle =
+                -Math.PI / 2;
+
+            const endAngle =
+                startAngle +
+                progress *
+                Math.PI *
+                2;
+
+            this.dashCooldownGraphics
+                .lineStyle(
+                    7,
+                    0x50c8ff,
+                    1
+                );
+
+            this.dashCooldownGraphics
+                .beginPath();
+
+            this.dashCooldownGraphics.arc(
+                0,
+                0,
+                ringRadius,
+                startAngle,
+                endAngle,
+                false
+            );
+
+            this.dashCooldownGraphics
+                .strokePath();
+
+            return;
+        }
+
+        this.dashButtonBackground
+            .setFillStyle(
+                0xf2f2f2,
+                0.94
+            );
+
+        this.dashButtonIcon
+            .setAlpha(1);
+
+        this.dashCooldownGraphics
+            .lineStyle(
+                7,
+                0xffffff,
+                1
+            )
+            .strokeCircle(
+                0,
+                0,
+                ringRadius
+            );
+    }
+
+    private updateDesktopDashState(): void {
+        if (
+            !this.desktopDashBackground ||
+            !this.desktopDashIcon ||
+            !this.desktopDashCooldown
+        ) {
+            return;
+        }
+
+        const radius = 44;
+        const ringRadius =
+            radius + 6;
+
+        const unavailable =
+            !this.scene.allowInput ||
+            this.scene.isGamePaused ||
+            this.scene.isGameOver ||
+            this.scene.player?.isDead;
+
+        const cooldownRemaining =
+            this.scene.player
+                ?.getDashCooldownRemaining?.() ??
+            0;
+
+        const coolingDown =
+            cooldownRemaining > 0;
+
+        this.desktopDashCooldown.clear();
+
+        if (unavailable) {
+            this.desktopDashBackground
+                .setFillStyle(
+                    0x333333,
+                    0.9
+                );
+
+            this.desktopDashIcon
+                .setAlpha(0.25);
+
+            this.desktopDashCooldown
+                .lineStyle(
+                    6,
+                    0x555555,
+                    0.85
+                )
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
+
+            return;
+        }
+
+        if (coolingDown) {
+            this.desktopDashBackground
+                .setFillStyle(
+                    0x102c3d,
+                    0.96
+                );
+
+            this.desktopDashIcon
+                .setAlpha(0.42);
+
+            this.desktopDashCooldown
+                .lineStyle(
+                    6,
+                    0x071820,
+                    0.95
+                )
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
+
+            const progress =
+                this.scene.player
+                    ?.getDashCooldownProgress?.() ??
+                0;
+
+            const startAngle =
+                -Math.PI / 2;
+
+            const endAngle =
+                startAngle +
+                progress *
+                Math.PI *
+                2;
+
+            this.desktopDashCooldown
+                .lineStyle(
+                    6,
+                    0x50c8ff,
+                    1
+                );
+
+            this.desktopDashCooldown
+                .beginPath();
+
+            this.desktopDashCooldown.arc(
+                0,
+                0,
+                ringRadius,
+                startAngle,
+                endAngle,
+                false
+            );
+
+            this.desktopDashCooldown
+                .strokePath();
+
+            return;
+        }
+
+        this.desktopDashBackground
+            .setFillStyle(
+                0xf2f2f2,
+                0.94
+            );
+
+        this.desktopDashIcon
+            .setAlpha(1);
+
+        this.desktopDashCooldown
+            .lineStyle(
+                6,
+                0xffffff,
+                1
+            )
             .strokeCircle(
                 0,
                 0,

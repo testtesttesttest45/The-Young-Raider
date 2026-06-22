@@ -89,6 +89,24 @@ class Player {
 
     slashIndicator:
         Phaser.GameObjects.Graphics | null;
+    dashCooldown: number;
+    dashLastUsedTime: number;
+
+    dashDistance: number;
+    dashDuration: number;
+
+    isDashing: boolean;
+
+    dashSlashSpritesheetKey: string;
+
+    dashSlashIndicator:
+        Phaser.GameObjects.Graphics | null;
+
+    hasAppliedDashSlashDamage: boolean;
+
+    dashSlashRange: number;
+    dashSlashAngle: number;
+
     constructor(
         scene: any,
         initialX: number,
@@ -168,7 +186,25 @@ class Player {
         this.hasAppliedSlashDamage = false;
 
         this.slashIndicator = null;
+        this.dashCooldown = 10000;
+        this.dashLastUsedTime = -Infinity;
 
+        this.dashDistance = 180;
+        this.dashDuration = 180;
+
+        this.isDashing = false;
+
+        this.dashSlashSpritesheetKey =
+            character.dashSlashSpritesheetKey ??
+            'test_dash';
+
+        this.dashSlashIndicator = null;
+
+        this.hasAppliedDashSlashDamage = false;
+
+        this.dashSlashRange = 135;
+        this.dashSlashAngle =
+            Phaser.Math.DegToRad(120);
     }
 
     create(): void {
@@ -215,8 +251,16 @@ class Player {
             'slashwest',
             'slashnorthwest',
 
-            'death'
+            'dashslashnorth',
+            'dashslashnortheast',
+            'dashslasheast',
+            'dashslashsoutheast',
+            'dashslashsouth',
+            'dashslashsouthwest',
+            'dashslashwest',
+            'dashslashnorthwest',
 
+            'death'
         ];
 
         animationKeys.forEach(
@@ -455,8 +499,84 @@ class Player {
 
         const slashFrameRate = 70;
 
+        const dashSlashFrameRate = 60;
+
+        // 66 frames per direction.
+        const dashSlashAnimations = [
+            {
+                key: 'dashslashnorth',
+                start: 0,
+                end: 65
+            },
+            {
+                key: 'dashslashnortheast',
+                start: 66,
+                end: 131
+            },
+            {
+                key: 'dashslasheast',
+                start: 132,
+                end: 197
+            },
+            {
+                key: 'dashslashsoutheast',
+                start: 198,
+                end: 263
+            },
+            {
+                key: 'dashslashsouth',
+                start: 264,
+                end: 329
+            },
+            {
+                key: 'dashslashsouthwest',
+                start: 330,
+                end: 395
+            },
+            {
+                key: 'dashslashwest',
+                start: 396,
+                end: 461
+            },
+            {
+                key: 'dashslashnorthwest',
+                start: 462,
+                end: 527
+            }
+        ];
+
+        dashSlashAnimations.forEach(
+            (
+                dashSlashAnimation: {
+                    key: string;
+                    start: number;
+                    end: number;
+                }
+            ) => {
+                this.scene.anims.create({
+                    key: dashSlashAnimation.key,
+
+                    frames:
+                        this.scene.anims.generateFrameNumbers(
+                            this.dashSlashSpritesheetKey,
+                            {
+                                start:
+                                    dashSlashAnimation.start,
+
+                                end:
+                                    dashSlashAnimation.end
+                            }
+                        ),
+
+                    frameRate: dashSlashFrameRate,
+                    repeat: 0
+                });
+            }
+        );
+
+
         // 76 frames per direction.
-       
+
         const slashAnimations = [
             {
                 key: 'slashnorth',
@@ -557,6 +677,7 @@ class Player {
 
         this.createAttackIndicator();
         this.createSlashIndicator();
+        this.createDashSlashIndicator();
 
         this.healTimer =
             this.scene.time.addEvent({
@@ -1009,8 +1130,11 @@ class Player {
         this.isMoving = false;
         this.isAttacking = false;
         this.isSlashing = false;
+        this.isDashing = false;
         this.hasAppliedSlashDamage = false;
         this.hideSlashIndicator();
+        this.hasAppliedDashSlashDamage = false;
+        this.hideDashSlashIndicator();
         this.continueAttacking = false;
 
         this.robotSprite.stop();
@@ -1052,6 +1176,7 @@ class Player {
 
         this.updateAttackIndicator();
         this.updateSlashIndicatorPosition();
+        this.updateDashSlashIndicatorPosition();
         const isTweenMoving =
             this.currentTween &&
             this.currentTween.isPlaying();
@@ -1077,10 +1202,18 @@ class Player {
                 'slash'
             );
 
+        const isDashSlashAnimation =
+            this.robotSprite.anims.isPlaying &&
+            currentAnimation &&
+            currentAnimation.key.startsWith(
+                'dashslash'
+            );
+
         if (
             !isMoving &&
             !isAttacking &&
             !isSlashAnimation &&
+            !isDashSlashAnimation &&
             !this.isDead
         ) {
             const idleKey =
@@ -1439,11 +1572,18 @@ class Player {
                     return;
                 }
 
+                // of requiring its exact center to enter the rectangle. the higher the multiplier, the more forgiving the hit area will be.
+                const enemyRadius =
+                    Math.min(
+                        enemy.sprite.displayWidth,
+                        enemy.sprite.displayHeight
+                    ) * 0.2;
+
                 const isHit =
                     this.isTargetInsideAttackArea(
                         enemy.sprite.x,
                         enemy.sprite.y,
-                        0
+                        enemyRadius
                     );
 
                 if (isHit) {
@@ -1465,11 +1605,17 @@ class Player {
             base.sprite.active &&
             base.sprite.visible
         ) {
+            const baseRadius =
+                Math.min(
+                    base.sprite.displayWidth,
+                    base.sprite.displayHeight
+                ) * 0.35;
+
             const baseIsHit =
                 this.isTargetInsideAttackArea(
                     base.sprite.x,
                     base.sprite.y,
-                    0
+                    baseRadius
                 );
 
             if (baseIsHit) {
@@ -1480,6 +1626,7 @@ class Player {
             }
         }
     }
+
 
     moveWithJoystick(
         inputX: number,
@@ -2007,6 +2154,488 @@ class Player {
         }
     }
 
+    getDashCooldownRemaining(): number {
+        const elapsed =
+            this.scene.activeGameTime -
+            this.dashLastUsedTime;
+
+        return Math.max(
+            0,
+            this.dashCooldown - elapsed
+        );
+    }
+
+    getDashCooldownProgress(): number {
+        const remaining =
+            this.getDashCooldownRemaining();
+
+        if (remaining <= 0) {
+            return 1;
+        }
+
+        return Phaser.Math.Clamp(
+            1 -
+            remaining / this.dashCooldown,
+            0,
+            1
+        );
+    }
+
+    isDashReady(): boolean {
+        return (
+            !this.isDead &&
+            !this.isActionLocked &&
+            !this.isDashing &&
+            this.getDashCooldownRemaining() <= 0
+        );
+    }
+
+    dashOnce(): void {
+        if (
+            !this.isDashReady() ||
+            !this.robotSprite
+        ) {
+            return;
+        }
+
+        const direction =
+            this.lastDirection ||
+            'south';
+
+        const directionVector =
+            this.getDirectionVector(
+                direction
+            );
+
+        if (this.currentTween) {
+            this.currentTween.stop();
+            this.currentTween = null;
+        }
+
+        if (this.moveTween) {
+            this.moveTween.stop();
+            this.moveTween = null;
+        }
+
+        this.stopJoystickMovement();
+
+        this.targetedEnemy = null;
+        this.isMovingTowardsEnemy = false;
+        this.continueAttacking = false;
+        this.isAttacking = false;
+
+        this.isActionLocked = true;
+        this.isDashing = true;
+
+
+        this.dashLastUsedTime =
+            this.scene.activeGameTime;
+
+        const spritePadding = 35;
+        const worldWidth = 1280;
+        const worldHeight = 720;
+        const minimumY = 130;
+
+        const targetX =
+            Phaser.Math.Clamp(
+                this.robotSprite.x +
+                directionVector.x *
+                this.dashDistance,
+
+                spritePadding,
+                worldWidth -
+                spritePadding
+            );
+
+        const targetY =
+            Phaser.Math.Clamp(
+                this.robotSprite.y +
+                directionVector.y *
+                this.dashDistance,
+
+                minimumY,
+                worldHeight -
+                spritePadding
+            );
+
+        this.robotSprite.play(
+            `move${direction}`,
+            true
+        );
+
+        this.currentTween =
+            this.scene.tweens.add({
+                targets: this.robotSprite,
+
+                x: targetX,
+                y: targetY,
+
+                duration: this.dashDuration,
+                ease: 'Cubic.Out',
+
+                onUpdate: () => {
+                    this.updatePosition();
+                    this.updateAttackIndicator();
+                },
+
+                onComplete: () => {
+                    this.currentTween = null;
+
+                    this.updatePosition();
+                    this.updateAttackIndicator();
+
+
+                    if (this.isDead) {
+                        this.isDashing = false;
+                        this.isActionLocked = false;
+                        return;
+                    }
+
+                    this.playDashSlash(
+                        direction
+                    );
+                }
+            });
+    }
+
+    private createDashSlashIndicator(): void {
+        if (this.dashSlashIndicator) {
+            this.dashSlashIndicator.destroy();
+        }
+
+        this.dashSlashIndicator =
+            this.scene.add.graphics();
+
+        this.dashSlashIndicator?.setDepth(0).setVisible(false);
+
+        this.drawDashSlashIndicator();
+    }
+
+    private drawDashSlashIndicator(): void {
+        if (!this.dashSlashIndicator) {
+            return;
+        }
+
+        const halfAngle =
+            this.dashSlashAngle / 2;
+
+
+        const startAngle =
+            -halfAngle;
+
+        const endAngle =
+            halfAngle;
+
+        this.dashSlashIndicator.clear();
+
+        this.dashSlashIndicator.fillStyle(
+            0x50c8ff,
+            0.18
+        );
+
+        this.dashSlashIndicator.lineStyle(
+            3,
+            0x8de4ff,
+            0.9
+        );
+
+        this.dashSlashIndicator.beginPath();
+
+        this.dashSlashIndicator.moveTo(
+            0,
+            0
+        );
+
+        this.dashSlashIndicator.arc(
+            0,
+            0,
+            this.dashSlashRange,
+            startAngle,
+            endAngle,
+            false
+        );
+
+        this.dashSlashIndicator.closePath();
+
+        this.dashSlashIndicator.fillPath();
+        this.dashSlashIndicator.strokePath();
+    }
+
+    private showDashSlashIndicator(
+        direction: string
+    ): void {
+        if (
+            !this.dashSlashIndicator ||
+            !this.robotSprite
+        ) {
+            return;
+        }
+
+        const vector =
+            this.getDirectionVector(
+                direction
+            );
+
+        const rotation =
+            Math.atan2(
+                vector.y,
+                vector.x
+            );
+
+        this.drawDashSlashIndicator();
+
+        this.dashSlashIndicator.setPosition(
+            this.robotSprite.x,
+            this.robotSprite.y
+        );
+
+        this.dashSlashIndicator.setRotation(
+            rotation
+        );
+
+        this.dashSlashIndicator.setVisible(
+            true
+        );
+    }
+
+    private hideDashSlashIndicator(): void {
+        this.dashSlashIndicator
+            ?.setVisible(false);
+    }
+
+    private updateDashSlashIndicatorPosition(): void {
+        if (
+            !this.dashSlashIndicator ||
+            !this.dashSlashIndicator.visible ||
+            !this.robotSprite
+        ) {
+            return;
+        }
+
+        this.dashSlashIndicator.setPosition(
+            this.robotSprite.x,
+            this.robotSprite.y
+        );
+    }
+
+    private isTargetInsideDashSlash(
+        targetX: number,
+        targetY: number,
+        targetRadius: number = 0
+    ): boolean {
+        const direction =
+            this.lastDirection ||
+            'south';
+
+        const forwardVector =
+            this.getDirectionVector(
+                direction
+            );
+
+        const differenceX =
+            targetX -
+            this.robotSprite.x;
+
+        const differenceY =
+            targetY -
+            this.robotSprite.y;
+
+        const distance =
+            Math.sqrt(
+                differenceX * differenceX +
+                differenceY * differenceY
+            );
+
+        if (
+            distance >
+            this.dashSlashRange +
+            targetRadius
+        ) {
+            return false;
+        }
+
+        if (distance <= 0) {
+            return true;
+        }
+
+        const normalizedX =
+            differenceX / distance;
+
+        const normalizedY =
+            differenceY / distance;
+
+        const dotProduct =
+            Phaser.Math.Clamp(
+                normalizedX *
+                forwardVector.x +
+                normalizedY *
+                forwardVector.y,
+                -1,
+                1
+            );
+
+        const targetAngle =
+            Math.acos(dotProduct);
+
+        return (
+            targetAngle <=
+            this.dashSlashAngle / 2
+        );
+    }
+
+    private applyDashSlashDamage(): void {
+        this.scene.enemies.forEach(
+            (enemy: any) => {
+                if (
+                    !enemy ||
+                    enemy.isDead ||
+                    !enemy.sprite ||
+                    !enemy.sprite.active
+                ) {
+                    return;
+                }
+
+                if (
+                    this.isTargetInsideDashSlash(
+                        enemy.sprite.x,
+                        enemy.sprite.y
+                    )
+                ) {
+                    enemy.takeDamage(
+                        this.damage,
+                        this
+                    );
+                }
+            }
+        );
+
+        const base =
+            this.scene.base;
+
+        if (
+            base &&
+            !base.isDestroyed &&
+            base.sprite &&
+            base.sprite.active &&
+            base.sprite.visible &&
+            this.isTargetInsideDashSlash(
+                base.sprite.x,
+                base.sprite.y
+            )
+        ) {
+            base.takeDamage(
+                this.damage,
+                this
+            );
+        }
+    }
+
+    private playDashSlash(
+        direction: string
+    ): void {
+        const animationKey =
+            `dashslash${direction}`;
+
+        if (
+            !this.scene.anims.exists(
+                animationKey
+            )
+        ) {
+            console.error(
+                '[Player] Missing dash-slash animation:',
+                animationKey
+            );
+
+            this.isDashing = false;
+            this.isActionLocked = false;
+
+            return;
+        }
+
+        this.hasAppliedDashSlashDamage =
+            false;
+
+        this.showDashSlashIndicator(
+            direction
+        );
+
+        this.robotSprite.play(
+            animationKey,
+            true
+        );
+
+        // 66-frame animation.
+        const damageFrame = 33;
+
+        const onAnimationUpdate = (
+            animation:
+                Phaser.Animations.Animation,
+            frame:
+                Phaser.Animations.AnimationFrame
+        ) => {
+            if (
+                animation.key !==
+                animationKey
+            ) {
+                return;
+            }
+
+            if (
+                !this.hasAppliedDashSlashDamage &&
+                frame.index >= damageFrame
+            ) {
+                this.hasAppliedDashSlashDamage =
+                    true;
+
+                this.applyDashSlashDamage();
+            }
+        };
+
+        const onAnimationComplete = (
+            animation:
+                Phaser.Animations.Animation
+        ) => {
+            if (
+                animation.key !==
+                animationKey
+            ) {
+                return;
+            }
+
+            this.robotSprite.off(
+                Phaser.Animations.Events
+                    .ANIMATION_UPDATE,
+                onAnimationUpdate
+            );
+
+            this.hideDashSlashIndicator();
+
+            this.hasAppliedDashSlashDamage =
+                false;
+
+            this.isDashing = false;
+            this.isActionLocked = false;
+
+            if (!this.isDead) {
+                this.robotSprite.play(
+                    `idle${direction}`,
+                    true
+                );
+            }
+        };
+
+        this.robotSprite.on(
+            Phaser.Animations.Events
+                .ANIMATION_UPDATE,
+            onAnimationUpdate
+        );
+
+        this.robotSprite.once(
+            Phaser.Animations.Events
+                .ANIMATION_COMPLETE,
+            onAnimationComplete
+        );
+    }
 
 }
 

@@ -138,7 +138,7 @@ export default class BattleUI extends Scene {
     cashIcon: any;
     constructor() {
         super({ key: 'BattleUI', active: false });
-        this.gold = 1750;
+        this.gold = 200000;
         this.score = 0;
         this.scoreText = null;
         this.multiplier = 5;
@@ -186,7 +186,7 @@ export default class BattleUI extends Scene {
 
     resetState() {
         console.log('State resetted');
-        this.gold = 1750;
+        this.gold = 200000;
         this.score = 0;
         this.scoreText = null;
         this.multiplier = 5;
@@ -230,6 +230,28 @@ export default class BattleUI extends Scene {
         this.gameDataSaved = false;
         this.penknifeBulkBuyButton = null;
         this.legendaryIcons = [];
+        this.shopModalContainer = null;
+        this.scrollableContainer = null;
+
+        this.modalBackground = null;
+        this.invisibleBackground = null;
+        this.headerBackground = null;
+        this.closeButtonText = null;
+
+        this.scrollbarTrack = null;
+        this.scrollbarHandle = null;
+
+        this.mask = null;
+        this.shopContentCamera = null;
+
+        this.damageSectionTitle = null;
+        this.healthSectionTitle = null;
+        this.attackSpeedSectionTitle = null;
+        this.movementSpeedSectionTitle = null;
+        this.legendaryUpgradesSectionTitle = null;
+
+        this.upgradeTooltip = null;
+
     }
 
     startMultiplierTimer() {
@@ -852,11 +874,16 @@ export default class BattleUI extends Scene {
             ) => {
                 event.stopPropagation();
 
-                if (!this.shopModalContainer) {
+                if (
+                    !this.shopModalContainer ||
+                    !this.shopModalContainer.active ||
+                    !this.shopContentCamera
+                ) {
                     this.createShopModal();
                 }
 
                 this.toggleShopModal(true);
+
             }
         );
 
@@ -1997,6 +2024,10 @@ export default class BattleUI extends Scene {
     }
 
     bulkPurchasePenknife(cost: number) {
+        if ((this.scene.get('Game') as any).player.currentHealth <= 0) {
+            this.showPurchaseFeedback("You are dead! You cannot purchase upgrades", '#ff0000');
+            return;
+        }
         const maxPurchases = Math.floor(this.gold / cost);
         if (maxPurchases > 0) {
             this.gold -= maxPurchases * cost;
@@ -2010,6 +2041,11 @@ export default class BattleUI extends Scene {
     ): void {
         if (
             !this.shopModalContainer ||
+            !this.shopModalContainer.active ||
+            !this.scrollableContainer ||
+            !this.scrollableContainer.active ||
+            !this.shopHeaderContainer ||
+            !this.shopHeaderContainer.active ||
             !this.shopContentCamera
         ) {
             return;
@@ -2027,11 +2063,11 @@ export default class BattleUI extends Scene {
             visible
         );
 
-        this.scrollbarTrack.setVisible(
+        this.scrollbarTrack?.setVisible(
             visible
         );
 
-        this.scrollbarHandle.setVisible(
+        this.scrollbarHandle?.setVisible(
             visible
         );
 
@@ -2042,8 +2078,13 @@ export default class BattleUI extends Scene {
         if (visible) {
             this.scrollableContainer.y = 0;
 
-            this.scrollbarHandle.y =
-                this.scrollbarTrack.y;
+            if (
+                this.scrollbarHandle &&
+                this.scrollbarTrack
+            ) {
+                this.scrollbarHandle.y =
+                    this.scrollbarTrack.y;
+            }
         } else {
             this.hideUpgradeTooltip();
         }
@@ -2231,9 +2272,6 @@ export default class BattleUI extends Scene {
             .setScrollFactor(0)
             .setDepth(5000);
 
-        /*
-         * The scrolling-content camera must not render it.
-         */
         if (this.shopContentCamera) {
             this.shopContentCamera.ignore(
                 this.currentFeedbackText
