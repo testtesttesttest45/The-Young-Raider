@@ -6,6 +6,8 @@ const characterMap: Record<number, any> = {
         deathSpritesheetKey: 'test_death',
         slashSpritesheetKey: 'test_slash',
         dashSlashSpritesheetKey: 'test_dash',
+        shieldSpritesheetKey: 'test_shield',
+        shieldMoveSpritesheetKey: 'test_shield_move',
         name: 'Dark Ether Messiah',
         cost: 100,
         tier: 'hard',

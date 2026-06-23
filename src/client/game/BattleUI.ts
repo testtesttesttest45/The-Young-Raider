@@ -113,36 +113,9 @@ export default class BattleUI extends Scene {
         this.baseRebuilding = false;
         this.isMultiplierPaused = false;
         this.cash = 0;
-        this.scrollbarTrack = null;
-        this.scrollbarHandle = null;
-        this.scrollPosition = 0;
-        this.buyButtons = [];
-        this.currentFeedbackText = null;
         this.playerHealthBaseText = null;
         this.playerHealthBonusText = null;
-        this.itemPurchaseLimit = 5;
-        this.purchaseCounts = {
-            "Energy Gun": 0,
-            "Quickblade": 0,
-            "Lightning Core": 0,
-            "Mecha Sneakers": 0,
-        };
-        this.legendaryPurchaseLimit = 1;
-        this.legendaryPurchaseCount = {
-            "Thunderlord Seal": 0,
-            "Elixir of Life": 0,
-            "Winter Frost": 0,
-            "Treasure Hunter": 0,
-            "Forbidden Excalibur": 0,
-            "Soul of the Phoenix": 0,
-            "Cosmic Scimitar": 0,
-        };
-        this.purchaseCountText = null;
-        this.legendaryPurchaseCountText = null;
-        this.goldTextShop = null;
         this.gameDataSaved = false;
-        this.penknifeBulkBuyButton = null;
-        this.legendaryIcons = [];
     }
 
     resetState() {
@@ -161,12 +134,9 @@ export default class BattleUI extends Scene {
         this.baseRebuilding = false;
         this.isMultiplierPaused = false;
         this.cash = 0;
-        this.scrollbarTrack = null;
-        this.scrollbarHandle = null;
        
         this.playerHealthBaseText = null;
         this.playerHealthBonusText = null;
-        this.purchaseCountText = null;
         this.gameDataSaved = false;
 
 

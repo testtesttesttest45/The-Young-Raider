@@ -35,22 +35,36 @@ export default class GameControls {
         Phaser.GameObjects.Arc | null = null;
 
     attackButtonIcon:
-        Phaser.GameObjects.Image | null = null;
+        Phaser.GameObjects.Text | null = null;
+
+    slashButtonIcon:
+        Phaser.GameObjects.Text | null = null;
+
+    private dashButtonIcon:
+        Phaser.GameObjects.Text | null = null;
+
+    desktopAttackIcon:
+        Phaser.GameObjects.Text | null = null;
+
+    desktopSlashIcon:
+        Phaser.GameObjects.Text | null = null;
+
+    private desktopDashIcon:
+        Phaser.GameObjects.Text | null = null;
+
 
     attackCooldownGraphics: Phaser.GameObjects.Graphics | null = null;
 
     attackKey!: Phaser.Input.Keyboard.Key;
     slashKey!: Phaser.Input.Keyboard.Key;
     dashKey!: Phaser.Input.Keyboard.Key;
+    shieldKey!: Phaser.Input.Keyboard.Key;
 
     slashButtonContainer:
         Phaser.GameObjects.Container | null = null;
 
     slashButtonBackground:
         Phaser.GameObjects.Arc | null = null;
-
-    slashButtonIcon:
-        Phaser.GameObjects.Image | null = null;
 
     slashCooldownGraphics:
         Phaser.GameObjects.Graphics | null = null;
@@ -64,8 +78,7 @@ export default class GameControls {
     desktopAttackBackground:
         Phaser.GameObjects.Arc | null = null;
 
-    desktopAttackIcon:
-        Phaser.GameObjects.Image | null = null;
+
 
     desktopAttackCooldown:
         Phaser.GameObjects.Graphics | null = null;
@@ -76,8 +89,6 @@ export default class GameControls {
     desktopSlashBackground:
         Phaser.GameObjects.Arc | null = null;
 
-    desktopSlashIcon:
-        Phaser.GameObjects.Image | null = null;
 
     desktopSlashCooldown:
         Phaser.GameObjects.Graphics | null = null;
@@ -88,9 +99,6 @@ export default class GameControls {
     private dashButtonBackground:
         Phaser.GameObjects.Arc | null = null;
 
-    private dashButtonIcon:
-        Phaser.GameObjects.Image | null = null;
-
     private dashCooldownGraphics:
         Phaser.GameObjects.Graphics | null = null;
 
@@ -100,10 +108,31 @@ export default class GameControls {
     private desktopDashBackground:
         Phaser.GameObjects.Arc | null = null;
 
-    private desktopDashIcon:
-        Phaser.GameObjects.Image | null = null;
-
     private desktopDashCooldown:
+        Phaser.GameObjects.Graphics | null = null;
+
+    private shieldButtonContainer:
+        Phaser.GameObjects.Container | null = null;
+
+    private shieldButtonBackground:
+        Phaser.GameObjects.Arc | null = null;
+
+    private shieldButtonText:
+        Phaser.GameObjects.Text | null = null;
+
+    private shieldStateGraphics:
+        Phaser.GameObjects.Graphics | null = null;
+
+    private desktopShieldContainer:
+        Phaser.GameObjects.Container | null = null;
+
+    private desktopShieldBackground:
+        Phaser.GameObjects.Arc | null = null;
+
+    private desktopShieldIcon:
+        Phaser.GameObjects.Text | null = null;
+
+    private desktopShieldState:
         Phaser.GameObjects.Graphics | null = null;
 
 
@@ -158,6 +187,7 @@ export default class GameControls {
             this.updateMobileAttackButtonState();
             this.updateMobileSlashButtonState();
             this.updateMobileDashButtonState();
+            this.updateMobileShieldButtonState();
         } else {
             this.updateDesktopAbilityState();
         }
@@ -255,6 +285,21 @@ export default class GameControls {
         this.desktopDashBackground = null;
         this.desktopDashIcon = null;
         this.desktopDashCooldown = null;
+
+        this.shieldKey?.destroy();
+
+        this.shieldButtonContainer
+            ?.destroy(true);
+
+        this.shieldButtonContainer = null;
+        this.shieldButtonBackground = null;
+        this.shieldButtonText = null;
+        this.shieldStateGraphics = null;
+
+        this.desktopShieldContainer = null;
+        this.desktopShieldBackground = null;
+        this.desktopShieldIcon = null;
+        this.desktopShieldState = null;
     }
 
     public onPlayerDeath(): void {
@@ -267,6 +312,9 @@ export default class GameControls {
             ?.setScale(1);
 
         this.slashButtonContainer
+            ?.setScale(1);
+
+        this.shieldButtonContainer
             ?.setScale(1);
     }
 
@@ -307,9 +355,15 @@ export default class GameControls {
                 height - 115
             );
 
+        this.shieldButtonContainer
+            ?.setPosition(
+                width - 115,
+                height - 250
+            );
+
         this.desktopAbilityContainer
             ?.setPosition(
-                width - 255,
+                width - 315,
                 height - 82
             );
     }
@@ -344,6 +398,11 @@ export default class GameControls {
             this.scene.input.keyboard.addKey(
                 Phaser.Input.Keyboard.KeyCodes.R
             );
+
+        this.shieldKey =
+            this.scene.input.keyboard.addKey(
+                Phaser.Input.Keyboard.KeyCodes.W
+            );
     }
 
     private updateKeyboardControls(): void {
@@ -355,6 +414,16 @@ export default class GameControls {
             this.scene.player?.isDead
         ) {
             return;
+        }
+
+        if (
+            this.shieldKey &&
+            Phaser.Input.Keyboard.JustDown(
+                this.shieldKey
+            )
+        ) {
+            this.scene.player
+                ?.toggleShield?.();
         }
 
         if (
@@ -495,6 +564,7 @@ export default class GameControls {
         this.createMobileAttackButton();
         this.createMobileSlashButton();
         this.createMobileDashButton();
+        this.createMobileShieldButton();
 
         this.scene.input.on(
             'pointerdown',
@@ -549,9 +619,22 @@ export default class GameControls {
             ?.setVisible(
                 visible
             );
+
+        this.shieldButtonContainer
+            ?.setVisible(
+                visible
+            );
+        this.shieldButtonContainer
+            ?.setVisible(
+                visible
+            );
+
         if (!visible) {
             this.releaseJoystick();
             this.resetMobileAttackButtonAppearance();
+
+            this.shieldButtonContainer
+                ?.setScale(1);
 
             this.slashButtonContainer
                 ?.setScale(1);
@@ -773,16 +856,19 @@ export default class GameControls {
             );
 
         this.attackButtonIcon =
-            this.scene.add.image(
+            this.scene.add.text(
                 0,
                 0,
-                'sword1'
-            );
-
-        this.attackButtonIcon
-            .setScale(0.58)
-            .disableInteractive();
-
+                'ATTACK',
+                {
+                    fontFamily: 'Orbitron',
+                    fontSize: '13px',
+                    color: '#1a2633',
+                    fontStyle: 'bold'
+                }
+            )
+                .setOrigin(0.5)
+                .disableInteractive();
 
         this.attackCooldownGraphics =
             this.scene.add.graphics();
@@ -811,7 +897,8 @@ export default class GameControls {
                     this.scene.isGamePaused ||
                     this.scene.isGameOver ||
                     this.scene.player?.isDead ||
-                    this.scene.player?.isActionLocked
+                    this.scene.player?.isActionLocked ||
+                    this.scene.player?.isShieldRaised?.()
                 ) {
                     return;
                 }
@@ -906,17 +993,19 @@ export default class GameControls {
             );
 
         this.slashButtonIcon =
-            this.scene.add.image(
+            this.scene.add.text(
                 0,
                 0,
-                'sword1'
-            );
-
-        this.slashButtonIcon
-            .setScale(0.52)
-            .setTint(0xc38cff)
-            .setRotation(-0.55)
-            .disableInteractive();
+                'SLASH',
+                {
+                    fontFamily: 'Orbitron',
+                    fontSize: '13px',
+                    color: '#6d2ca0',
+                    fontStyle: 'bold'
+                }
+            )
+                .setOrigin(0.5)
+                .disableInteractive();
 
         this.slashCooldownGraphics =
             this.scene.add.graphics();
@@ -1016,6 +1105,10 @@ export default class GameControls {
             this.scene.isGameOver ||
             this.scene.player?.isDead;
 
+        const disabledByShield =
+            this.scene.player
+                ?.isShieldRaised?.() === true;
+
         const cooldownRemaining =
             this.scene.player
                 ?.getSlashCooldownRemaining?.() ??
@@ -1053,6 +1146,32 @@ export default class GameControls {
             return;
         }
 
+        if (disabledByShield) {
+            this.slashButtonBackground
+                .setFillStyle(
+                    0x555b61,
+                    0.92
+                );
+
+            this.slashButtonIcon
+                .setColor('#b5b5b5')
+                .setAlpha(0.55);
+
+            this.slashCooldownGraphics
+                .lineStyle(
+                    7,
+                    0x777777,
+                    0.95
+                )
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
+
+            return;
+        }
+
         if (isCoolingDown) {
             this.slashButtonBackground
                 .setFillStyle(
@@ -1061,6 +1180,7 @@ export default class GameControls {
                 );
 
             this.slashButtonIcon
+                .setColor('#9f65c7')
                 .setAlpha(0.42);
 
             this.slashCooldownGraphics
@@ -1124,6 +1244,7 @@ export default class GameControls {
             );
 
         this.slashButtonIcon
+            .setColor('#6d2ca0')
             .setAlpha(1);
 
         this.slashCooldownGraphics
@@ -1152,65 +1273,105 @@ export default class GameControls {
         }
 
         const buttonRadius = 58;
-        const ringRadius = buttonRadius + 7;
+        const ringRadius =
+            buttonRadius + 7;
 
-        const isUnavailable =
+        const unavailable =
             !this.scene.allowInput ||
             this.scene.isGamePaused ||
             this.scene.isGameOver ||
             this.scene.player?.isDead;
 
-        const isCoolingDown =
-            this.scene.player?.isActionLocked === true;
+        const disabledByShield =
+            this.scene.player
+                ?.isShieldRaised?.() === true;
+
+        const actionLocked =
+            this.scene.player
+                ?.isActionLocked === true;
 
         this.attackCooldownGraphics.clear();
 
-        if (isUnavailable) {
-            this.attackButtonBackground.setFillStyle(
-                0x3d3d3d,
-                0.88
-            );
+        if (unavailable) {
+            this.attackButtonBackground
+                .setFillStyle(
+                    0x333333,
+                    0.9
+                );
 
-            this.attackButtonIcon.setAlpha(0.28);
+            this.attackButtonIcon
+                .setColor('#777777')
+                .setAlpha(0.45);
 
-            this.attackCooldownGraphics.lineStyle(
-                6,
-                0x555555,
-                0.8
-            );
-
-            this.attackCooldownGraphics.strokeCircle(
-                0,
-                0,
-                ringRadius
-            );
+            this.attackCooldownGraphics
+                .lineStyle(
+                    6,
+                    0x555555,
+                    0.85
+                )
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
 
             return;
         }
 
-        if (isCoolingDown) {
-            this.attackButtonBackground.setFillStyle(
-                0x4f1717,
-                0.95
-            );
+        // shield raised, disabled, on cooldown
+        if (disabledByShield) {
+            this.attackButtonBackground
+                .setFillStyle(
+                    0x555b61,
+                    0.92
+                );
 
-            this.attackButtonIcon.setAlpha(0.48);
+            this.attackButtonIcon
+                .setColor('#b5b5b5')
+                .setAlpha(0.55);
 
-            this.attackCooldownGraphics.lineStyle(
-                7,
-                0x2b0b0b,
-                0.95
-            );
+            this.attackCooldownGraphics
+                .lineStyle(
+                    7,
+                    0x777777,
+                    0.95
+                )
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
 
-            this.attackCooldownGraphics.strokeCircle(
-                0,
-                0,
-                ringRadius
-            );
+            return;
+        }
+
+        if (actionLocked) {
+            this.attackButtonBackground
+                .setFillStyle(
+                    0x4f1717,
+                    0.95
+                );
+
+            this.attackButtonIcon
+                .setColor('#ffffff')
+                .setAlpha(0.48);
+
+            this.attackCooldownGraphics
+                .lineStyle(
+                    7,
+                    0x2b0b0b,
+                    0.95
+                )
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
 
             const animationProgress =
                 Phaser.Math.Clamp(
-                    this.scene.player?.robotSprite
+                    this.scene.player
+                        ?.robotSprite
                         ?.anims
                         ?.getProgress?.() ?? 0,
                     0,
@@ -1226,13 +1387,15 @@ export default class GameControls {
                 Math.PI *
                 2;
 
-            this.attackCooldownGraphics.lineStyle(
-                7,
-                0xff3b30,
-                1
-            );
+            this.attackCooldownGraphics
+                .lineStyle(
+                    7,
+                    0xff3b30,
+                    1
+                );
 
-            this.attackCooldownGraphics.beginPath();
+            this.attackCooldownGraphics
+                .beginPath();
 
             this.attackCooldownGraphics.arc(
                 0,
@@ -1243,29 +1406,33 @@ export default class GameControls {
                 false
             );
 
-            this.attackCooldownGraphics.strokePath();
+            this.attackCooldownGraphics
+                .strokePath();
 
             return;
         }
 
-        this.attackButtonBackground.setFillStyle(
-            0xf2f2f2,
-            0.94
-        );
+        this.attackButtonBackground
+            .setFillStyle(
+                0xf2f2f2,
+                0.94
+            );
 
-        this.attackButtonIcon.setAlpha(1);
+        this.attackButtonIcon
+            .setColor('#1a2633')
+            .setAlpha(1);
 
-        this.attackCooldownGraphics.lineStyle(
-            7,
-            0xffffff,
-            1
-        );
-
-        this.attackCooldownGraphics.strokeCircle(
-            0,
-            0,
-            ringRadius
-        );
+        this.attackCooldownGraphics
+            .lineStyle(
+                7,
+                0xffffff,
+                1
+            )
+            .strokeCircle(
+                0,
+                0,
+                ringRadius
+            );
     }
 
     private resetMobileAttackButtonAppearance(): void {
@@ -1277,7 +1444,7 @@ export default class GameControls {
 
     private createDesktopAbilityUI(): void {
         const hudX =
-            this.scene.scale.width - 255;
+            this.scene.scale.width - 315;
 
         const hudY =
             this.scene.scale.height - 82;
@@ -1294,41 +1461,37 @@ export default class GameControls {
 
         this.desktopAttackContainer =
             this.createDesktopAbilitySlot(
-                -120,
+                -180,
                 0,
-                'sword1',
-                'Q',
-                false
+                'Attack',
+                'Q'
+            );
+
+        this.desktopShieldContainer =
+            this.createDesktopShieldSlot(
+                -60,
+                0
             );
 
         this.desktopSlashContainer =
             this.createDesktopAbilitySlot(
+                60,
                 0,
-                0,
-                'sword1',
-                'E',
-                true
+                'Slash',
+                'E'
             );
 
         this.desktopDashContainer =
             this.createDesktopAbilitySlot(
-                120,
+                180,
                 0,
-                'sword1',
-                'R',
-                false
-            );
-
-        this.desktopDashIcon
-            ?.setTint(
-                0x50c8ff
-            )
-            .setRotation(
-                0.75
+                'Dash',
+                'R'
             );
 
         this.desktopAbilityContainer.add([
             this.desktopAttackContainer,
+            this.desktopShieldContainer,
             this.desktopSlashContainer,
             this.desktopDashContainer
         ]);
@@ -1340,9 +1503,8 @@ export default class GameControls {
     private createDesktopAbilitySlot(
         x: number,
         y: number,
-        iconKey: string,
-        keyboardKey: string,
-        isSlash: boolean
+        abilityName: string,
+        keyboardKey: string
     ): Phaser.GameObjects.Container {
         const slot =
             this.scene.add.container(
@@ -1367,26 +1529,19 @@ export default class GameControls {
             1
         );
 
-        const icon =
-            this.scene.add.image(
+        const label =
+            this.scene.add.text(
                 0,
                 -3,
-                iconKey
-            );
-
-        icon
-            .setScale(
-                isSlash
-                    ? 0.42
-                    : 0.46
+                abilityName.toUpperCase(),
+                {
+                    fontFamily: 'Orbitron',
+                    fontSize: '11px',
+                    color: '#1a2633',
+                    fontStyle: 'bold'
+                }
             )
-            .setAlpha(1);
-
-        if (isSlash) {
-            icon
-                .setTint(0xc38cff)
-                .setRotation(-0.55);
-        }
+                .setOrigin(0.5);
 
         const cooldown =
             this.scene.add.graphics();
@@ -1418,27 +1573,32 @@ export default class GameControls {
                     color: '#ffffff',
                     fontStyle: 'bold'
                 }
-            );
-
-        keyText.setOrigin(
-            0.5,
-            0.5
-        );
+            )
+                .setOrigin(0.5);
 
         slot.add([
             background,
-            icon,
+            label,
             cooldown,
             keyBadge,
             keyText
         ]);
 
-        if (keyboardKey === 'E') {
+        if (keyboardKey === 'Q') {
+            this.desktopAttackBackground =
+                background;
+
+            this.desktopAttackIcon =
+                label;
+
+            this.desktopAttackCooldown =
+                cooldown;
+        } else if (keyboardKey === 'E') {
             this.desktopSlashBackground =
                 background;
 
             this.desktopSlashIcon =
-                icon;
+                label;
 
             this.desktopSlashCooldown =
                 cooldown;
@@ -1447,18 +1607,9 @@ export default class GameControls {
                 background;
 
             this.desktopDashIcon =
-                icon;
+                label;
 
             this.desktopDashCooldown =
-                cooldown;
-        } else {
-            this.desktopAttackBackground =
-                background;
-
-            this.desktopAttackIcon =
-                icon;
-
-            this.desktopAttackCooldown =
                 cooldown;
         }
 
@@ -1479,6 +1630,7 @@ export default class GameControls {
 
     private updateDesktopAbilityState(): void {
         this.updateDesktopAttackState();
+        this.updateDesktopShieldState();
         this.updateDesktopSlashState();
         this.updateDesktopDashState();
     }
@@ -1501,8 +1653,13 @@ export default class GameControls {
             this.scene.isGameOver ||
             this.scene.player?.isDead;
 
+        const disabledByShield =
+            this.scene.player
+                ?.isShieldRaised?.() === true;
+
         const actionLocked =
-            this.scene.player?.isActionLocked === true;
+            this.scene.player
+                ?.isActionLocked === true;
 
         this.desktopAttackCooldown.clear();
 
@@ -1524,6 +1681,31 @@ export default class GameControls {
                 );
 
             this.desktopAttackCooldown
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
+
+            return;
+        }
+        if (disabledByShield) {
+            this.desktopAttackBackground
+                .setFillStyle(
+                    0x555b61,
+                    0.92
+                );
+
+            this.desktopAttackIcon
+                .setColor('#b5b5b5')
+                .setAlpha(0.55);
+
+            this.desktopAttackCooldown
+                .lineStyle(
+                    6,
+                    0x777777,
+                    0.95
+                )
                 .strokeCircle(
                     0,
                     0,
@@ -1608,6 +1790,7 @@ export default class GameControls {
             );
 
         this.desktopAttackIcon
+            .setColor('#1a2633')
             .setAlpha(1);
 
         this.desktopAttackCooldown
@@ -1642,7 +1825,9 @@ export default class GameControls {
             this.scene.isGamePaused ||
             this.scene.isGameOver ||
             this.scene.player?.isDead;
-
+        const disabledByShield =
+            this.scene.player
+                ?.isShieldRaised?.() === true;
         const cooldownRemaining =
             this.scene.player
                 ?.getSlashCooldownRemaining?.() ??
@@ -1671,6 +1856,31 @@ export default class GameControls {
                 );
 
             this.desktopSlashCooldown
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
+
+            return;
+        }
+        if (disabledByShield) {
+            this.desktopSlashBackground
+                .setFillStyle(
+                    0x555b61,
+                    0.92
+                );
+
+            this.desktopSlashIcon
+                .setColor('#b5b5b5')
+                .setAlpha(0.55);
+
+            this.desktopSlashCooldown
+                .lineStyle(
+                    6,
+                    0x777777,
+                    0.95
+                )
                 .strokeCircle(
                     0,
                     0,
@@ -1750,6 +1960,7 @@ export default class GameControls {
             );
 
         this.desktopSlashIcon
+            .setColor('#6d2ca0')
             .setAlpha(1);
 
         this.desktopSlashCooldown
@@ -1811,17 +2022,19 @@ export default class GameControls {
             );
 
         this.dashButtonIcon =
-            this.scene.add.image(
+            this.scene.add.text(
                 0,
                 0,
-                'sword1'
-            );
-
-        this.dashButtonIcon
-            .setScale(0.48)
-            .setTint(0x50c8ff)
-            .setRotation(0.75)
-            .disableInteractive();
+                'DASH',
+                {
+                    fontFamily: 'Orbitron',
+                    fontSize: '13px',
+                    color: '#167498',
+                    fontStyle: 'bold'
+                }
+            )
+                .setOrigin(0.5)
+                .disableInteractive();
 
         this.dashCooldownGraphics =
             this.scene.add.graphics();
@@ -1922,6 +2135,10 @@ export default class GameControls {
             this.scene.isGameOver ||
             this.scene.player?.isDead;
 
+        const disabledByShield =
+            this.scene.player
+                ?.isShieldRaised?.() === true;
+
         const cooldownRemaining =
             this.scene.player
                 ?.getDashCooldownRemaining?.() ??
@@ -1956,7 +2173,31 @@ export default class GameControls {
 
             return;
         }
+        if (disabledByShield) {
+            this.dashButtonBackground
+                .setFillStyle(
+                    0x555b61,
+                    0.92
+                );
 
+            this.dashButtonIcon
+                .setColor('#b5b5b5')
+                .setAlpha(0.55);
+
+            this.dashCooldownGraphics
+                .lineStyle(
+                    7,
+                    0x777777,
+                    0.95
+                )
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
+
+            return;
+        }
         if (coolingDown) {
             this.dashButtonBackground
                 .setFillStyle(
@@ -1965,6 +2206,7 @@ export default class GameControls {
                 );
 
             this.dashButtonIcon
+                .setColor('#5da9c7')
                 .setAlpha(0.42);
 
             this.dashCooldownGraphics
@@ -2025,6 +2267,7 @@ export default class GameControls {
             );
 
         this.dashButtonIcon
+            .setColor('#167498')
             .setAlpha(1);
 
         this.dashCooldownGraphics
@@ -2058,7 +2301,9 @@ export default class GameControls {
             this.scene.isGamePaused ||
             this.scene.isGameOver ||
             this.scene.player?.isDead;
-
+        const disabledByShield =
+            this.scene.player
+                ?.isShieldRaised?.() === true;
         const cooldownRemaining =
             this.scene.player
                 ?.getDashCooldownRemaining?.() ??
@@ -2093,7 +2338,31 @@ export default class GameControls {
 
             return;
         }
+        if (disabledByShield) {
+            this.desktopDashBackground
+                .setFillStyle(
+                    0x555b61,
+                    0.92
+                );
 
+            this.desktopDashIcon
+                .setColor('#b5b5b5')
+                .setAlpha(0.55);
+
+            this.desktopDashCooldown
+                .lineStyle(
+                    6,
+                    0x777777,
+                    0.95
+                )
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
+
+            return;
+        }
         if (coolingDown) {
             this.desktopDashBackground
                 .setFillStyle(
@@ -2162,6 +2431,7 @@ export default class GameControls {
             );
 
         this.desktopDashIcon
+            .setColor('#167498')
             .setAlpha(1);
 
         this.desktopDashCooldown
@@ -2176,4 +2446,415 @@ export default class GameControls {
                 ringRadius
             );
     }
+
+    private createMobileShieldButton(): void {
+        const buttonX =
+            this.scene.scale.width - 115;
+
+        const buttonY =
+            this.scene.scale.height - 250;
+
+        const buttonRadius = 48;
+
+        this.shieldButtonContainer =
+            this.scene.add.container(
+                buttonX,
+                buttonY
+            );
+
+        this.shieldButtonContainer
+            .setScrollFactor(0)
+            .setDepth(2001);
+
+        this.shieldButtonBackground =
+            this.scene.add.circle(
+                0,
+                0,
+                buttonRadius,
+                0xf2f2f2,
+                0.92
+            );
+
+        this.shieldButtonBackground
+            .setStrokeStyle(
+                3,
+                0xffffff,
+                0.9
+            )
+            .setInteractive(
+                new Phaser.Geom.Circle(
+                    buttonRadius,
+                    buttonRadius,
+                    buttonRadius
+                ),
+                Phaser.Geom.Circle.Contains
+            );
+
+        this.shieldButtonText =
+            this.scene.add.text(
+                0,
+                0,
+                'SHIELD',
+                {
+                    fontFamily: 'Orbitron',
+                    fontSize: '12px',
+                    color: '#1a2633',
+                    fontStyle: 'bold'
+                }
+            )
+                .setOrigin(0.5);
+
+        this.shieldStateGraphics =
+            this.scene.add.graphics();
+
+        this.shieldButtonContainer.add([
+            this.shieldButtonBackground,
+            this.shieldButtonText,
+            this.shieldStateGraphics
+        ]);
+
+        this.shieldButtonBackground.on(
+            'pointerdown',
+            (
+                _pointer:
+                    Phaser.Input.Pointer,
+                _localX: number,
+                _localY: number,
+                event:
+                    Phaser.Types.Input.EventData
+            ) => {
+                event.stopPropagation();
+
+                if (
+                    !this.isMobileLayout ||
+                    !this.scene.allowInput ||
+                    this.scene.isGamePaused ||
+                    this.scene.isGameOver ||
+                    this.scene.player?.isDead ||
+                    this.scene.player?.isActionLocked
+                ) {
+                    return;
+                }
+
+                this.shieldButtonContainer
+                    ?.setScale(0.92);
+
+                this.scene.player
+                    ?.toggleShield?.();
+
+                this.updateMobileShieldButtonState();
+            }
+        );
+
+        this.shieldButtonBackground.on(
+            'pointerup',
+            () => {
+                this.shieldButtonContainer
+                    ?.setScale(1);
+            }
+        );
+
+        this.shieldButtonBackground.on(
+            'pointerout',
+            () => {
+                this.shieldButtonContainer
+                    ?.setScale(1);
+            }
+        );
+
+        this.shieldButtonBackground.on(
+            'pointerupoutside',
+            () => {
+                this.shieldButtonContainer
+                    ?.setScale(1);
+            }
+        );
+
+        this.updateMobileControlsVisibility();
+        this.updateMobileShieldButtonState();
+    }
+
+    private updateMobileShieldButtonState(): void {
+        if (
+            !this.shieldButtonBackground ||
+            !this.shieldButtonText ||
+            !this.shieldStateGraphics
+        ) {
+            return;
+        }
+
+        const buttonRadius = 48;
+        const ringRadius = buttonRadius + 7;
+
+        const unavailable =
+            !this.scene.allowInput ||
+            this.scene.isGamePaused ||
+            this.scene.isGameOver ||
+            this.scene.player?.isDead;
+
+        const shieldRaised =
+            this.scene.player
+                ?.isShieldRaised?.() === true;
+
+        this.shieldStateGraphics.clear();
+
+        if (unavailable) {
+            this.shieldButtonBackground
+                .setFillStyle(
+                    0x333333,
+                    0.9
+                );
+
+            this.shieldButtonText
+                .setColor('#777777');
+
+            this.shieldStateGraphics
+                .lineStyle(
+                    7,
+                    0x555555,
+                    0.9
+                )
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
+
+            return;
+        }
+
+        if (shieldRaised) {
+            this.shieldButtonBackground
+                .setFillStyle(
+                    0x174f68,
+                    0.98
+                );
+
+            this.shieldButtonText
+                .setColor('#ffffff')
+                .setText('LOWER');
+
+            this.shieldStateGraphics
+                .lineStyle(
+                    7,
+                    0x50c8ff,
+                    1
+                )
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
+
+            return;
+        }
+
+        this.shieldButtonBackground
+            .setFillStyle(
+                0xf2f2f2,
+                0.94
+            );
+
+        this.shieldButtonText
+            .setColor('#1a2633')
+            .setText('SHIELD');
+
+        this.shieldStateGraphics
+            .lineStyle(
+                7,
+                0xffffff,
+                1
+            )
+            .strokeCircle(
+                0,
+                0,
+                ringRadius
+            );
+    }
+
+    private createDesktopShieldSlot(
+        x: number,
+        y: number
+    ): Phaser.GameObjects.Container {
+        const slot =
+            this.scene.add.container(
+                x,
+                y
+            );
+
+        const radius = 44;
+
+        this.desktopShieldBackground =
+            this.scene.add.circle(
+                0,
+                0,
+                radius,
+                0xf2f2f2,
+                0.94
+            );
+
+        this.desktopShieldBackground
+            .setStrokeStyle(
+                3,
+                0xffffff,
+                1
+            );
+
+        this.desktopShieldIcon =
+            this.scene.add.text(
+                0,
+                -3,
+                'SHIELD',
+                {
+                    fontFamily: 'Orbitron',
+                    fontSize: '11px',
+                    color: '#1a2633',
+                    fontStyle: 'bold'
+                }
+            )
+                .setOrigin(0.5);
+
+        this.desktopShieldState =
+            this.scene.add.graphics();
+
+        const keyBadge =
+            this.scene.add.rectangle(
+                29,
+                30,
+                29,
+                25,
+                0x111111,
+                0.94
+            );
+
+        keyBadge.setStrokeStyle(
+            2,
+            0xffffff,
+            0.9
+        );
+
+        const keyText =
+            this.scene.add.text(
+                29,
+                30,
+                'W',
+                {
+                    fontFamily: 'Orbitron',
+                    fontSize: '16px',
+                    color: '#ffffff',
+                    fontStyle: 'bold'
+                }
+            )
+                .setOrigin(0.5);
+
+        slot.add([
+            this.desktopShieldBackground,
+            this.desktopShieldIcon,
+            this.desktopShieldState,
+            keyBadge,
+            keyText
+        ]);
+
+        return slot;
+    }
+
+    private updateDesktopShieldState(): void {
+        if (
+            !this.desktopShieldBackground ||
+            !this.desktopShieldIcon ||
+            !this.desktopShieldState
+        ) {
+            return;
+        }
+
+        const radius = 44;
+        const ringRadius = radius + 6;
+
+        const unavailable =
+            !this.scene.allowInput ||
+            this.scene.isGamePaused ||
+            this.scene.isGameOver ||
+            this.scene.player?.isDead;
+
+        const shieldRaised =
+            this.scene.player
+                ?.isShieldRaised?.() === true;
+
+        this.desktopShieldState.clear();
+
+        if (unavailable) {
+            this.desktopShieldBackground
+                .setFillStyle(
+                    0x333333,
+                    0.9
+                );
+
+            this.desktopShieldIcon
+                .setColor('#777777');
+
+            this.desktopShieldState
+                .lineStyle(
+                    6,
+                    0x555555,
+                    0.85
+                )
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
+
+            return;
+        }
+
+        if (shieldRaised) {
+            this.desktopShieldBackground
+                .setFillStyle(
+                    0x174f68,
+                    0.98
+                );
+
+            this.desktopShieldIcon
+                .setColor('#ffffff')
+                .setText('LOWER');
+
+            this.desktopShieldState
+                .lineStyle(
+                    6,
+                    0x50c8ff,
+                    1
+                )
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
+
+            return;
+        }
+
+        this.desktopShieldBackground
+            .setFillStyle(
+                0xf2f2f2,
+                0.94
+            );
+
+        this.desktopShieldIcon
+            .setColor('#1a2633')
+            .setText('SHIELD');
+
+        this.desktopShieldState
+            .lineStyle(
+                6,
+                0xffffff,
+                1
+            )
+            .strokeCircle(
+                0,
+                0,
+                ringRadius
+            );
+    }
+
+
 }

@@ -562,16 +562,21 @@ class Player {
 
         this.lastDirection = direction;
 
+        const movementAnimationKey =
+            this.abilities.isShieldRaised
+                ? `shieldmove${direction}`
+                : `move${direction}`;
+
         if (
             !currentAnim ||
-            currentAnim.key !== `move${direction}`
+            currentAnim.key !==
+            movementAnimationKey
         ) {
             this.robotSprite.play(
-                `move${direction}`,
+                movementAnimationKey,
                 true
             );
         }
-
         this.updateAttackIndicator();
 
         const distance =
@@ -583,8 +588,13 @@ class Player {
             );
 
         if (distance <= 1) {
+            const idleAnimationKey =
+                this.abilities.isShieldRaised
+                    ? `shieldidle${this.lastDirection}`
+                    : `idle${this.lastDirection}`;
+
             this.robotSprite.play(
-                `idle${this.lastDirection}`,
+                idleAnimationKey,
                 true
             );
 
@@ -617,8 +627,13 @@ class Player {
                     this.currentTween = null;
                     this.updatePosition();
 
+                    const idleAnimationKey =
+                        this.abilities.isShieldRaised
+                            ? `shieldidle${this.lastDirection}`
+                            : `idle${this.lastDirection}`;
+
                     this.robotSprite.play(
-                        `idle${this.lastDirection}`,
+                        idleAnimationKey,
                         true
                     );
 
@@ -693,8 +708,17 @@ class Player {
             currentAnim &&
             currentAnim.key.startsWith('attack')
         ) {
+            const direction =
+                this.lastDirection ||
+                'south';
+
+            const idleAnimationKey =
+                this.abilities.isShieldRaised
+                    ? `shieldidle${direction}`
+                    : `idle${direction}`;
+
             this.robotSprite.play(
-                `idle${this.lastDirection || 'south'}`,
+                idleAnimationKey,
                 true
             );
         }
@@ -808,27 +832,98 @@ class Player {
         this.healthBar.fillRect(0, 0, healthBarWidth, 10);
     }
 
-    takeDamage(damage: any, source: any) {
-        if (this.isDead) return;
-        if (this.isImmuneToStorms && source === 'catastrophe') { // legendary item was purchased
+    takeDamage(
+        damage: any,
+        source: any
+    ): void {
+        if (this.isDead) {
             return;
         }
-        let wasAtFullHealth = this.currentHealth === this.maxHealth;
+
+        if (
+            this.isImmuneToStorms &&
+            source === 'catastrophe'
+        ) {
+            return;
+        }
+
+        // hield only blocks directional damage, not catastrophe
+        if (
+            this.abilities.shouldBlockDamage(
+                source
+            )
+        ) {
+            this.createShieldBlockedText();
+            return;
+        }
+
+        const wasAtFullHealth =
+            this.currentHealth ===
+            this.maxHealth;
 
         this.currentHealth -= damage;
-        this.currentHealth = Math.max(this.currentHealth, 0);
 
-        const color = source === 'catastrophe' ? '#ff0' : '#000'; // Yellow for catastrophe, black for others
-        this.createDamageText(damage, color);
+        this.currentHealth =
+            Math.max(
+                this.currentHealth,
+                0
+            );
+
+        const color =
+            source === 'catastrophe'
+                ? '#ff0'
+                : '#000';
+
+        this.createDamageText(
+            damage,
+            color
+        );
 
         if (wasAtFullHealth) {
-            this.resetHealTimer(); // to prevent instantly healing after taking damage from full health
+            this.resetHealTimer();
         }
-        if (this.currentHealth <= 0 && !this.isDead) {
+
+        if (
+            this.currentHealth <= 0 &&
+            !this.isDead
+        ) {
             this.die();
         }
 
         this.updateHealthBar();
+    }
+
+    createShieldBlockedText(): void {
+        const blockedText =
+            this.scene.add.text(
+                this.robotSprite.x,
+                this.robotSprite.y - 90,
+                'BLOCKED',
+                {
+                    font: 'bold 24px Orbitron',
+                    color: '#66d9ff',
+                    stroke: '#000000',
+                    strokeThickness: 4
+                }
+            );
+
+        blockedText
+            .setOrigin(0.5)
+            .setDepth(5);
+
+        this.scene.tweens.add({
+            targets: blockedText,
+
+            y: blockedText.y - 28,
+            alpha: 0,
+
+            duration: 700,
+            ease: 'Power2',
+
+            onComplete: () => {
+                blockedText.destroy();
+            }
+        });
     }
 
     createDamageText(damage: any, color: any) {
@@ -946,13 +1041,25 @@ class Player {
             !isDashSlashAnimation &&
             !this.isDead
         ) {
-            const idleKey =
-                `idle${this.lastDirection || 'south'}`;
+            const direction =
+                this.lastDirection ||
+                'south';
 
-            this.robotSprite.play(
-                idleKey,
-                true
-            );
+            const idleKey =
+                this.abilities.isShieldRaised
+                    ? `shieldidle${direction}`
+                    : `idle${direction}`;
+
+            if (
+                this.robotSprite
+                    .anims.currentAnim?.key !==
+                idleKey
+            ) {
+                this.robotSprite.play(
+                    idleKey,
+                    true
+                );
+            }
         } else {
             this.lastActionTime = time;
         }
@@ -1034,6 +1141,11 @@ class Player {
     }
 
     playAttackAnimation(targetEnemy: any) {
+        if (
+            this.abilities.isShieldRaised
+        ) {
+            return;
+        }
         const direction = this.determineDirectionToEnemy(targetEnemy);
         const attackAnimationKey = `attack${direction}`;
         if (this.isAttacking && !this.attackAnimationComplete && this.targetedEnemy === targetEnemy) {
@@ -1157,7 +1269,8 @@ class Player {
     attackOnce(): void {
         if (
             this.isDead ||
-            this.isActionLocked
+            this.isActionLocked ||
+            this.abilities.isShieldRaised
         ) {
             return;
         }
@@ -1494,7 +1607,9 @@ class Player {
         this.lastDirection = direction;
 
         const movementAnimationKey =
-            `move${direction}`;
+            this.abilities.isShieldRaised
+                ? `shieldmove${direction}`
+                : `move${direction}`;
 
         const currentAnimationKey =
             this.robotSprite
@@ -1538,10 +1653,14 @@ class Player {
             return;
         }
 
+        const direction =
+            this.lastDirection ||
+            'south';
+
         const idleAnimationKey =
-            `idle${this.lastDirection ||
-            'south'
-            }`;
+            this.abilities.isShieldRaised
+                ? `shieldidle${direction}`
+                : `idle${direction}`;
 
         if (
             this.robotSprite
@@ -1659,6 +1778,13 @@ class Player {
         return this.abilities.isDashReady();
     }
 
+    toggleShield(): void {
+        this.abilities.toggleShield();
+    }
+
+    isShieldRaised(): boolean {
+        return this.abilities.isShieldRaised;
+    }
 
 }
 
