@@ -135,6 +135,14 @@ export default class GameControls {
     private desktopShieldState:
         Phaser.GameObjects.Graphics | null = null;
 
+    private joystickHomeX = 115;
+    private joystickHomeY = 0;
+
+    private readonly joystickActivationWidth = 0.6;
+
+    private readonly mobileRightSafePadding = 115;
+
+    private readonly mobileButtonHitPadding = 28;
 
     constructor(scene: Game) {
         this.scene = scene;
@@ -327,39 +335,10 @@ export default class GameControls {
         const height =
             gameSize.height;
 
-        this.joystickBase?.setPosition(
-            115,
-            height - 115
+        this.positionMobileControls(
+            width,
+            height
         );
-
-        this.joystickKnob?.setPosition(
-            115,
-            height - 115
-        );
-
-        this.attackButtonContainer
-            ?.setPosition(
-                width - 115,
-                height - 115
-            );
-
-        this.slashButtonContainer
-            ?.setPosition(
-                width - 255,
-                height - 135
-            );
-
-        this.dashButtonContainer
-            ?.setPosition(
-                width - 385,
-                height - 115
-            );
-
-        this.shieldButtonContainer
-            ?.setPosition(
-                width - 115,
-                height - 250
-            );
 
         this.desktopAbilityContainer
             ?.setPosition(
@@ -411,7 +390,8 @@ export default class GameControls {
             !this.scene.allowInput ||
             this.scene.isGamePaused ||
             this.scene.isGameOver ||
-            this.scene.player?.isDead
+            this.scene.player?.isDead ||
+            this.scene.player?.isActionLocked
         ) {
             return;
         }
@@ -514,14 +494,22 @@ export default class GameControls {
         this.isMobileLayout =
             layout.rotated;
 
+        this.positionMobileControls(
+            this.scene.scale.width,
+            this.scene.scale.height
+        );
+
         this.updateMobileControlsVisibility();
         this.updateDesktopAbilityVisibility();
     }
 
     private setupMobileControls(): void {
         const joystickX = 115;
+
         const joystickY =
             this.scene.scale.height - 115;
+
+        this.scene.input.addPointer(3);
 
         this.joystickBase =
             this.scene.add.circle(
@@ -559,8 +547,6 @@ export default class GameControls {
             .setScrollFactor(0)
             .setDepth(2001);
 
-        this.updateMobileControlsVisibility();
-
         this.createMobileAttackButton();
         this.createMobileSlashButton();
         this.createMobileDashButton();
@@ -589,6 +575,13 @@ export default class GameControls {
             this.handleJoystickUp,
             this
         );
+
+        this.positionMobileControls(
+            this.scene.scale.width,
+            this.scene.scale.height
+        );
+
+        this.updateMobileControlsVisibility();
     }
 
     private updateMobileControlsVisibility(): void {
@@ -645,8 +638,7 @@ export default class GameControls {
     }
 
     private handleJoystickDown(
-        pointer:
-            Phaser.Input.Pointer
+        pointer: Phaser.Input.Pointer
     ): void {
         if (
             !this.isMobileLayout ||
@@ -654,42 +646,94 @@ export default class GameControls {
             this.scene.isGameOver ||
             !this.scene.allowInput ||
             this.scene.player?.isDead ||
-            !this.joystickBase
+            !this.joystickBase ||
+            !this.joystickKnob
         ) {
             return;
         }
 
-        const distance =
-            Phaser.Math.Distance.Between(
-                pointer.x,
-                pointer.y,
-                this.joystickBase.x,
-                this.joystickBase.y
-            );
+        if (this.joystickPointerId !== null) {
+            return;
+        }
+
+        const screenWidth =
+            this.scene.scale.width;
+
+        const screenHeight =
+            this.scene.scale.height;
+
+        const joystickAreaRight =
+            screenWidth *
+            this.joystickActivationWidth;
 
         if (
-            distance >
-            this.joystickRadius * 1.35
+            pointer.x > joystickAreaRight ||
+            pointer.y <= HUD_HEIGHT
         ) {
             return;
         }
+
+        const edgePadding =
+            this.joystickRadius + 12;
+
+        const minimumX =
+            edgePadding;
+
+        const maximumX =
+            Math.max(
+                minimumX,
+                joystickAreaRight -
+                edgePadding
+            );
+
+        const minimumY =
+            HUD_HEIGHT +
+            edgePadding;
+
+        const maximumY =
+            Math.max(
+                minimumY,
+                screenHeight -
+                edgePadding
+            );
+
+        const joystickX =
+            Phaser.Math.Clamp(
+                pointer.x,
+                minimumX,
+                maximumX
+            );
+
+        const joystickY =
+            Phaser.Math.Clamp(
+                pointer.y,
+                minimumY,
+                maximumY
+            );
 
         this.joystickPointerId =
             pointer.id;
 
-        this.updateJoystickFromPointer(
-            pointer
+        this.joystickBase.setPosition(
+            joystickX,
+            joystickY
         );
+
+        this.joystickKnob.setPosition(
+            joystickX,
+            joystickY
+        );
+
+        this.joystickVector.x = 0;
+        this.joystickVector.y = 0;
     }
 
     private handleJoystickMove(
-        pointer:
-            Phaser.Input.Pointer
+        pointer: Phaser.Input.Pointer
     ): void {
         if (
             !this.isMobileLayout ||
-            this.joystickPointerId !==
-            pointer.id
+            this.joystickPointerId !== pointer.id
         ) {
             return;
         }
@@ -700,12 +744,10 @@ export default class GameControls {
     }
 
     private handleJoystickUp(
-        pointer:
-            Phaser.Input.Pointer
+        pointer: Phaser.Input.Pointer
     ): void {
         if (
-            this.joystickPointerId !==
-            pointer.id
+            this.joystickPointerId !== pointer.id
         ) {
             return;
         }
@@ -802,34 +844,53 @@ export default class GameControls {
             this.joystickBase &&
             this.joystickKnob
         ) {
+            this.joystickBase.setPosition(
+                this.joystickHomeX,
+                this.joystickHomeY
+            );
+
             this.joystickKnob.setPosition(
-                this.joystickBase.x,
-                this.joystickBase.y
+                this.joystickHomeX,
+                this.joystickHomeY
             );
         }
 
         this.scene.player
             ?.stopJoystickMovement?.();
     }
-
     private createMobileAttackButton(): void {
-        const buttonX =
-            this.scene.scale.width - 115;
-
-        const buttonY =
-            this.scene.scale.height - 115;
-
         const buttonRadius = 58;
+
+        const hitRadius =
+            buttonRadius +
+            this.mobileButtonHitPadding;
 
         this.attackButtonContainer =
             this.scene.add.container(
-                buttonX,
-                buttonY
+                0,
+                0
             );
 
         this.attackButtonContainer
             .setScrollFactor(0)
             .setDepth(2001);
+
+        const attackHitArea =
+            this.scene.add.zone(
+                0,
+                0,
+                hitRadius * 2,
+                hitRadius * 2
+            );
+
+        attackHitArea.setInteractive(
+            new Phaser.Geom.Circle(
+                hitRadius,
+                hitRadius,
+                hitRadius
+            ),
+            Phaser.Geom.Circle.Contains
+        );
 
         this.attackButtonBackground =
             this.scene.add.circle(
@@ -840,20 +901,11 @@ export default class GameControls {
                 0.92
             );
 
-        this.attackButtonBackground
-            .setStrokeStyle(
-                3,
-                0xffffff,
-                0.9
-            )
-            .setInteractive(
-                new Phaser.Geom.Circle(
-                    buttonRadius,
-                    buttonRadius,
-                    buttonRadius
-                ),
-                Phaser.Geom.Circle.Contains
-            );
+        this.attackButtonBackground.setStrokeStyle(
+            3,
+            0xffffff,
+            0.9
+        );
 
         this.attackButtonIcon =
             this.scene.add.text(
@@ -874,20 +926,19 @@ export default class GameControls {
             this.scene.add.graphics();
 
         this.attackButtonContainer.add([
+            attackHitArea,
             this.attackButtonBackground,
             this.attackButtonIcon,
             this.attackCooldownGraphics
         ]);
 
-        this.attackButtonBackground.on(
+        attackHitArea.on(
             'pointerdown',
             (
-                _pointer:
-                    Phaser.Input.Pointer,
+                _pointer: Phaser.Input.Pointer,
                 _localX: number,
                 _localY: number,
-                event:
-                    Phaser.Types.Input.EventData
+                event: Phaser.Types.Input.EventData
             ) => {
                 event.stopPropagation();
 
@@ -906,21 +957,20 @@ export default class GameControls {
                 this.attackButtonContainer
                     ?.setScale(0.92);
 
-                this.scene.player?.attackOnce?.();
+                this.scene.player
+                    ?.attackOnce?.();
 
                 this.updateMobileAttackButtonState();
             }
         );
 
-        this.attackButtonBackground.on(
+        attackHitArea.on(
             'pointerup',
             (
-                _pointer:
-                    Phaser.Input.Pointer,
+                _pointer: Phaser.Input.Pointer,
                 _localX: number,
                 _localY: number,
-                event:
-                    Phaser.Types.Input.EventData
+                event: Phaser.Types.Input.EventData
             ) => {
                 event.stopPropagation();
 
@@ -929,7 +979,7 @@ export default class GameControls {
             }
         );
 
-        this.attackButtonBackground.on(
+        attackHitArea.on(
             'pointerout',
             () => {
                 this.attackButtonContainer
@@ -937,7 +987,7 @@ export default class GameControls {
             }
         );
 
-        this.attackButtonBackground.on(
+        attackHitArea.on(
             'pointerupoutside',
             () => {
                 this.attackButtonContainer
@@ -950,23 +1000,38 @@ export default class GameControls {
     }
 
     private createMobileSlashButton(): void {
-        const buttonX =
-            this.scene.scale.width - 255;
-
-        const buttonY =
-            this.scene.scale.height - 135;
-
         const buttonRadius = 50;
+
+        const hitRadius =
+            buttonRadius +
+            this.mobileButtonHitPadding;
 
         this.slashButtonContainer =
             this.scene.add.container(
-                buttonX,
-                buttonY
+                0,
+                0
             );
 
         this.slashButtonContainer
             .setScrollFactor(0)
             .setDepth(2001);
+
+        const slashHitArea =
+            this.scene.add.zone(
+                0,
+                0,
+                hitRadius * 2,
+                hitRadius * 2
+            );
+
+        slashHitArea.setInteractive(
+            new Phaser.Geom.Circle(
+                hitRadius,
+                hitRadius,
+                hitRadius
+            ),
+            Phaser.Geom.Circle.Contains
+        );
 
         this.slashButtonBackground =
             this.scene.add.circle(
@@ -977,20 +1042,11 @@ export default class GameControls {
                 0.92
             );
 
-        this.slashButtonBackground
-            .setStrokeStyle(
-                3,
-                0xffffff,
-                0.9
-            )
-            .setInteractive(
-                new Phaser.Geom.Circle(
-                    buttonRadius,
-                    buttonRadius,
-                    buttonRadius
-                ),
-                Phaser.Geom.Circle.Contains
-            );
+        this.slashButtonBackground.setStrokeStyle(
+            3,
+            0xffffff,
+            0.9
+        );
 
         this.slashButtonIcon =
             this.scene.add.text(
@@ -1011,20 +1067,19 @@ export default class GameControls {
             this.scene.add.graphics();
 
         this.slashButtonContainer.add([
+            slashHitArea,
             this.slashButtonBackground,
             this.slashButtonIcon,
             this.slashCooldownGraphics
         ]);
 
-        this.slashButtonBackground.on(
+        slashHitArea.on(
             'pointerdown',
             (
-                _pointer:
-                    Phaser.Input.Pointer,
+                _pointer: Phaser.Input.Pointer,
                 _localX: number,
                 _localY: number,
-                event:
-                    Phaser.Types.Input.EventData
+                event: Phaser.Types.Input.EventData
             ) => {
                 event.stopPropagation();
 
@@ -1034,6 +1089,8 @@ export default class GameControls {
                     this.scene.isGamePaused ||
                     this.scene.isGameOver ||
                     this.scene.player?.isDead ||
+                    this.scene.player?.isActionLocked ||
+                    this.scene.player?.isShieldRaised?.() ||
                     !this.scene.player?.isSlashReady?.()
                 ) {
                     return;
@@ -1042,21 +1099,20 @@ export default class GameControls {
                 this.slashButtonContainer
                     ?.setScale(0.92);
 
-                this.scene.player?.slashOnce?.();
+                this.scene.player
+                    ?.slashOnce?.();
 
                 this.updateMobileSlashButtonState();
             }
         );
 
-        this.slashButtonBackground.on(
+        slashHitArea.on(
             'pointerup',
             (
-                _pointer:
-                    Phaser.Input.Pointer,
+                _pointer: Phaser.Input.Pointer,
                 _localX: number,
                 _localY: number,
-                event:
-                    Phaser.Types.Input.EventData
+                event: Phaser.Types.Input.EventData
             ) => {
                 event.stopPropagation();
 
@@ -1065,7 +1121,7 @@ export default class GameControls {
             }
         );
 
-        this.slashButtonBackground.on(
+        slashHitArea.on(
             'pointerout',
             () => {
                 this.slashButtonContainer
@@ -1073,7 +1129,7 @@ export default class GameControls {
             }
         );
 
-        this.slashButtonBackground.on(
+        slashHitArea.on(
             'pointerupoutside',
             () => {
                 this.slashButtonContainer
@@ -1099,7 +1155,7 @@ export default class GameControls {
         const ringRadius =
             buttonRadius + 7;
 
-        const isUnavailable =
+        const unavailable =
             !this.scene.allowInput ||
             this.scene.isGamePaused ||
             this.scene.isGameOver ||
@@ -1108,6 +1164,9 @@ export default class GameControls {
         const disabledByShield =
             this.scene.player
                 ?.isShieldRaised?.() === true;
+
+        const actionLocked =
+            this.isAbilityActionLocked();
 
         const cooldownRemaining =
             this.scene.player
@@ -1119,24 +1178,23 @@ export default class GameControls {
 
         this.slashCooldownGraphics.clear();
 
-        if (isUnavailable) {
+        if (unavailable) {
             this.slashButtonBackground
                 .setFillStyle(
-                    0x333333,
-                    0.9
+                    0x202020,
+                    0.95
                 );
 
             this.slashButtonIcon
-                .setAlpha(0.25);
+                .setColor('#666666')
+                .setAlpha(0.3);
 
             this.slashCooldownGraphics
                 .lineStyle(
-                    6,
-                    0x555555,
-                    0.85
-                );
-
-            this.slashCooldownGraphics
+                    7,
+                    0x444444,
+                    0.9
+                )
                 .strokeCircle(
                     0,
                     0,
@@ -1149,19 +1207,45 @@ export default class GameControls {
         if (disabledByShield) {
             this.slashButtonBackground
                 .setFillStyle(
-                    0x555b61,
-                    0.92
+                    0x3d4247,
+                    0.96
                 );
 
             this.slashButtonIcon
-                .setColor('#b5b5b5')
-                .setAlpha(0.55);
+                .setColor('#8f969c')
+                .setAlpha(0.45);
 
             this.slashCooldownGraphics
                 .lineStyle(
                     7,
-                    0x777777,
+                    0x626a70,
                     0.95
+                )
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
+
+            return;
+        }
+
+        if (actionLocked) {
+            this.slashButtonBackground
+                .setFillStyle(
+                    0x17131a,
+                    0.97
+                );
+
+            this.slashButtonIcon
+                .setColor('#706677')
+                .setAlpha(0.3);
+
+            this.slashCooldownGraphics
+                .lineStyle(
+                    7,
+                    0x48404d,
+                    1
                 )
                 .strokeCircle(
                     0,
@@ -1188,9 +1272,7 @@ export default class GameControls {
                     7,
                     0x160b1e,
                     0.95
-                );
-
-            this.slashCooldownGraphics
+                )
                 .strokeCircle(
                     0,
                     0,
@@ -1216,9 +1298,7 @@ export default class GameControls {
                     7,
                     0xb85cff,
                     1
-                );
-
-            this.slashCooldownGraphics
+                )
                 .beginPath();
 
             this.slashCooldownGraphics.arc(
@@ -1236,7 +1316,6 @@ export default class GameControls {
             return;
         }
 
-        // slash ready
         this.slashButtonBackground
             .setFillStyle(
                 0xf2f2f2,
@@ -1252,9 +1331,7 @@ export default class GameControls {
                 7,
                 0xffffff,
                 1
-            );
-
-        this.slashCooldownGraphics
+            )
             .strokeCircle(
                 0,
                 0,
@@ -1287,27 +1364,26 @@ export default class GameControls {
                 ?.isShieldRaised?.() === true;
 
         const actionLocked =
-            this.scene.player
-                ?.isActionLocked === true;
+            this.isAbilityActionLocked();
 
         this.attackCooldownGraphics.clear();
 
         if (unavailable) {
             this.attackButtonBackground
                 .setFillStyle(
-                    0x333333,
-                    0.9
+                    0x202020,
+                    0.95
                 );
 
             this.attackButtonIcon
-                .setColor('#777777')
-                .setAlpha(0.45);
+                .setColor('#666666')
+                .setAlpha(0.3);
 
             this.attackCooldownGraphics
                 .lineStyle(
-                    6,
-                    0x555555,
-                    0.85
+                    7,
+                    0x444444,
+                    0.9
                 )
                 .strokeCircle(
                     0,
@@ -1318,22 +1394,21 @@ export default class GameControls {
             return;
         }
 
-        // shield raised, disabled, on cooldown
         if (disabledByShield) {
             this.attackButtonBackground
                 .setFillStyle(
-                    0x555b61,
-                    0.92
+                    0x3d4247,
+                    0.96
                 );
 
             this.attackButtonIcon
-                .setColor('#b5b5b5')
-                .setAlpha(0.55);
+                .setColor('#8f969c')
+                .setAlpha(0.45);
 
             this.attackCooldownGraphics
                 .lineStyle(
                     7,
-                    0x777777,
+                    0x626a70,
                     0.95
                 )
                 .strokeCircle(
@@ -1348,19 +1423,19 @@ export default class GameControls {
         if (actionLocked) {
             this.attackButtonBackground
                 .setFillStyle(
-                    0x4f1717,
-                    0.95
+                    0x251010,
+                    0.97
                 );
 
             this.attackButtonIcon
-                .setColor('#ffffff')
-                .setAlpha(0.48);
+                .setColor('#7a5555')
+                .setAlpha(0.32);
 
             this.attackCooldownGraphics
                 .lineStyle(
                     7,
-                    0x2b0b0b,
-                    0.95
+                    0x4a2727,
+                    1
                 )
                 .strokeCircle(
                     0,
@@ -1390,11 +1465,9 @@ export default class GameControls {
             this.attackCooldownGraphics
                 .lineStyle(
                     7,
-                    0xff3b30,
-                    1
-                );
-
-            this.attackCooldownGraphics
+                    0x8a3434,
+                    0.8
+                )
                 .beginPath();
 
             this.attackCooldownGraphics.arc(
@@ -1645,7 +1718,8 @@ export default class GameControls {
         }
 
         const radius = 44;
-        const ringRadius = radius + 6;
+        const ringRadius =
+            radius + 6;
 
         const unavailable =
             !this.scene.allowInput ||
@@ -1658,29 +1732,27 @@ export default class GameControls {
                 ?.isShieldRaised?.() === true;
 
         const actionLocked =
-            this.scene.player
-                ?.isActionLocked === true;
+            this.isAbilityActionLocked();
 
         this.desktopAttackCooldown.clear();
 
         if (unavailable) {
             this.desktopAttackBackground
                 .setFillStyle(
-                    0x333333,
-                    0.9
+                    0x202020,
+                    0.97
                 );
 
             this.desktopAttackIcon
-                .setAlpha(0.25);
+                .setColor('#666666')
+                .setAlpha(0.3);
 
             this.desktopAttackCooldown
                 .lineStyle(
                     6,
-                    0x555555,
-                    0.85
-                );
-
-            this.desktopAttackCooldown
+                    0x444444,
+                    0.95
+                )
                 .strokeCircle(
                     0,
                     0,
@@ -1689,21 +1761,22 @@ export default class GameControls {
 
             return;
         }
+
         if (disabledByShield) {
             this.desktopAttackBackground
                 .setFillStyle(
-                    0x555b61,
-                    0.92
+                    0x3d4247,
+                    0.97
                 );
 
             this.desktopAttackIcon
-                .setColor('#b5b5b5')
-                .setAlpha(0.55);
+                .setColor('#8f969c')
+                .setAlpha(0.45);
 
             this.desktopAttackCooldown
                 .lineStyle(
                     6,
-                    0x777777,
+                    0x626a70,
                     0.95
                 )
                 .strokeCircle(
@@ -1718,21 +1791,20 @@ export default class GameControls {
         if (actionLocked) {
             this.desktopAttackBackground
                 .setFillStyle(
-                    0x4f1717,
-                    0.95
+                    0x251010,
+                    0.98
                 );
 
             this.desktopAttackIcon
-                .setAlpha(0.42);
+                .setColor('#7a5555')
+                .setAlpha(0.3);
 
             this.desktopAttackCooldown
                 .lineStyle(
                     6,
-                    0x2b0b0b,
-                    0.95
-                );
-
-            this.desktopAttackCooldown
+                    0x4a2727,
+                    1
+                )
                 .strokeCircle(
                     0,
                     0,
@@ -1761,11 +1833,9 @@ export default class GameControls {
             this.desktopAttackCooldown
                 .lineStyle(
                     6,
-                    0xff3b30,
-                    1
-                );
-
-            this.desktopAttackCooldown
+                    0x8a3434,
+                    0.75
+                )
                 .beginPath();
 
             this.desktopAttackCooldown.arc(
@@ -1798,9 +1868,7 @@ export default class GameControls {
                 6,
                 0xffffff,
                 1
-            );
-
-        this.desktopAttackCooldown
+            )
             .strokeCircle(
                 0,
                 0,
@@ -1979,23 +2047,38 @@ export default class GameControls {
     }
 
     private createMobileDashButton(): void {
-        const buttonX =
-            this.scene.scale.width - 385;
-
-        const buttonY =
-            this.scene.scale.height - 115;
-
         const buttonRadius = 48;
+
+        const hitRadius =
+            buttonRadius +
+            this.mobileButtonHitPadding;
 
         this.dashButtonContainer =
             this.scene.add.container(
-                buttonX,
-                buttonY
+                0,
+                0
             );
 
         this.dashButtonContainer
             .setScrollFactor(0)
             .setDepth(2001);
+
+        const dashHitArea =
+            this.scene.add.zone(
+                0,
+                0,
+                hitRadius * 2,
+                hitRadius * 2
+            );
+
+        dashHitArea.setInteractive(
+            new Phaser.Geom.Circle(
+                hitRadius,
+                hitRadius,
+                hitRadius
+            ),
+            Phaser.Geom.Circle.Contains
+        );
 
         this.dashButtonBackground =
             this.scene.add.circle(
@@ -2006,20 +2089,11 @@ export default class GameControls {
                 0.92
             );
 
-        this.dashButtonBackground
-            .setStrokeStyle(
-                3,
-                0xffffff,
-                0.9
-            )
-            .setInteractive(
-                new Phaser.Geom.Circle(
-                    buttonRadius,
-                    buttonRadius,
-                    buttonRadius
-                ),
-                Phaser.Geom.Circle.Contains
-            );
+        this.dashButtonBackground.setStrokeStyle(
+            3,
+            0xffffff,
+            0.9
+        );
 
         this.dashButtonIcon =
             this.scene.add.text(
@@ -2040,20 +2114,19 @@ export default class GameControls {
             this.scene.add.graphics();
 
         this.dashButtonContainer.add([
+            dashHitArea,
             this.dashButtonBackground,
             this.dashButtonIcon,
             this.dashCooldownGraphics
         ]);
 
-        this.dashButtonBackground.on(
+        dashHitArea.on(
             'pointerdown',
             (
-                _pointer:
-                    Phaser.Input.Pointer,
+                _pointer: Phaser.Input.Pointer,
                 _localX: number,
                 _localY: number,
-                event:
-                    Phaser.Types.Input.EventData
+                event: Phaser.Types.Input.EventData
             ) => {
                 event.stopPropagation();
 
@@ -2063,6 +2136,8 @@ export default class GameControls {
                     this.scene.isGamePaused ||
                     this.scene.isGameOver ||
                     this.scene.player?.isDead ||
+                    this.scene.player?.isActionLocked ||
+                    this.scene.player?.isShieldRaised?.() ||
                     !this.scene.player?.isDashReady?.()
                 ) {
                     return;
@@ -2078,15 +2153,13 @@ export default class GameControls {
             }
         );
 
-        this.dashButtonBackground.on(
+        dashHitArea.on(
             'pointerup',
             (
-                _pointer:
-                    Phaser.Input.Pointer,
+                _pointer: Phaser.Input.Pointer,
                 _localX: number,
                 _localY: number,
-                event:
-                    Phaser.Types.Input.EventData
+                event: Phaser.Types.Input.EventData
             ) => {
                 event.stopPropagation();
 
@@ -2095,7 +2168,7 @@ export default class GameControls {
             }
         );
 
-        this.dashButtonBackground.on(
+        dashHitArea.on(
             'pointerout',
             () => {
                 this.dashButtonContainer
@@ -2103,7 +2176,7 @@ export default class GameControls {
             }
         );
 
-        this.dashButtonBackground.on(
+        dashHitArea.on(
             'pointerupoutside',
             () => {
                 this.dashButtonContainer
@@ -2139,6 +2212,9 @@ export default class GameControls {
             this.scene.player
                 ?.isShieldRaised?.() === true;
 
+        const actionLocked =
+            this.isAbilityActionLocked();
+
         const cooldownRemaining =
             this.scene.player
                 ?.getDashCooldownRemaining?.() ??
@@ -2152,18 +2228,19 @@ export default class GameControls {
         if (unavailable) {
             this.dashButtonBackground
                 .setFillStyle(
-                    0x333333,
-                    0.9
+                    0x202020,
+                    0.95
                 );
 
             this.dashButtonIcon
-                .setAlpha(0.25);
+                .setColor('#666666')
+                .setAlpha(0.3);
 
             this.dashCooldownGraphics
                 .lineStyle(
-                    6,
-                    0x555555,
-                    0.85
+                    7,
+                    0x444444,
+                    0.9
                 )
                 .strokeCircle(
                     0,
@@ -2173,21 +2250,22 @@ export default class GameControls {
 
             return;
         }
+
         if (disabledByShield) {
             this.dashButtonBackground
                 .setFillStyle(
-                    0x555b61,
-                    0.92
+                    0x3d4247,
+                    0.96
                 );
 
             this.dashButtonIcon
-                .setColor('#b5b5b5')
-                .setAlpha(0.55);
+                .setColor('#8f969c')
+                .setAlpha(0.45);
 
             this.dashCooldownGraphics
                 .lineStyle(
                     7,
-                    0x777777,
+                    0x626a70,
                     0.95
                 )
                 .strokeCircle(
@@ -2198,6 +2276,33 @@ export default class GameControls {
 
             return;
         }
+
+        if (actionLocked) {
+            this.dashButtonBackground
+                .setFillStyle(
+                    0x101619,
+                    0.97
+                );
+
+            this.dashButtonIcon
+                .setColor('#5f7077')
+                .setAlpha(0.3);
+
+            this.dashCooldownGraphics
+                .lineStyle(
+                    7,
+                    0x39474d,
+                    1
+                )
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
+
+            return;
+        }
+
         if (coolingDown) {
             this.dashButtonBackground
                 .setFillStyle(
@@ -2240,9 +2345,7 @@ export default class GameControls {
                     7,
                     0x50c8ff,
                     1
-                );
-
-            this.dashCooldownGraphics
+                )
                 .beginPath();
 
             this.dashCooldownGraphics.arc(
@@ -2301,9 +2404,14 @@ export default class GameControls {
             this.scene.isGamePaused ||
             this.scene.isGameOver ||
             this.scene.player?.isDead;
+
         const disabledByShield =
             this.scene.player
                 ?.isShieldRaised?.() === true;
+
+        const actionLocked =
+            this.isAbilityActionLocked();
+
         const cooldownRemaining =
             this.scene.player
                 ?.getDashCooldownRemaining?.() ??
@@ -2317,42 +2425,18 @@ export default class GameControls {
         if (unavailable) {
             this.desktopDashBackground
                 .setFillStyle(
-                    0x333333,
-                    0.9
+                    0x202020,
+                    0.97
                 );
 
             this.desktopDashIcon
-                .setAlpha(0.25);
+                .setColor('#666666')
+                .setAlpha(0.3);
 
             this.desktopDashCooldown
                 .lineStyle(
                     6,
-                    0x555555,
-                    0.85
-                )
-                .strokeCircle(
-                    0,
-                    0,
-                    ringRadius
-                );
-
-            return;
-        }
-        if (disabledByShield) {
-            this.desktopDashBackground
-                .setFillStyle(
-                    0x555b61,
-                    0.92
-                );
-
-            this.desktopDashIcon
-                .setColor('#b5b5b5')
-                .setAlpha(0.55);
-
-            this.desktopDashCooldown
-                .lineStyle(
-                    6,
-                    0x777777,
+                    0x444444,
                     0.95
                 )
                 .strokeCircle(
@@ -2363,6 +2447,59 @@ export default class GameControls {
 
             return;
         }
+
+        if (disabledByShield) {
+            this.desktopDashBackground
+                .setFillStyle(
+                    0x3d4247,
+                    0.97
+                );
+
+            this.desktopDashIcon
+                .setColor('#8f969c')
+                .setAlpha(0.45);
+
+            this.desktopDashCooldown
+                .lineStyle(
+                    6,
+                    0x626a70,
+                    0.95
+                )
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
+
+            return;
+        }
+
+        if (actionLocked) {
+            this.desktopDashBackground
+                .setFillStyle(
+                    0x101619,
+                    0.98
+                );
+
+            this.desktopDashIcon
+                .setColor('#5f7077')
+                .setAlpha(0.3);
+
+            this.desktopDashCooldown
+                .lineStyle(
+                    6,
+                    0x39474d,
+                    1
+                )
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
+
+            return;
+        }
+
         if (coolingDown) {
             this.desktopDashBackground
                 .setFillStyle(
@@ -2371,6 +2508,7 @@ export default class GameControls {
                 );
 
             this.desktopDashIcon
+                .setColor('#5da9c7')
                 .setAlpha(0.42);
 
             this.desktopDashCooldown
@@ -2404,9 +2542,7 @@ export default class GameControls {
                     6,
                     0x50c8ff,
                     1
-                );
-
-            this.desktopDashCooldown
+                )
                 .beginPath();
 
             this.desktopDashCooldown.arc(
@@ -2448,23 +2584,38 @@ export default class GameControls {
     }
 
     private createMobileShieldButton(): void {
-        const buttonX =
-            this.scene.scale.width - 115;
-
-        const buttonY =
-            this.scene.scale.height - 250;
-
         const buttonRadius = 48;
+
+        const hitRadius =
+            buttonRadius +
+            this.mobileButtonHitPadding;
 
         this.shieldButtonContainer =
             this.scene.add.container(
-                buttonX,
-                buttonY
+                0,
+                0
             );
 
         this.shieldButtonContainer
             .setScrollFactor(0)
             .setDepth(2001);
+
+        const shieldHitArea =
+            this.scene.add.zone(
+                0,
+                0,
+                hitRadius * 2,
+                hitRadius * 2
+            );
+
+        shieldHitArea.setInteractive(
+            new Phaser.Geom.Circle(
+                hitRadius,
+                hitRadius,
+                hitRadius
+            ),
+            Phaser.Geom.Circle.Contains
+        );
 
         this.shieldButtonBackground =
             this.scene.add.circle(
@@ -2475,20 +2626,11 @@ export default class GameControls {
                 0.92
             );
 
-        this.shieldButtonBackground
-            .setStrokeStyle(
-                3,
-                0xffffff,
-                0.9
-            )
-            .setInteractive(
-                new Phaser.Geom.Circle(
-                    buttonRadius,
-                    buttonRadius,
-                    buttonRadius
-                ),
-                Phaser.Geom.Circle.Contains
-            );
+        this.shieldButtonBackground.setStrokeStyle(
+            3,
+            0xffffff,
+            0.9
+        );
 
         this.shieldButtonText =
             this.scene.add.text(
@@ -2502,26 +2644,26 @@ export default class GameControls {
                     fontStyle: 'bold'
                 }
             )
-                .setOrigin(0.5);
+                .setOrigin(0.5)
+                .disableInteractive();
 
         this.shieldStateGraphics =
             this.scene.add.graphics();
 
         this.shieldButtonContainer.add([
+            shieldHitArea,
             this.shieldButtonBackground,
             this.shieldButtonText,
             this.shieldStateGraphics
         ]);
 
-        this.shieldButtonBackground.on(
+        shieldHitArea.on(
             'pointerdown',
             (
-                _pointer:
-                    Phaser.Input.Pointer,
+                _pointer: Phaser.Input.Pointer,
                 _localX: number,
                 _localY: number,
-                event:
-                    Phaser.Types.Input.EventData
+                event: Phaser.Types.Input.EventData
             ) => {
                 event.stopPropagation();
 
@@ -2546,15 +2688,22 @@ export default class GameControls {
             }
         );
 
-        this.shieldButtonBackground.on(
+        shieldHitArea.on(
             'pointerup',
-            () => {
+            (
+                _pointer: Phaser.Input.Pointer,
+                _localX: number,
+                _localY: number,
+                event: Phaser.Types.Input.EventData
+            ) => {
+                event.stopPropagation();
+
                 this.shieldButtonContainer
                     ?.setScale(1);
             }
         );
 
-        this.shieldButtonBackground.on(
+        shieldHitArea.on(
             'pointerout',
             () => {
                 this.shieldButtonContainer
@@ -2562,7 +2711,7 @@ export default class GameControls {
             }
         );
 
-        this.shieldButtonBackground.on(
+        shieldHitArea.on(
             'pointerupoutside',
             () => {
                 this.shieldButtonContainer
@@ -2584,13 +2733,17 @@ export default class GameControls {
         }
 
         const buttonRadius = 48;
-        const ringRadius = buttonRadius + 7;
+        const ringRadius =
+            buttonRadius + 7;
 
         const unavailable =
             !this.scene.allowInput ||
             this.scene.isGamePaused ||
             this.scene.isGameOver ||
             this.scene.player?.isDead;
+
+        const actionLocked =
+            this.isAbilityActionLocked();
 
         const shieldRaised =
             this.scene.player
@@ -2601,18 +2754,49 @@ export default class GameControls {
         if (unavailable) {
             this.shieldButtonBackground
                 .setFillStyle(
-                    0x333333,
-                    0.9
+                    0x202020,
+                    0.95
                 );
 
             this.shieldButtonText
-                .setColor('#777777');
+                .setColor('#666666')
+                .setAlpha(0.3);
 
             this.shieldStateGraphics
                 .lineStyle(
                     7,
-                    0x555555,
+                    0x444444,
                     0.9
+                )
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
+
+            return;
+        }
+
+        if (
+            actionLocked &&
+            !shieldRaised
+        ) {
+            this.shieldButtonBackground
+                .setFillStyle(
+                    0x15191c,
+                    0.97
+                );
+
+            this.shieldButtonText
+                .setColor('#687177')
+                .setAlpha(0.3)
+                .setText('SHIELD');
+
+            this.shieldStateGraphics
+                .lineStyle(
+                    7,
+                    0x41494e,
+                    1
                 )
                 .strokeCircle(
                     0,
@@ -2632,6 +2816,7 @@ export default class GameControls {
 
             this.shieldButtonText
                 .setColor('#ffffff')
+                .setAlpha(1)
                 .setText('LOWER');
 
             this.shieldStateGraphics
@@ -2657,6 +2842,7 @@ export default class GameControls {
 
         this.shieldButtonText
             .setColor('#1a2633')
+            .setAlpha(1)
             .setText('SHIELD');
 
         this.shieldStateGraphics
@@ -2768,13 +2954,17 @@ export default class GameControls {
         }
 
         const radius = 44;
-        const ringRadius = radius + 6;
+        const ringRadius =
+            radius + 6;
 
         const unavailable =
             !this.scene.allowInput ||
             this.scene.isGamePaused ||
             this.scene.isGameOver ||
             this.scene.player?.isDead;
+
+        const actionLocked =
+            this.isAbilityActionLocked();
 
         const shieldRaised =
             this.scene.player
@@ -2785,18 +2975,50 @@ export default class GameControls {
         if (unavailable) {
             this.desktopShieldBackground
                 .setFillStyle(
-                    0x333333,
-                    0.9
+                    0x202020,
+                    0.97
                 );
 
             this.desktopShieldIcon
-                .setColor('#777777');
+                .setColor('#666666')
+                .setAlpha(0.3)
+                .setText('SHIELD');
 
             this.desktopShieldState
                 .lineStyle(
                     6,
-                    0x555555,
-                    0.85
+                    0x444444,
+                    0.95
+                )
+                .strokeCircle(
+                    0,
+                    0,
+                    ringRadius
+                );
+
+            return;
+        }
+
+        if (
+            actionLocked &&
+            !shieldRaised
+        ) {
+            this.desktopShieldBackground
+                .setFillStyle(
+                    0x15191c,
+                    0.98
+                );
+
+            this.desktopShieldIcon
+                .setColor('#687177')
+                .setAlpha(0.3)
+                .setText('SHIELD');
+
+            this.desktopShieldState
+                .lineStyle(
+                    6,
+                    0x41494e,
+                    1
                 )
                 .strokeCircle(
                     0,
@@ -2816,6 +3038,7 @@ export default class GameControls {
 
             this.desktopShieldIcon
                 .setColor('#ffffff')
+                .setAlpha(1)
                 .setText('LOWER');
 
             this.desktopShieldState
@@ -2841,6 +3064,7 @@ export default class GameControls {
 
         this.desktopShieldIcon
             .setColor('#1a2633')
+            .setAlpha(1)
             .setText('SHIELD');
 
         this.desktopShieldState
@@ -2856,5 +3080,78 @@ export default class GameControls {
             );
     }
 
+    private positionMobileControls(
+        width: number,
+        height: number
+    ): void {
+        const horizontalSafeArea =
+            Phaser.Math.Clamp(
+                width * 0.025,
+                24,
+                42
+            );
+
+        const verticalSafeArea =
+            Phaser.Math.Clamp(
+                height * 0.035,
+                22,
+                38
+            );
+
+        this.joystickHomeX =
+            horizontalSafeArea + 82;
+
+        this.joystickHomeY =
+            height -
+            verticalSafeArea -
+            82;
+
+        if (this.joystickPointerId === null) {
+            this.joystickBase?.setPosition(
+                this.joystickHomeX,
+                this.joystickHomeY
+            );
+
+            this.joystickKnob?.setPosition(
+                this.joystickHomeX,
+                this.joystickHomeY
+            );
+        }
+
+        const attackX =
+            width -
+            this.mobileRightSafePadding;
+
+        const attackY =
+            height -
+            verticalSafeArea -
+            82;
+
+        this.attackButtonContainer?.setPosition(
+            attackX,
+            attackY
+        );
+
+        this.dashButtonContainer?.setPosition(
+            attackX - 145,
+            attackY
+        );
+
+        this.slashButtonContainer?.setPosition(
+            attackX - 125,
+            attackY - 125
+        );
+
+        this.shieldButtonContainer?.setPosition(
+            attackX,
+            attackY - 150
+        );
+    }
+
+    private isAbilityActionLocked(): boolean {
+        return (
+            this.scene.player?.isActionLocked === true
+        );
+    }
 
 }

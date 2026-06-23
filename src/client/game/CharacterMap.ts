@@ -35,7 +35,7 @@ const characterMap: Record<number, any> = {
         tier: 'easy',
         health: 17000,
         damage: 20,
-        range: 150,
+        range: 75,
         speed: 180,
         attackSpeed: 1.08,
         attackCount: 1,

@@ -136,9 +136,6 @@ export class Game extends Scene {
     this.catastrophe
       .startStormTimer();
 
-    this.catastrophe
-      .drawstormShelter();
-
     if (
       this.scene.isActive(
         'BattleUI'

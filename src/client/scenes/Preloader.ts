@@ -105,7 +105,6 @@ export class Preloader extends Scene {
 
     this.load.image('mouse_cursor', 'images/mouse_cursor.png');
     this.load.image('mouse_cursor_attack', 'images/mouse_cursor_attack.png');
-    this.load.image('storm_shelter', 'images/storm_shelter.png');
 
 
     this.load.spritesheet('character1', 'sprites/character_1.png', { frameWidth: 400, frameHeight: 400 });

@@ -26,8 +26,6 @@ class Catastrophe {
     fireballTimer: any;
     isStorming: any;
 
-    stormShelter: any;
-
     constructor(scene: any, baseLevel: number) {
         this.stormInterval = 12000;
         this.baseDamage = 1;
@@ -45,11 +43,6 @@ class Catastrophe {
         this.damage = Math.round(this.baseDamage * Math.pow(1.2, this.baseLevel - 1));
         this.activeStormEffects = 0;
         this.timerStarted = false;
-        this.stormShelter = {
-            centerX: 512,
-            centerY: 384,
-            radius: 100
-        };
     }
 
     startStormTimer() {
@@ -123,8 +116,7 @@ class Catastrophe {
         let playerPos = this.scene.player.getPosition();
         let distanceToPlayer = Phaser.Math.Distance.Between(x, y, playerPos.x, playerPos.y);
 
-        let distanceTostormShelter = Phaser.Math.Distance.Between(playerPos.x, playerPos.y, this.stormShelter.centerX, this.stormShelter.centerY);
-        if (distanceToPlayer <= radius && distanceTostormShelter > this.stormShelter.radius) {
+        if (distanceToPlayer <= radius) {
             // Player is within fireball impact zone but not in the safe zone
             this.scene.player.takeDamage(this.damage, 'catastrophe');
         }
@@ -165,12 +157,6 @@ class Catastrophe {
     updateDamage(newBaseLevel: number) {
         this.damage = Math.round(this.baseDamage * (1 + (newBaseLevel - 1) * 0.2)); // linear increase approach
         this.damage = Math.round(this.baseDamage * Math.pow(1.2, newBaseLevel - 1)); // compounded increase approach using exponential function
-    }
-
-    drawstormShelter() {
-        let circle = this.scene.add.circle(this.stormShelter.centerX, this.stormShelter.centerY, this.stormShelter.radius);
-        circle.setStrokeStyle(4, 0x0000ff, 0.5);
-        let shelter = this.scene.add.sprite(this.stormShelter.centerX, this.stormShelter.centerY, 'storm_shelter').setScale(0.4).setDepth(0);
     }
 
     update(time: number, delta: number) {

@@ -83,6 +83,12 @@ class Player {
     isJoystickMoving: boolean;
     abilities: PlayerAbilities;
 
+    shieldIndicator:
+        Phaser.GameObjects.Graphics | null;
+
+    shieldIndicatorRadius: number;
+    shieldIndicatorOffset: number;
+    shieldIndicatorHalfAngle: number;
 
     constructor(
         scene: any,
@@ -158,7 +164,13 @@ class Player {
         this.hasAppliedAttackDamage = false;
         this.isJoystickMoving = false;
 
+        this.shieldIndicator = null;
 
+        this.shieldIndicatorRadius = 115;
+
+        this.shieldIndicatorOffset = 18;
+        this.shieldIndicatorHalfAngle =
+            Phaser.Math.DegToRad(55);
     }
 
     create(): void {
@@ -216,8 +228,8 @@ class Player {
 
         this.robotSprite
             .setOrigin(0.5, 0.5)
-            .setScale(1)
-            .setDepth(1);
+            .setScale(0.75)
+            .setDepth(10);
 
         const idleAnimations = [
             {
@@ -461,6 +473,7 @@ class Player {
         this.createHealthBar();
 
         this.createAttackIndicator();
+        this.createShieldIndicator();
         this.abilities.create();
 
         this.healTimer =
@@ -578,6 +591,7 @@ class Player {
             );
         }
         this.updateAttackIndicator();
+        this.updateShieldIndicator();
 
         const distance =
             Phaser.Math.Distance.Between(
@@ -617,6 +631,7 @@ class Player {
                 onUpdate: () => {
                     this.updatePosition();
                     this.updateAttackIndicator();
+                    this.updateShieldIndicator();
                 },
 
                 onComplete: () => {
@@ -638,6 +653,7 @@ class Player {
                     );
 
                     this.updateAttackIndicator();
+                    this.updateShieldIndicator();
 
                     if (onCompleteCallback) {
                         onCompleteCallback();
@@ -1000,8 +1016,10 @@ class Player {
 
     update(time: number, delta: number): void {
 
-        this.updateAttackIndicator();
         this.abilities.update();
+
+        this.updateAttackIndicator();
+        this.updateShieldIndicator();
         const isTweenMoving =
             this.currentTween &&
             this.currentTween.isPlaying();
@@ -1208,11 +1226,25 @@ class Player {
     updateAttackIndicator(): void {
         if (
             !this.attackIndicator ||
-            !this.robotSprite ||
-            this.isDead
+            !this.robotSprite
         ) {
             return;
         }
+
+        const shouldHide =
+            this.isDead ||
+            this.abilities?.isShieldRaised === true ||
+            this.isActionLocked;
+
+        if (shouldHide) {
+            this.attackIndicator
+                .clear()
+                .setVisible(false);
+
+            return;
+        }
+
+        this.attackIndicator.setVisible(true);
 
         const direction =
             this.lastDirection ||
@@ -1223,46 +1255,72 @@ class Player {
                 direction
             );
 
-        const angle =
+        const facingAngle =
             Math.atan2(
                 vector.y,
                 vector.x
             );
 
+        const halfArc =
+            Phaser.Math.DegToRad(40); // 80 deg total
+
+        const startAngle =
+            facingAngle - halfArc;
+
+        const endAngle =
+            facingAngle + halfArc;
+
+        const originX =
+            this.robotSprite.x +
+            vector.x *
+            this.attackIndicatorOffset;
+
+        const originY =
+            this.robotSprite.y +
+            vector.y *
+            this.attackIndicatorOffset;
+
         this.attackIndicator.clear();
 
         this.attackIndicator.fillStyle(
             0xff3b30,
-            0.10
+            0.08
         );
 
         this.attackIndicator.lineStyle(
             2,
-            0xff3b30,
-            0.65
+            0xff6b61,
+            0.38
         );
 
-        this.attackIndicator.fillRect(
-            this.attackIndicatorOffset,
-            -this.attackIndicatorWidth / 2,
-            this.range,
-            this.attackIndicatorWidth
+        this.attackIndicator.beginPath();
+
+        this.attackIndicator.moveTo(
+            originX,
+            originY
         );
 
-        this.attackIndicator.strokeRect(
-            this.attackIndicatorOffset,
-            -this.attackIndicatorWidth / 2,
+        this.attackIndicator.arc(
+            originX,
+            originY,
             this.range,
-            this.attackIndicatorWidth
+            startAngle,
+            endAngle,
+            false
         );
+
+        this.attackIndicator.closePath();
+
+        this.attackIndicator.fillPath();
+        this.attackIndicator.strokePath();
 
         this.attackIndicator.setPosition(
-            this.robotSprite.x,
-            this.robotSprite.y
+            0,
+            0
         );
 
         this.attackIndicator.setRotation(
-            angle
+            0
         );
     }
 
@@ -1634,6 +1692,7 @@ class Player {
 
         this.updatePosition();
         this.updateAttackIndicator();
+        this.updateShieldIndicator();
 
         this.lastActionTime =
             this.scene.activeGameTime;
@@ -1676,6 +1735,7 @@ class Player {
         }
 
         this.updateAttackIndicator();
+        this.updateShieldIndicator();
     }
 
     determineDirectionFromVector(
@@ -1740,6 +1800,174 @@ class Player {
         }
 
         return 'northeast';
+    }
+
+    createShieldIndicator(): void {
+        if (this.shieldIndicator) {
+            this.shieldIndicator.destroy();
+        }
+
+        this.shieldIndicator =
+            this.scene.add.graphics();
+
+        this.shieldIndicator?.setDepth(9);
+
+        this.updateShieldIndicator();
+    }
+
+    updateShieldIndicator(): void {
+        if (
+            !this.shieldIndicator ||
+            !this.robotSprite
+        ) {
+            return;
+        }
+
+        const shouldShow =
+            !this.isDead &&
+            this.abilities?.isShieldRaised === true;
+
+        if (!shouldShow) {
+            this.shieldIndicator
+                .clear()
+                .setVisible(false);
+
+            return;
+        }
+
+        this.shieldIndicator.setVisible(true);
+
+        const direction =
+            this.lastDirection ||
+            'south';
+
+        const vector =
+            this.getDirectionVector(
+                direction
+            );
+
+        const facingAngle =
+            Math.atan2(
+                vector.y,
+                vector.x
+            );
+
+        const startAngle =
+            facingAngle -
+            this.shieldIndicatorHalfAngle;
+
+        const endAngle =
+            facingAngle +
+            this.shieldIndicatorHalfAngle;
+
+        const originX =
+            this.robotSprite.x +
+            vector.x *
+            this.shieldIndicatorOffset;
+
+        const originY =
+            this.robotSprite.y +
+            vector.y *
+            this.shieldIndicatorOffset;
+
+        this.shieldIndicator.clear();
+
+        // cyan
+        this.shieldIndicator.fillStyle(
+            0x50c8ff,
+            0.12
+        );
+
+        this.shieldIndicator.beginPath();
+
+        this.shieldIndicator.moveTo(
+            originX,
+            originY
+        );
+
+        this.shieldIndicator.arc(
+            originX,
+            originY,
+            this.shieldIndicatorRadius,
+            startAngle,
+            endAngle,
+            false
+        );
+
+        this.shieldIndicator.closePath();
+        this.shieldIndicator.fillPath();
+
+        this.shieldIndicator.lineStyle(
+            5,
+            0x50c8ff,
+            0.85
+        );
+
+        this.shieldIndicator.beginPath();
+
+        this.shieldIndicator.arc(
+            originX,
+            originY,
+            this.shieldIndicatorRadius,
+            startAngle,
+            endAngle,
+            false
+        );
+
+        this.shieldIndicator.strokePath();
+
+        this.shieldIndicator.lineStyle(
+            2,
+            0xbceeff,
+            0.35
+        );
+
+        this.shieldIndicator.beginPath();
+
+        this.shieldIndicator.moveTo(
+            originX,
+            originY
+        );
+
+        this.shieldIndicator.lineTo(
+            originX +
+            Math.cos(startAngle) *
+            this.shieldIndicatorRadius,
+
+            originY +
+            Math.sin(startAngle) *
+            this.shieldIndicatorRadius
+        );
+
+        this.shieldIndicator.strokePath();
+
+        this.shieldIndicator.beginPath();
+
+        this.shieldIndicator.moveTo(
+            originX,
+            originY
+        );
+
+        this.shieldIndicator.lineTo(
+            originX +
+            Math.cos(endAngle) *
+            this.shieldIndicatorRadius,
+
+            originY +
+            Math.sin(endAngle) *
+            this.shieldIndicatorRadius
+        );
+
+        this.shieldIndicator.strokePath();
+
+        this.shieldIndicator.setPosition(
+            0,
+            0
+        );
+
+        this.shieldIndicator.setRotation(
+            0
+        );
     }
 
     slashOnce(): void {

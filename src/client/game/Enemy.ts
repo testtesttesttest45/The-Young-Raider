@@ -438,7 +438,7 @@ class Enemy {
 
         this.sprite
             .setOrigin(0.5, 0.5)
-            .setScale(1)
+            .setScale(0.75)
             .setDepth(1);
 
         this.lastDirection = 'south';

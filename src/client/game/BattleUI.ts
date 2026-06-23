@@ -134,7 +134,7 @@ export default class BattleUI extends Scene {
         this.baseRebuilding = false;
         this.isMultiplierPaused = false;
         this.cash = 0;
-       
+
         this.playerHealthBaseText = null;
         this.playerHealthBonusText = null;
         this.gameDataSaved = false;
@@ -192,8 +192,8 @@ export default class BattleUI extends Scene {
                 0,
                 width,
                 HUD_HEIGHT,
-                0x111a26,
-                0.62
+                0x29445c,
+                0.38
             )
             .setOrigin(0, 0)
             .setScrollFactor(0)
@@ -229,18 +229,28 @@ export default class BattleUI extends Scene {
         const sectionY = 8;
         const sectionHeight = HUD_HEIGHT - 18;
 
-        const leftSectionX = 12;
-        const leftSectionWidth = 360;
+        const sectionGap = 10;
 
-        const rightSectionWidth = 300;
+        const leftSectionX = 12;
+        const leftSectionWidth = 430;
+
+        const rightSectionWidth = 280;
         const rightSectionX =
-            width - rightSectionWidth - 12;
+            width -
+            rightSectionWidth -
+            12;
 
         const centerSectionX =
-            leftSectionX + leftSectionWidth + 12;
+            leftSectionX +
+            leftSectionWidth +
+            sectionGap;
 
         const centerSectionWidth =
-            rightSectionX - centerSectionX - 12;
+            rightSectionX -
+            centerSectionX -
+            sectionGap;
+
+
         // Section backgrounds
         this.add
             .rectangle(
@@ -248,8 +258,8 @@ export default class BattleUI extends Scene {
                 sectionY,
                 leftSectionWidth,
                 sectionHeight,
-                0x162231,
-                0.9
+                0x31536d,
+                0.58
             )
             .setOrigin(0, 0)
             .setStrokeStyle(1, 0x3b6685, 0.9)
@@ -262,8 +272,8 @@ export default class BattleUI extends Scene {
                 sectionY,
                 centerSectionWidth,
                 sectionHeight,
-                0x162231,
-                0.9
+                0x31536d,
+                0.58
             )
             .setOrigin(0, 0)
             .setStrokeStyle(1, 0x3b6685, 0.9)
@@ -276,16 +286,37 @@ export default class BattleUI extends Scene {
                 sectionY,
                 rightSectionWidth,
                 sectionHeight,
-                0x162231,
-                0.9
+                0x31536d,
+                0.58
             )
             .setOrigin(0, 0)
-            .setStrokeStyle(1, 0x3b6685, 0.9)
+            .setStrokeStyle(1, 0x72b4dc,
+                0.75)
             .setScrollFactor(0)
             .setDepth(HUD_DEPTH + 1);
 
-        const playerIconX = leftSectionX + 12;
-        const playerTextX = leftSectionX + 78;
+        const playerIconX =
+            leftSectionX + 12;
+
+        const playerTextX =
+            leftSectionX + 78;
+
+        const playerSectionRight =
+            leftSectionX +
+            leftSectionWidth -
+            12;
+
+        const leftStatX =
+            playerTextX;
+
+        const leftBonusX =
+            playerTextX + 112;
+
+        const rightStatX =
+            playerTextX + 175;
+
+        const rightBonusX =
+            playerSectionRight;
 
         this.playerIcon = this.add
             .image(
@@ -313,7 +344,7 @@ export default class BattleUI extends Scene {
 
         this.playerHealthText = this.add
             .text(
-                playerTextX,
+                leftStatX,
                 39,
                 'Health: --/--',
                 {
@@ -326,7 +357,7 @@ export default class BattleUI extends Scene {
 
         this.playerHealthBonusText = this.add
             .text(
-                playerTextX + 160,
+                playerSectionRight,
                 39,
                 '',
                 {
@@ -334,12 +365,13 @@ export default class BattleUI extends Scene {
                     color: '#31b8ff'
                 }
             )
+            .setOrigin(1, 0)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
         this.playerDamageText = this.add
             .text(
-                playerTextX,
+                leftStatX,
                 64,
                 'Damage: --',
                 {
@@ -352,7 +384,7 @@ export default class BattleUI extends Scene {
 
         this.playerDamageBonusText = this.add
             .text(
-                playerTextX + 92,
+                leftBonusX,
                 64,
                 '',
                 {
@@ -360,14 +392,15 @@ export default class BattleUI extends Scene {
                     color: '#31b8ff'
                 }
             )
+            .setOrigin(0, 0)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
         this.playerAttackSpeedText = this.add
             .text(
-                playerTextX + 165,
+                rightStatX,
                 64,
-                'Attack: --',
+                'Attack Speed: --',
                 {
                     font: '12px Orbitron',
                     color: '#ffffff'
@@ -378,7 +411,7 @@ export default class BattleUI extends Scene {
 
         this.playerAttackSpeedBonusText = this.add
             .text(
-                playerTextX + 255,
+                rightBonusX,
                 64,
                 '',
                 {
@@ -386,12 +419,13 @@ export default class BattleUI extends Scene {
                     color: '#31b8ff'
                 }
             )
+            .setOrigin(1, 0)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
         this.playerSpeedText = this.add
             .text(
-                playerTextX,
+                leftStatX,
                 87,
                 'Speed: --',
                 {
@@ -404,7 +438,7 @@ export default class BattleUI extends Scene {
 
         this.playerSpeedBonusText = this.add
             .text(
-                playerTextX + 85,
+                leftBonusX,
                 87,
                 '',
                 {
@@ -412,25 +446,35 @@ export default class BattleUI extends Scene {
                     color: '#31b8ff'
                 }
             )
+            .setOrigin(0, 0)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
+
+
+
         const timerIconX =
-            centerSectionX + 28;
+            centerSectionX + 22;
 
         const timerBarX =
-            centerSectionX + 55;
+            centerSectionX + 44;
 
-        const timerBarWidth = 280;
-        const timerBarHeight = 12;
+        const multiplierAreaWidth = 96;
 
-        const multiplierAreaWidth = 120;
+        const timerBarWidth =
+            Math.max(
+                130,
+                centerSectionWidth -
+                multiplierAreaWidth -
+                74
+            );
+
+        const timerBarHeight = 10;
 
         const multiplierX =
             centerSectionX +
             centerSectionWidth -
             multiplierAreaWidth / 2 -
             8;
-
         // Catastrophe row
         this.catastropheIcon = this.add
             .image(
@@ -545,7 +589,7 @@ export default class BattleUI extends Scene {
         this.strengthenedSquare = this.add.graphics();
 
         const strengthenLevelX =
-            timerBarX + timerBarWidth + 24;
+            timerBarX + timerBarWidth + 15;
 
         const strengthenLevelY =
             84 + timerBarHeight / 2;
@@ -609,7 +653,7 @@ export default class BattleUI extends Scene {
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
-        const multiplierBarWidth = 92;
+        const multiplierBarWidth = 76;
 
         const multiplierBarBackground = this.add
             .rectangle(
@@ -639,11 +683,13 @@ export default class BattleUI extends Scene {
         this.lastMultiplierUpdate =
             gameScene.activeGameTime;
 
-
         const rightContentX =
             rightSectionX + 14;
 
-        // Score
+        const rightSectionCenterX =
+            rightSectionX +
+            rightSectionWidth / 2;
+
         this.scoreText = this.add
             .text(
                 rightContentX,
@@ -657,63 +703,66 @@ export default class BattleUI extends Scene {
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
-        // Gold
         this.shopIcon = this.add
             .image(
-                rightContentX + 12,
-                53,
+                rightContentX + 10,
+                52,
                 'gold'
             )
-            .setScale(0.38)
+            .setScale(0.34)
             .setOrigin(0.5)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
         this.goldText = this.add
             .text(
-                rightContentX + 30,
+                rightContentX + 27,
                 43,
                 String(this.gold),
                 {
-                    font: '14px Orbitron',
+                    font: '13px Orbitron',
                     color: '#ffd84a'
                 }
             )
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
-        // Cash
         this.cashIcon = this.add
             .image(
-                rightContentX + 115,
-                53,
+                rightContentX + 103,
+                52,
                 'cash'
             )
-            .setScale(0.38)
+            .setScale(0.34)
             .setOrigin(0.5)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
         this.cashText = this.add
             .text(
-                rightContentX + 133,
+                rightContentX + 120,
                 43,
                 String(this.cash),
                 {
-                    font: '14px Orbitron',
+                    font: '13px Orbitron',
                     color: '#82e6ff'
                 }
             )
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
-        // Shop button
+        const shopButtonWidth = 105;
+        const shopButtonHeight = 26;
+
         this.shopButtonContainer = this.add
             .container(
-                rightSectionX + 68,
-                91
+                rightSectionCenterX - 35,
+                84
             )
-            .setSize(105, 32)
+            .setSize(
+                shopButtonWidth,
+                shopButtonHeight
+            )
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH + 1)
             .setInteractive({
@@ -724,8 +773,8 @@ export default class BattleUI extends Scene {
             .rectangle(
                 0,
                 0,
-                105,
-                32,
+                shopButtonWidth,
+                shopButtonHeight,
                 0x1d6f94,
                 1
             )
@@ -740,7 +789,7 @@ export default class BattleUI extends Scene {
                 0,
                 'SHOP',
                 {
-                    font: 'bold 14px Orbitron',
+                    font: 'bold 13px Orbitron',
                     color: '#ffffff'
                 }
             )
@@ -760,27 +809,24 @@ export default class BattleUI extends Scene {
                 event: Phaser.Types.Input.EventData
             ) => {
                 event.stopPropagation();
-
                 this.shop.open();
-
             }
         );
 
-        // Pause button
         const pauseButton = this.add
             .text(
                 rightSectionX +
                 rightSectionWidth -
-                42,
-                59,
+                30,
+                84,
                 'Ⅱ',
                 {
-                    font: 'bold 22px Orbitron',
+                    font: 'bold 18px Orbitron',
                     color: '#ffffff',
                     backgroundColor: '#a92e2e',
                     padding: {
-                        x: 11,
-                        y: 8
+                        x: 8,
+                        y: 5
                     }
                 }
             )
@@ -790,6 +836,7 @@ export default class BattleUI extends Scene {
             .setInteractive({
                 useHandCursor: true
             });
+
 
         pauseButton.on(
             'pointerdown',
@@ -893,7 +940,7 @@ export default class BattleUI extends Scene {
         );
     }
 
-    
+
 
     updateTimer(currentTime: number) {
         this.currentTime = currentTime;

@@ -57,7 +57,7 @@ export default class PlayerAbilities {
 
         this.slashIndicator = null;
 
-        this.dashCooldown = 10000;
+        this.dashCooldown = 5000;
         this.dashLastUsedTime = -Infinity;
 
         this.dashDistance = 180;

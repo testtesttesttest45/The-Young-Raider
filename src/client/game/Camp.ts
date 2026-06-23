@@ -24,6 +24,8 @@ export default class Camp {
     create() {
         this.sprite = this.scene.add.image(this.x, this.y, 'enemy_camp');
         this.sprite.setOrigin(0.5, 0.5);
+        // set scale 0.5
+        this.sprite.setScale(0.5);
 
         this.campRadius = this.scene.add.circle(
             this.x,
@@ -31,7 +33,7 @@ export default class Camp {
             this.radius
         );
 
-        this.campRadius.setStrokeStyle(4, 0xffff00, 0.5);
+        // this.campRadius.setStrokeStyle(4, 0xffff00, 0.5);
     }
 
     getRandomPositionInRadius() {

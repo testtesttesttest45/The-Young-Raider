@@ -226,65 +226,193 @@ class Base {
         };
     }
 
-    createHealthBar() {
-        this.healthBar = this.scene.add.graphics();
-        this.healthBar.setDepth(1);
+    createHealthBar(): void {
+        this.healthBar =
+            this.scene.add.graphics();
 
-        this.customSquare = this.scene.add.graphics();
-        this.customSquare.fillStyle(0x0000ff, 1);
-        this.customSquare.fillRect(-10, -10, 20, 20);
-        this.customSquareText = this.scene.add.text(0, 0, this.baseLevel, {
-            font: '16px Orbitron',
-            fill: '#ffffff',
-        }).setOrigin(0.5, 0.5);
+        this.healthBar.setDepth(11);
+        this.customSquare =
+            this.scene.add.graphics();
 
-        this.customSquareContainer = this.scene.add.container(0, 0);
-        this.customSquareContainer.add(this.customSquare);
-        this.customSquareContainer.add(this.customSquareText);
-        this.customSquareContainer.setDepth(1);
+        this.customSquare.fillStyle(
+            0x0000ff,
+            1
+        );
+
+        this.customSquare.fillRect(
+            -8,
+            -8,
+            16,
+            16
+        );
+
+        this.customSquareText =
+            this.scene.add.text(
+                0,
+                0,
+                `${this.baseLevel}`,
+                {
+                    fontFamily: 'Orbitron',
+                    fontSize: '11px',
+                    color: '#ffffff'
+                }
+            )
+                .setOrigin(0.5);
+
+        this.customSquareContainer =
+            this.scene.add.container(
+                0,
+                0
+            );
+
+        this.customSquareContainer.add([
+            this.customSquare,
+            this.customSquareText
+        ]);
+
+        this.customSquareContainer
+            .setDepth(11);
 
         if (!this.healthText) {
-            const barX = this.sprite.x - this.sprite.width / 2;
-            const barY = this.sprite.y - 100;
-            this.healthText = this.scene.add.text(barX, barY, '', {
-                font: '16px Orbitron',
-                fill: '#ffffff'
-            }).setOrigin(0, 0.5).setDepth(11);
+            this.healthText =
+                this.scene.add.text(
+                    0,
+                    0,
+                    '',
+                    {
+                        fontFamily: 'Orbitron',
+                        fontSize: '11px',
+                        color: '#ffffff',
+
+                        /*
+                         * Dark outline around every character.
+                         */
+                        stroke: '#000000',
+                        strokeThickness: 3,
+
+                        /*
+                         * Semi-transparent backing behind the text.
+                         */
+                        backgroundColor:
+                            'rgba(0, 0, 0, 0.72)',
+
+                        padding: {
+                            x: 5,
+                            y: 2
+                        }
+                    }
+                )
+                    .setOrigin(
+                        0.5,
+                        0.5
+                    )
+                    .setDepth(12);
         }
 
         this.updateHealthBar();
     }
 
-    updateHealthBar() {
-        const barX = this.sprite.x - this.sprite.width / 2;
-        const barY = this.sprite.y - 100;
+    updateHealthBar(): void {
+        if (
+            !this.sprite ||
+            !this.healthBar
+        ) {
+            return;
+        }
+
+        const barWidth = 110;
+        const barHeight = 10;
+
+        const barX =
+            this.sprite.x -
+            barWidth / 2;
+
+        const barY =
+            this.sprite.y - 82;
+
+        const healthPercentage =
+            Phaser.Math.Clamp(
+                this.health /
+                this.totalHealth,
+                0,
+                1
+            );
+
+        const currentHealthWidth =
+            barWidth *
+            healthPercentage;
+
         this.healthBar.clear();
-        this.healthBar.setPosition(barX, barY);
-        // Background of health bar (transparent part)
-        this.healthBar.fillStyle(0x000000, 0.5);
-        this.healthBar.fillRect(-40, 0, this.sprite.width + 100, 20);
-        this.healthBar.setDepth(11);
 
-        const healthPercentage = this.health / this.totalHealth;
-        const healthBarWidth = healthPercentage * (this.sprite.width + 100);
-        this.healthBar.fillStyle(0xff0000, 1);
-        this.healthBar.fillRect(-40, 0, healthBarWidth, 20);
+        this.healthBar.setPosition(
+            barX,
+            barY
+        );
 
-        const squareSize = 20;
-        const containerX = barX - squareSize / 2 - 40;
-        const containerY = barY + 10;
+        this.healthBar.fillStyle(
+            0x000000,
+            0.7
+        );
 
-        if (this.customSquareContainer) {
-            this.customSquareContainer.setPosition(containerX, containerY);
+        this.healthBar.fillRoundedRect(
+            0,
+            0,
+            barWidth,
+            barHeight,
+            4
+        );
+
+        if (currentHealthWidth > 0) {
+            this.healthBar.fillStyle(
+                0xff3b30,
+                1
+            );
+
+            this.healthBar.fillRoundedRect(
+                0,
+                0,
+                currentHealthWidth,
+                barHeight,
+                4
+            );
+        }
+
+        this.healthBar.lineStyle(
+            1,
+            0xffffff,
+            0.7
+        );
+
+        this.healthBar.strokeRoundedRect(
+            0,
+            0,
+            barWidth,
+            barHeight,
+            4
+        );
+
+        if (
+            this.customSquareContainer
+        ) {
+            this.customSquareContainer
+                .setPosition(
+                    barX - 12,
+                    barY + barHeight / 2
+                );
         }
 
         if (this.healthText) {
-            this.healthText.setText(`${this.health}/${this.totalHealth}`);
-            const barX = this.sprite.x - this.sprite.width / 2 + 10;
-            const barY = this.sprite.y - 100 + 10;
-            this.healthText.setPosition(barX, barY);
+            this.healthText.setText(
+                `${this.health}/${this.totalHealth}`
+            );
+
+            this.healthText.setPosition(
+                this.sprite.x,
+                barY - 10
+            );
         }
     }
+
 
     takeDamage(damage: any, player: any) {
         this.attacker = player; // Store reference to the attacking player
@@ -648,7 +776,7 @@ class Base {
 
         this.sprite
             .setOrigin(0.5, 0.5)
-            .setScale(1)
+            .setScale(0.75)
             .setDepth(1)
             .setInteractive();
 
