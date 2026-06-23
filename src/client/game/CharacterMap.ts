@@ -26,6 +26,10 @@ const characterMap: Record<number, any> = {
     },
     2: {
         spritesheetKey: 'character2',
+        enemyIdleSpritesheetKey: 'enemy1_idle',
+        enemyMoveSpritesheetKey: 'enemy1_move',
+        enemyAttackSpritesheetKey: 'enemy1_attack',
+        enemyDeathSpritesheetKey: 'enemy1_die',
         name: 'Orc',
         cost: 55,
         tier: 'easy',

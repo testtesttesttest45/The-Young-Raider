@@ -35,7 +35,12 @@ class Enemy {
     isMoving: any;
     moveTween: any;
 
-    spritesheetKey: any;
+    idleSpritesheetKey: string;
+    moveSpritesheetKey: string;
+    attackSpritesheetKey: string;
+    deathSpritesheetKey: string;
+
+    lastDirection: string;
 
     detectionRadius: any;
     timeOutOfDetection: any;
@@ -150,7 +155,23 @@ class Enemy {
         this.attackRange = character.range;
         this.isMoving = false;
         this.moveTween = null;
-        this.spritesheetKey = character.spritesheetKey;
+        this.idleSpritesheetKey =
+            character.enemyIdleSpritesheetKey ??
+            'enemy1_idle';
+
+        this.moveSpritesheetKey =
+            character.enemyMoveSpritesheetKey ??
+            'enemy1_move';
+
+        this.attackSpritesheetKey =
+            character.enemyAttackSpritesheetKey ??
+            'enemy1_attack';
+
+        this.deathSpritesheetKey =
+            character.enemyDeathSpritesheetKey ??
+            'enemy1_die';
+
+        this.lastDirection = 'south';
         // this.detectionRadius = 200;
         this.detectionRadius = this.attackRange * 1.5;
         this.timeOutOfDetection = 0;
@@ -180,7 +201,16 @@ class Enemy {
         this.strengthenedSquareText = null;
         this.fireTimerEvent = null;
         this.base = base;
-        this.idleAnimations = [`character${this.characterCode}Idle1`, `character${this.characterCode}Idle2`, `character${this.characterCode}Idle3`, `character${this.characterCode}Idle4`];
+        this.idleAnimations = [
+            `character${this.characterCode}Idlenorth`,
+            `character${this.characterCode}Idlenortheast`,
+            `character${this.characterCode}Idleeast`,
+            `character${this.characterCode}Idlesoutheast`,
+            `character${this.characterCode}Idlesouth`,
+            `character${this.characterCode}Idlesouthwest`,
+            `character${this.characterCode}Idlewest`,
+            `character${this.characterCode}Idlenorthwest`
+        ];
         this.timerStarted = false;
         this.enemyStrengthenInterval = 15000;
         this.attackCount = character.attackCount;
@@ -260,85 +290,171 @@ class Enemy {
         });
     }
 
+    create(): void {
+        const directions = [
+            'north',
+            'northeast',
+            'east',
+            'southeast',
+            'south',
+            'southwest',
+            'west',
+            'northwest'
+        ];
 
-    create() {
-        const character = characterMap[this.characterCode];
-        this.sprite = this.scene.add.sprite(this.x, this.y, character.idle);
-        this.sprite.setOrigin(0.5, 0.5);
-        this.sprite.setScale(0.75);
+        const firstAnimationKey =
+            `character${this.characterCode}Idlenorth`;
 
-        // Check and create idle animations
-        for (let i = 0; i < 4; i++) {
-            let idleKey = `character${this.characterCode}Idle${i + 1}`;
-            if (!this.scene.anims.exists(idleKey)) {
-                this.scene.anims.create({
-                    key: idleKey,
-                    frames: this.scene.anims.generateFrameNumbers(this.spritesheetKey, { start: i * 5, end: i * 5 + 4 }),
-                    frameRate: 6,
-                    repeat: -1,
-                });
-            }
-        }
+        if (
+            !this.scene.anims.exists(
+                firstAnimationKey
+            )
+        ) {
+            // 41 frames
+            directions.forEach(
+                (
+                    direction: string,
+                    index: number
+                ) => {
+                    const startFrame =
+                        index * 41;
 
-        // Check and create death animation
-        let deathKey = `character${this.characterCode}Death`;
-        if (!this.scene.anims.exists(deathKey)) {
+                    const endFrame =
+                        startFrame + 40;
+
+                    this.scene.anims.create({
+                        key:
+                            `character${this.characterCode}Idle${direction}`,
+
+                        frames:
+                            this.scene.anims
+                                .generateFrameNumbers(
+                                    this.idleSpritesheetKey,
+                                    {
+                                        start: startFrame,
+                                        end: endFrame
+                                    }
+                                ),
+
+                        frameRate: 24,
+                        repeat: -1
+                    });
+                }
+            );
+
+            // 31 frames
+            directions.forEach(
+                (
+                    direction: string,
+                    index: number
+                ) => {
+                    const startFrame =
+                        index * 31;
+
+                    const endFrame =
+                        startFrame + 30;
+
+                    this.scene.anims.create({
+                        key:
+                            `character${this.characterCode}Moving${direction}`,
+
+                        frames:
+                            this.scene.anims
+                                .generateFrameNumbers(
+                                    this.moveSpritesheetKey,
+                                    {
+                                        start: startFrame,
+                                        end: endFrame
+                                    }
+                                ),
+
+                        frameRate: 24,
+                        repeat: -1
+                    });
+                }
+            );
+
+            // 25 frames
+            directions.forEach(
+                (
+                    direction: string,
+                    index: number
+                ) => {
+                    const startFrame =
+                        index * 25;
+
+                    const endFrame =
+                        startFrame + 24;
+
+                    this.scene.anims.create({
+                        key:
+                            `character${this.characterCode}Attack${direction}`,
+
+                        frames:
+                            this.scene.anims
+                                .generateFrameNumbers(
+                                    this.attackSpritesheetKey,
+                                    {
+                                        start: startFrame,
+                                        end: endFrame
+                                    }
+                                ),
+
+                        frameRate:
+                            24 * this.attackSpeed,
+
+                        repeat: 0
+                    });
+                }
+            );
+
+            // 28 frames
             this.scene.anims.create({
-                key: deathKey,
-                frames: this.scene.anims.generateFrameNumbers(this.spritesheetKey, { start: 100, end: 104 }),
-                frameRate: 4,
+                key:
+                    `character${this.characterCode}Death`,
+
+                frames:
+                    this.scene.anims
+                        .generateFrameNumbers(
+                            this.deathSpritesheetKey,
+                            {
+                                start: 0,
+                                end: 27
+                            }
+                        ),
+
+                frameRate: 24,
                 repeat: 0
             });
         }
 
-        const directions = ['southeast', 'southwest', 'south', 'east', 'west', 'northeast', 'northwest', 'north'];
+        this.sprite =
+            this.scene.add.sprite(
+                this.x,
+                this.y,
+                this.idleSpritesheetKey,
+                0
+            );
 
-        // Check and create moving animations
-        directions.forEach((dir: any, index: any) => {
-            let movingKey = `character${this.characterCode}Moving${dir}`;
-            if (!this.scene.anims.exists(movingKey)) {
-                this.scene.anims.create({
-                    key: movingKey,
-                    frames: this.scene.anims.generateFrameNumbers(this.spritesheetKey, { start: 20 + (index * 5), end: 20 + (index * 5) + 4 }),
-                    frameRate: 6,
-                    repeat: -1
-                });
-            }
-        });
+        this.sprite
+            .setOrigin(0.5, 0.5)
+            .setScale(1)
+            .setDepth(1);
 
-        // Check and create attack animations
-        directions.forEach((dir: any, index: any) => {
-            let attackKey = `character${this.characterCode}Attack${dir}`;
-            if (!this.scene.anims.exists(attackKey)) {
-                this.scene.anims.create({
-                    key: attackKey,
-                    frames: this.scene.anims.generateFrameNumbers(this.spritesheetKey, { start: 60 + (index * 5), end: 60 + (index * 5) + 4 }),
-                    frameRate: 6 * this.attackSpeed,
-                    repeat: 0
-                });
-            }
-        });
+        this.lastDirection = 'south';
 
-        const randomIdleAnimation = this.idleAnimations[Math.floor(Math.random() * this.idleAnimations.length)];
-        this.sprite.play(randomIdleAnimation);
-        // this.scene.physics.world.enable(this.sprite);
-
-        // const bodyWidth = this.sprite.width * 0.6;
-        // const bodyHeight = this.sprite.height * 0.6;
-        // const offsetX = (this.sprite.width - bodyWidth) / 2;
-        // const offsetY = (this.sprite.height - bodyHeight) / 2;
-
-        // this.sprite.body.setSize(bodyWidth, bodyHeight);
-        // this.sprite.body.setOffset(offsetX, offsetY);
-
-        // const hitArea = new Phaser.Geom.Rectangle(offsetX, offsetY, bodyWidth, bodyHeight);
-        // this.sprite.setInteractive(hitArea, Phaser.Geom.Rectangle.Contains);
-        const hitArea = new Phaser.Geom.Rectangle(
-            0,
-            0,
-            this.sprite.width,
-            this.sprite.height
+        this.sprite.play(
+            `character${this.characterCode}Idle${this.lastDirection}`,
+            true
         );
+
+        const hitArea =
+            new Phaser.Geom.Rectangle(
+                0,
+                0,
+                this.sprite.width,
+                this.sprite.height
+            );
 
         this.sprite.setInteractive(
             hitArea,
@@ -347,14 +463,10 @@ class Enemy {
 
         this.createHealthBar();
 
-        // this.detectionField = this.scene.add.circle(this.x, this.y, 200);
-        // this.detectionField.setStrokeStyle(4, 0xff0000);
+        this.detectionBar =
+            this.scene.add.graphics();
 
-        this.detectionBar = this.scene.add.graphics();
         this.updateDetectionBar(1);
-        // let dot = this.scene.add.graphics();
-        // dot.fillStyle(0xffffff, 1);
-        // dot.fillCircle(this.sprite.x, this.sprite.y, 5);
     }
 
     takeDamage(damage: any, source: any) {
@@ -393,75 +505,156 @@ class Enemy {
     }
 
 
-    moveToPlayer(playerX: any, playerY: any) {
-        if (this.isDead || this.isMoving || this.isAttacking) {
+    moveToPlayer(
+        _playerX: number,
+        _playerY: number
+    ): void {
+        if (
+            this.isDead ||
+            this.isMoving ||
+            this.isAttacking ||
+            !this.attacker?.getPosition
+        ) {
             return;
         }
 
         this.isMoving = true;
         this.isAttacking = false;
         this.inCamp = false;
-        const updateMovement = () => {
-            if (!this.attacker || !this.attacker.getPosition || this.isDead) {
-                console.warn("Attacking player is undefined or getPosition method is not available");
-                return;
-            }
 
-            const playerPosition = this.attacker.getPosition();
-            let distance = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, playerPosition.x, playerPosition.y);
-            let duration = distance / this.speed * 1000;
+        const refreshInterval = 150;
 
-            // Determine the new direction
-            const newDirection = this.determineDirectionToPoint(playerPosition.x, playerPosition.y);
-            const movingAnimationKey = `character${this.characterCode}Moving${newDirection}`;
-
-            // Play the moving animation only if it's not already playing
-            if (this.sprite.anims.currentAnim.key !== movingAnimationKey) {
-                this.sprite.play(movingAnimationKey);
-            }
-
-            if (this.moveTween) {
-                this.moveTween.stop();
-            }
-
-            this.moveTween = this.scene.tweens.add({
-                targets: this.sprite,
-                x: playerPosition.x,
-                y: playerPosition.y,
-                duration: duration,
-                ease: 'Linear',
-                onUpdate: () => {
-                    if (this.player.isDead) {
-                        this.moveTween.stop();
-                        this.isMoving = false;
-                        this.isAttacking = false;
-                        this.sprite.play(`character${this.characterCode}Idle1`);
-                        return;
-                    }
-                    // Update direction based on player's current position
-                    const updatedPlayerPosition = this.attacker.getPosition();
-                    const updatedDirection = this.determineDirectionToPoint(updatedPlayerPosition.x, updatedPlayerPosition.y);
-                    const updatedAnimationKey = `character${this.characterCode}Moving${updatedDirection}`;
-
-                    // Play the updated moving animation only if it's different
-                    if (this.sprite.anims.currentAnim.key !== updatedAnimationKey) {
-                        this.sprite.play(updatedAnimationKey);
-                    }
-
-                    if (Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, updatedPlayerPosition.x, updatedPlayerPosition.y) > 100) {
-                        playerX = updatedPlayerPosition.x;
-                        playerY = updatedPlayerPosition.y;
-                        updateMovement(); // Recalculate the path and direction
-                    }
-                },
-                onComplete: () => {
+        const moveTowardsCurrentPlayerPosition =
+            (): void => {
+                if (
+                    this.isDead ||
+                    this.isAttacking ||
+                    !this.attacker?.getPosition ||
+                    this.attacker.isDead
+                ) {
                     this.isMoving = false;
+                    return;
                 }
-            });
-        };
 
-        updateMovement(); // Start the movement
+                const playerPosition =
+                    this.attacker.getPosition();
+
+                const distance =
+                    Phaser.Math.Distance.Between(
+                        this.sprite.x,
+                        this.sprite.y,
+                        playerPosition.x,
+                        playerPosition.y
+                    );
+
+                if (
+                    distance <=
+                    this.attackRange
+                ) {
+                    if (this.moveTween) {
+                        this.moveTween.stop();
+                        this.moveTween = null;
+                    }
+
+                    this.isMoving = false;
+                    return;
+                }
+
+                const direction =
+                    this.determineDirectionToPoint(
+                        playerPosition.x,
+                        playerPosition.y
+                    );
+
+                this.lastDirection =
+                    direction;
+
+                const movementAnimationKey =
+                    `character${this.characterCode}Moving${direction}`;
+
+                if (
+                    this.sprite.anims
+                        .currentAnim?.key !==
+                    movementAnimationKey
+                ) {
+                    this.sprite.play(
+                        movementAnimationKey,
+                        true
+                    );
+                }
+                const movementDuration =
+                    Math.min(
+                        refreshInterval,
+                        distance /
+                        this.speed *
+                        1000
+                    );
+
+                const movementDistance =
+                    this.speed *
+                    (
+                        movementDuration /
+                        1000
+                    );
+
+                const ratio =
+                    Math.min(
+                        1,
+                        movementDistance /
+                        distance
+                    );
+
+                const targetX =
+                    Phaser.Math.Linear(
+                        this.sprite.x,
+                        playerPosition.x,
+                        ratio
+                    );
+
+                const targetY =
+                    Phaser.Math.Linear(
+                        this.sprite.y,
+                        playerPosition.y,
+                        ratio
+                    );
+
+                if (this.moveTween) {
+                    this.moveTween.stop();
+                    this.moveTween = null;
+                }
+
+                this.moveTween =
+                    this.scene.tweens.add({
+                        targets: this.sprite,
+
+                        x: targetX,
+                        y: targetY,
+
+                        duration:
+                            movementDuration,
+
+                        ease: 'Linear',
+
+                        onComplete: () => {
+                            this.moveTween = null;
+
+                            if (
+                                this.isDead ||
+                                this.isAttacking ||
+                                this.attacker?.isDead
+                            ) {
+                                this.isMoving = false;
+                                return;
+                            }
+
+                            moveTowardsCurrentPlayerPosition();
+                        }
+                    });
+            };
+
+        moveTowardsCurrentPlayerPosition();
     }
+
 
     updateEnemy(playerX: any, playerY: any, player: any, delta: any) {
         this.attacker = player;
@@ -481,7 +674,6 @@ class Enemy {
             if (distance <= this.attackRange && !this.isAttacking) {
                 this.isMoving = false;
                 if (this.moveTween) this.moveTween.stop();
-                this.sprite.play(`character${this.characterCode}Attack${this.determineDirectionToPoint(playerX, playerY)}`);
                 this.attackPlayer(player);
             } else if (distance > this.attackRange && !this.isMoving) {
                 this.moveToPlayer(playerX, playerY);
@@ -511,9 +703,6 @@ class Enemy {
                     if (this.moveTween) {
                         this.moveTween.stop();
                     }
-                    const direction = this.determineDirectionToPoint(playerX, playerY);
-                    const attackAnimationKey = `character${this.characterCode}Attack${direction}`;
-                    this.sprite.play(attackAnimationKey);
                     this.attackPlayer(player);
                 } else if (distance > this.attackRange && !this.isMoving) {
                     this.moveToPlayer(playerX, playerY);
@@ -572,8 +761,13 @@ class Enemy {
         this.attacker = player;
 
         const direction = this.determineDirectionToPoint(player.getPosition().x, player.getPosition().y);
+        this.lastDirection =
+            direction;
         const attackAnimationKey = `character${this.characterCode}Attack${direction}`;
-        this.sprite.play(attackAnimationKey);
+        this.sprite.play(
+            attackAnimationKey,
+            true
+        );
 
         const angleToPlayer = Phaser.Math.Angle.Between(this.sprite.x, this.sprite.y, player.getPosition().x, player.getPosition().y);
         const hasProjectile = this.projectile !== '';
@@ -587,19 +781,48 @@ class Enemy {
         this.sprite.off('animationupdate');
         this.sprite.off('animationcomplete');
 
-        let damageFrames = [];
-        if (this.attackCount > 1 && !hasProjectile) {
-            for (let i = 1; i <= this.attackCount; i++) {
-                damageFrames.push(Math.ceil((5 / this.attackCount) * i));
+        const totalAttackFrames = 25;
+        const projectileReleaseFrame = 13;
+
+        const damageFrames: number[] = [];
+
+        if (
+            this.attackCount > 1 &&
+            !hasProjectile
+        ) {
+            for (
+                let i = 1;
+                i <= this.attackCount;
+                i++
+            ) {
+                damageFrames.push(
+                    Math.ceil(
+                        (
+                            totalAttackFrames /
+                            (this.attackCount + 1)
+                        ) * i
+                    )
+                );
             }
         } else if (!hasProjectile) {
-            damageFrames.push(5);
+            damageFrames.push(15);
         }
+        let hasReleasedProjectile = false;
 
         this.sprite.on('animationupdate', (anim: any, frame: any) => {
             if (anim.key === attackAnimationKey) {
-                if (frame.index === 4 && hasProjectile) {
-                    this.launchProjectile(player, angleToPlayer);
+                if (
+                    !hasReleasedProjectile &&
+                    frame.index >=
+                    projectileReleaseFrame &&
+                    hasProjectile
+                ) {
+                    hasReleasedProjectile = true;
+
+                    this.launchProjectile(
+                        player,
+                        angleToPlayer
+                    );
                 } else if (damageFrames.includes(frame.index) && !hasProjectile) {
                     const playerPos = player.getPosition();
                     if (this.isPlayerInArc(playerPos, this.sprite, this.attackRange, angleToPlayer - Math.PI / 6, angleToPlayer + Math.PI / 6)) {
@@ -611,17 +834,35 @@ class Enemy {
             }
         });
 
-        this.sprite.once('animationcomplete', (anim: any) => {
-            if (anim.key === attackAnimationKey) {
+        this.sprite.once(
+            'animationcomplete',
+            (anim: any) => {
+                if (
+                    anim.key !==
+                    attackAnimationKey
+                ) {
+                    return;
+                }
+
                 if (player.isDead) {
                     this.stopAttackingPlayer();
                     return;
                 }
+
                 this.isAttacking = false;
-                if (this.attackRangeArc) this.attackRangeArc.destroy();
-                if (this.attackRangeRect) this.attackRangeRect.destroy();
+
+                if (this.attackRangeArc) {
+                    this.attackRangeArc.destroy();
+                    this.attackRangeArc = null;
+                }
+
+                if (this.attackRangeRect) {
+                    this.attackRangeRect.destroy();
+                    this.attackRangeRect = null;
+                }
             }
-        });
+        );
+
     }
 
     launchProjectile(player: any, angleToPlayer: any) {
@@ -714,20 +955,76 @@ class Enemy {
         };
     }
 
-    determineDirectionToPoint(playerX: any, playerY: any) {
-        const dx = playerX - this.sprite.x
-        const dy = playerY - this.sprite.y
-        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    determineDirectionToPoint(
+        targetX: number,
+        targetY: number
+    ): string {
+        const differenceX =
+            targetX - this.sprite.x;
 
-        if (angle >= -22.5 && angle < 22.5) return 'east';
-        if (angle >= 22.5 && angle < 67.5) return 'southeast';
-        if (angle >= 67.5 && angle < 112.5) return 'south';
-        if (angle >= 112.5 && angle < 157.5) return 'southwest';
-        if (angle >= 157.5 || angle < -157.5) return 'west';
-        if (angle >= -157.5 && angle < -112.5) return 'northwest';
-        if (angle >= -112.5 && angle < -67.5) return 'north';
-        if (angle >= -67.5 && angle < -22.5) return 'northeast';
+        const differenceY =
+            targetY - this.sprite.y;
+
+        const angle =
+            Math.atan2(
+                differenceY,
+                differenceX
+            ) *
+            180 /
+            Math.PI;
+
+        if (
+            angle >= -22.5 &&
+            angle < 22.5
+        ) {
+            return 'east';
+        }
+
+        if (
+            angle >= 22.5 &&
+            angle < 67.5
+        ) {
+            return 'southeast';
+        }
+
+        if (
+            angle >= 67.5 &&
+            angle < 112.5
+        ) {
+            return 'south';
+        }
+
+        if (
+            angle >= 112.5 &&
+            angle < 157.5
+        ) {
+            return 'southwest';
+        }
+
+        if (
+            angle >= 157.5 ||
+            angle < -157.5
+        ) {
+            return 'west';
+        }
+
+        if (
+            angle >= -157.5 &&
+            angle < -112.5
+        ) {
+            return 'northwest';
+        }
+
+        if (
+            angle >= -112.5 &&
+            angle < -67.5
+        ) {
+            return 'north';
+        }
+
+        return 'northeast';
     }
+
 
     createDamageText(damage: any, color: any) {
         const damageText = this.scene.add.text(this.sprite.x, this.sprite.y - 100, `-${damage}`, { font: '36px Orbitron', fill: color });
@@ -780,9 +1077,24 @@ class Enemy {
         this.dropGold(causedByBaseDestruction);
         this.dropCash();
 
-        // Stop any ongoing animation and play the death animation
+        this.isAttacking = false;
+
+        this.sprite.off(
+            'animationupdate'
+        );
+
+        this.sprite.off(
+            'animationcomplete'
+        );
+
         this.sprite.stop();
-        this.sprite.play(`character${this.characterCode}Death`);
+
+        this.sprite.play(
+            `character${this.characterCode}Death`,
+            true
+        );
+
+        this.sprite.removeInteractive();
         this.sprite.removeInteractive();
 
         if (this.attacker) {
@@ -1006,17 +1318,34 @@ class Enemy {
         }
     }
 
-    stopAttackingPlayer() {
+    stopAttackingPlayer(): void {
         if (this.attackEvent) {
             this.attackEvent.remove(false);
             this.attackEvent = null;
         }
+
         this.isAttacking = false;
         this.attacker = null;
 
-        if (!this.sprite.anims.currentAnim || !this.sprite.anims.currentAnim.key.includes('Idle')) {
-            const randomIdleAnimation = this.idleAnimations[Math.floor(Math.random() * this.idleAnimations.length)];
-            this.sprite.play(randomIdleAnimation);
+        if (
+            this.isDead ||
+            !this.sprite ||
+            !this.sprite.active
+        ) {
+            return;
+        }
+
+        const idleAnimationKey =
+            `character${this.characterCode}Idle${this.lastDirection || 'south'}`;
+
+        if (
+            this.sprite.anims.currentAnim?.key !==
+            idleAnimationKey
+        ) {
+            this.sprite.play(
+                idleAnimationKey,
+                true
+            );
         }
     }
 
@@ -1030,6 +1359,8 @@ class Enemy {
         let randomPosition = this.originalCamp.getRandomPositionInRadius();
 
         let directionToCamp = this.determineDirectionToPoint(randomPosition.x, randomPosition.y);
+        this.lastDirection =
+            directionToCamp;
         const movingAnimationKey = `character${this.characterCode}Moving${directionToCamp}`;
 
         // Play the moving animation towards the camp
@@ -1060,8 +1391,10 @@ class Enemy {
                     this.returningToCamp = true;
                 }
                 let updatedDirection = this.determineDirectionToPoint(randomPosition.x, randomPosition.y);
+                this.lastDirection =
+                    updatedDirection;
                 let updatedAnimationKey = `character${this.characterCode}Moving${updatedDirection}`;
-                if (this.sprite.anims.currentAnim.key !== updatedAnimationKey) {
+                if (this.sprite.anims.currentAnim?.key !== updatedAnimationKey) {
                     this.sprite.play(updatedAnimationKey);
                 }
             },
@@ -1069,7 +1402,10 @@ class Enemy {
                 this.isMoving = false;
                 this.returningToCamp = false;
                 this.inCamp = true
-                this.sprite.play(`character${this.characterCode}Idle1`);
+                this.sprite.play(
+                    `character${this.characterCode}Idle${this.lastDirection}`,
+                    true
+                );
             }
         });
     }
@@ -1228,6 +1564,9 @@ class Enemy {
                     newY
                 );
 
+            this.lastDirection =
+                direction;
+
             const movingAnimationKey =
                 `character${this.characterCode}Moving${direction}`;
 
@@ -1246,14 +1585,29 @@ class Enemy {
             if (this.moveTween) {
                 this.moveTween.stop();
             }
-
+            this.isMoving = true;
             this.moveTween =
                 this.scene.tweens.add({
                     targets: this.sprite,
                     x: newX,
                     y: newY,
                     duration,
-                    ease: 'Linear'
+                    ease: 'Linear',
+
+                    onComplete: () => {
+                        this.isMoving = false;
+
+                        if (
+                            !this.isDead &&
+                            !this.isAttacking &&
+                            !this.hasPlayerBeenDetected
+                        ) {
+                            this.sprite.play(
+                                `character${this.characterCode}Idle${this.lastDirection}`,
+                                true
+                            );
+                        }
+                    }
                 });
         }
     }

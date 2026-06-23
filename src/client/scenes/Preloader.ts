@@ -77,10 +77,6 @@ export class Preloader extends Scene {
     this.load.image('logo', 'logo.png');
 
     this.load.image('enemy_camp', 'images/enemy_camp.png');
-    this.load.image(
-      'enemy_base',
-      'images/enemy_base.png'
-    );
     this.load.spritesheet(
       'character1',
       'sprites/character_1.png',
@@ -273,6 +269,43 @@ export class Preloader extends Scene {
         frameHeight: 128
       }
     );
+
+    this.load.spritesheet(
+      'enemy1_idle',
+      'images/enemy1_idle.png',
+      {
+        frameWidth: 128,
+        frameHeight: 128
+      }
+    );
+
+    this.load.spritesheet(
+      'enemy1_move',
+      'images/enemy1_move.png',
+      {
+        frameWidth: 128,
+        frameHeight: 128
+      }
+    );
+
+    this.load.spritesheet(
+      'enemy1_attack',
+      'images/enemy1_attack.png',
+      {
+        frameWidth: 128,
+        frameHeight: 128
+      }
+    );
+
+    this.load.spritesheet(
+      'enemy1_die',
+      'images/enemy1_die.png',
+      {
+        frameWidth: 128,
+        frameHeight: 128
+      }
+    );
+
   }
 
   create() {
