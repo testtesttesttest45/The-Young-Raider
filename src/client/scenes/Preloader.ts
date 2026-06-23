@@ -76,10 +76,10 @@ export class Preloader extends Scene {
 
     this.load.image('logo', 'logo.png');
 
-    this.load.image('enemy_camp', 'images/enemy_camp1.png');
+    this.load.image('enemy_camp', 'images/enemy_camp.png');
     this.load.image(
       'enemy_base',
-      'images/enemy_base1.png'
+      'images/enemy_base.png'
     );
     this.load.spritesheet(
       'character1',
@@ -255,6 +255,24 @@ export class Preloader extends Scene {
     // this.load.image('steelGladiator', 'images/characterIcons/steelGladiator.png');
     // this.load.image('zProjectMech', 'images/characterIcons/zProjectMech.png');
     // this.load.image('glaivestormMech', 'images/characterIcons/glaivestormMech.png');
+
+    this.load.spritesheet(
+      'treasure_monster_idle',
+      'images/treasure_monster_idle.png',
+      {
+        frameWidth: 128,
+        frameHeight: 128
+      }
+    );
+
+    this.load.spritesheet(
+      'treasure_monster_death',
+      'images/treasure_monster_death.png',
+      {
+        frameWidth: 128,
+        frameHeight: 128
+      }
+    );
   }
 
   create() {

@@ -36,6 +36,12 @@ class Base {
     customSquare: any;
     customSquareText: any;
     customSquareContainer: any;
+
+    idleSpritesheetKey: string;
+    deathSpritesheetKey: string;
+
+    idleAnimationKey: string;
+    deathAnimationKey: string;
     constructor(
         scene: Phaser.Scene,
         player: any,
@@ -61,20 +67,38 @@ class Base {
         this.isRebuilding = false;
         this.healthText = null;
         this.goldValue = 100;
+        this.idleSpritesheetKey =
+            'treasure_monster_idle';
+
+        this.deathSpritesheetKey =
+            'treasure_monster_death';
+
+        this.idleAnimationKey =
+            'treasureMonsterIdle';
+
+        this.deathAnimationKey =
+            'treasureMonsterDeath';
     }
 
-    create() {
-        const baseLocation = this.findSuitableBaseLocation();
-        this.sprite = this.scene.add.image(baseLocation.x, baseLocation.y, 'enemy_base');
-        this.sprite.setOrigin(0.5, 0.5);
-        this.sprite.setScale(2);
-        this.sprite.setInteractive();
+    create(): void {
+        this.createAnimations();
+
+        const baseLocation =
+            this.findSuitableBaseLocation();
+
+        this.createTreasureMonsterSprite(
+            baseLocation.x,
+            baseLocation.y
+        );
+
         this.isDestroyed = false;
+        this.isRebuilding = false;
         this.health = this.totalHealth;
 
         if (this.healthBar) {
             this.healthBar.clear();
         }
+
         this.createHealthBar();
     }
 
@@ -221,7 +245,7 @@ class Base {
 
         if (!this.healthText) {
             const barX = this.sprite.x - this.sprite.width / 2;
-            const barY = this.sprite.y - 150 + 10;
+            const barY = this.sprite.y - 100;
             this.healthText = this.scene.add.text(barX, barY, '', {
                 font: '16px Orbitron',
                 fill: '#ffffff'
@@ -233,7 +257,7 @@ class Base {
 
     updateHealthBar() {
         const barX = this.sprite.x - this.sprite.width / 2;
-        const barY = this.sprite.y - 150;
+        const barY = this.sprite.y - 100;
         this.healthBar.clear();
         this.healthBar.setPosition(barX, barY);
         // Background of health bar (transparent part)
@@ -257,15 +281,34 @@ class Base {
         if (this.healthText) {
             this.healthText.setText(`${this.health}/${this.totalHealth}`);
             const barX = this.sprite.x - this.sprite.width / 2 + 10;
-            const barY = this.sprite.y - 150 + 10;
+            const barY = this.sprite.y - 100 + 10;
             this.healthText.setPosition(barX, barY);
         }
     }
 
     takeDamage(damage: any, player: any) {
         this.attacker = player; // Store reference to the attacking player
+        if (
+            this.isDestroyed ||
+            !this.sprite ||
+            !this.sprite.active
+        ) {
+            return;
+        }
+
         if (damage >= this.health) {
+            const remainingHealth =
+                this.health;
+
+            this.health = 0;
+
+            this.createDamageText(
+                remainingHealth
+            );
+
+            this.updateHealthBar();
             this.destroyed();
+
             return;
         }
         this.enrageEnemies();
@@ -302,51 +345,70 @@ class Base {
         });
     }
 
-    destroyed() {
-        if (this.isDestroyed) return;
-        this.isDestroyed = true;
-        if (this.scene.player.targetedEnemy === this) {
-            this.scene.player.targetedEnemy = null;
+    destroyed(): void {
+        if (this.isDestroyed) {
+            return;
         }
 
-        // this.scene.scene.get('BattleUI').updateScore(200);
+        this.isDestroyed = true;
+        this.health = 0;
+
+        if (
+            this.scene.player.targetedEnemy ===
+            this
+        ) {
+            this.scene.player.targetedEnemy =
+                null;
+        }
 
         this.randomGoldDrop();
 
-        // console.log('Base destroyed');
-        this.sprite.disableInteractive();
-        this.scene.tweens.add({
-            targets: this.sprite,
-            alpha: 0,
-            duration: 1500,
-            ease: 'Power1',
-            onComplete: () => {
-                this.sprite.setVisible(false);
+        // keep the dead body until the base is rebuilt
+        if (
+            this.sprite &&
+            this.sprite.active
+        ) {
+            this.sprite.disableInteractive();
+
+            this.sprite.stop();
+
+            this.sprite.play(
+                this.deathAnimationKey,
+                true
+            );
+        }
+
+        const enemiesToKill = [
+            ...this.scene.enemies
+        ];
+
+        enemiesToKill.forEach(
+            (enemy: any) => {
+                if (!enemy.isDead) {
+                    enemy.die(true);
+                }
             }
-        });
-
-        const enemiesToKill = [...this.scene.enemies];
-
-
-        enemiesToKill.forEach((enemy: any) => {
-            if (!enemy.isDead) {
-                enemy.die(true);
-            }
-        });
+        );
 
         if (this.attacker) {
             this.attacker.stopAttackingEnemy();
         }
 
-        this.healthBar.destroy();
-        this.customSquareContainer.destroy();
+        this.healthBar?.destroy();
+        this.healthBar = null;
+
+        this.customSquareContainer?.destroy();
+        this.customSquareContainer = null;
+
         if (this.healthText) {
             this.healthText.destroy();
             this.healthText = null;
         }
-        this.destroyedTime = this.scene.activeGameTime;
 
-        this.isRebuilding = true; // Indicate that the base is now rebuilding.
+        this.destroyedTime =
+            this.scene.activeGameTime;
+
+        this.isRebuilding = true;
     }
 
     randomGoldDrop() {
@@ -383,49 +445,38 @@ class Base {
         });
     }
 
-    recreateBaseAndEnemies() {
-
+    recreateBaseAndEnemies(): void {
         this.baseLevel++;
 
         this.totalHealth =
             Math.round(
                 this.originalHealth *
-                Math.pow(1.35, this.baseLevel - 1)
+                Math.pow(
+                    1.35,
+                    this.baseLevel - 1
+                )
             );
 
         this.scene.scene
             .get('BattleUI')
             .resetBaseRebuildUI();
 
-        const newBaseLocation =
-            this.findSuitableBaseLocation();
-
-        this.sprite.setPosition(
-            newBaseLocation.x,
-            newBaseLocation.y
-        );
-
-        this.sprite
-            .setVisible(true)
-            .setAlpha(1)
-            .setInteractive();
-
-        this.health = this.totalHealth;
-        this.isDestroyed = false;
-
-        this.createHealthBar();
-
-        this.scene.enemies.forEach((enemy: any) => {
-
-            if (enemy.isDead) {
+        this.scene.enemies.forEach(
+            (enemy: any) => {
+                if (!enemy.isDead) {
+                    return;
+                }
 
                 enemy.sprite?.destroy();
 
                 enemy.healthBar?.destroy();
                 enemy.detectionBar?.destroy();
 
-                enemy.customSquareContainer?.destroy();
-                enemy.strengthenedSquareContainer?.destroy();
+                enemy.customSquareContainer
+                    ?.destroy();
+
+                enemy.strengthenedSquareContainer
+                    ?.destroy();
 
                 enemy.attackRangeArc?.destroy();
                 enemy.attackRangeRect?.destroy();
@@ -433,12 +484,34 @@ class Base {
                 enemy.fireTimerEvent?.destroy();
                 enemy.fireGraphics?.destroy();
             }
-        });
+        );
 
         this.scene.enemies =
             this.scene.enemies.filter(
-                (enemy: any) => !enemy.isDead
+                (enemy: any) =>
+                    !enemy.isDead
             );
+
+        // remove the sprite
+        if (this.sprite) {
+            this.sprite.destroy();
+            this.sprite = null;
+        }
+
+        const newBaseLocation =
+            this.findSuitableBaseLocation();
+
+        // new level, new treasure monster
+        this.createTreasureMonsterSprite(
+            newBaseLocation.x,
+            newBaseLocation.y
+        );
+
+        this.health = this.totalHealth;
+        this.isDestroyed = false;
+        this.isRebuilding = false;
+
+        this.createHealthBar();
 
         this.scene.createEnemy(
             this.baseLevel
@@ -501,6 +574,89 @@ class Base {
         }
     }
 
+    private createAnimations(): void {
+        // reversed, due to technical issues
+
+        if (
+            this.scene.anims.exists(
+                this.idleAnimationKey
+            )
+        ) {
+            this.scene.anims.remove(
+                this.idleAnimationKey
+            );
+        }
+
+        if (
+            this.scene.anims.exists(
+                this.deathAnimationKey
+            )
+        ) {
+            this.scene.anims.remove(
+                this.deathAnimationKey
+            );
+        }
+
+        const reversedIdleFrames =
+            this.scene.anims
+                .generateFrameNumbers(
+                    this.idleSpritesheetKey,
+                    {
+                        start: 0,
+                        end: 40
+                    }
+                )
+                .reverse();
+
+        this.scene.anims.create({
+            key: this.idleAnimationKey,
+            frames: reversedIdleFrames,
+            frameRate: 24,
+            repeat: -1
+        });
+
+        const reversedDeathFrames =
+            this.scene.anims
+                .generateFrameNumbers(
+                    this.deathSpritesheetKey,
+                    {
+                        start: 0,
+                        end: 40
+                    }
+                )
+                .reverse();
+
+        this.scene.anims.create({
+            key: this.deathAnimationKey,
+            frames: reversedDeathFrames,
+            frameRate: 24,
+            repeat: 0
+        });
+    }
+
+    private createTreasureMonsterSprite(
+        x: number,
+        y: number
+    ): void {
+        this.sprite =
+            this.scene.add.sprite(
+                x,
+                y,
+                this.idleSpritesheetKey,
+                40
+            );
+
+        this.sprite
+            .setOrigin(0.5, 0.5)
+            .setScale(1)
+            .setDepth(1)
+            .setInteractive();
+
+        this.sprite.play(
+            this.idleAnimationKey,
+            true
+        );
+    }
 
 
 }
