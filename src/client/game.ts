@@ -7,6 +7,9 @@ import { Collections } from './scenes/Collections';
 import { Game as MainGame } from './scenes/Game';
 import BattleUI from './game/BattleUI';
 import { GameOver } from './scenes/GameOver';
+import {
+    Leaderboard
+} from './scenes/Leaderboard';
 
 const GAME_WIDTH = 1366;
 const GAME_HEIGHT = 768;
@@ -53,6 +56,7 @@ const config: Phaser.Types.Core.GameConfig = {
     MainGame,
     BattleUI,
     GameOver,
+    Leaderboard
   ],
 };
 

@@ -3,6 +3,10 @@ const HUD_HEIGHT = 110;
 import { Scene } from 'phaser';
 import * as Phaser from 'phaser';
 import BattleShop from './BattleShop';
+import type {
+    ApiErrorResponse,
+    SubmitHighScoreResponse
+} from '../../shared/api';
 
 declare global {
     interface Window {
@@ -91,6 +95,12 @@ export default class BattleUI extends Scene {
     inputBlocker: any;
     gameOverContainer: any;
 
+    gameOverScoreStatus:
+        Phaser.GameObjects.Text | null;
+
+    finalScore:
+        number;
+
     pauseContainer: any;
 
     fireballTimer: number;
@@ -116,6 +126,8 @@ export default class BattleUI extends Scene {
         this.playerHealthBaseText = null;
         this.playerHealthBonusText = null;
         this.gameDataSaved = false;
+        this.gameOverScoreStatus = null;
+        this.finalScore = 0;
     }
 
     resetState() {
@@ -138,8 +150,8 @@ export default class BattleUI extends Scene {
         this.playerHealthBaseText = null;
         this.playerHealthBonusText = null;
         this.gameDataSaved = false;
-
-
+        this.gameOverScoreStatus = null;
+        this.finalScore = 0;
         this.shop.reset();
     }
 
@@ -1134,63 +1146,378 @@ export default class BattleUI extends Scene {
         this.strengthenedSquare.fill();
     }
 
-    createGameOverScreen() {
+    createGameOverScreen(): void {
+        /*
+         * Prevent the death animation or another callback
+         * from creating multiple game-over screens.
+         */
+        if (
+            this.gameOverContainer &&
+            this.gameOverContainer.active
+        ) {
+            return;
+        }
+
+        const width =
+            this.scale.width;
+
+        const height =
+            this.scale.height;
+
+        /*
+         * Freeze the score at the moment this screen opens.
+         * Further gameplay changes cannot alter the submitted
+         * result.
+         */
+        this.finalScore =
+            Math.max(
+                0,
+                Math.floor(
+                    this.score
+                )
+            );
+
+        this.gameOverContainer =
+            this.add
+                .container(
+                    0,
+                    0
+                )
+                .setDepth(4000);
 
         const overlay =
-            this.add.rectangle(
-                0,
-                0,
-                this.scale.width,
-                this.scale.height,
-                0x000000,
-                0.85
-            )
-                .setOrigin(0);
+            this.add
+                .rectangle(
+                    0,
+                    0,
+                    width,
+                    height,
+                    0x000000,
+                    0.88
+                )
+                .setOrigin(
+                    0,
+                    0
+                )
+                .setInteractive();
+
+        overlay.on(
+            'pointerdown',
+            (
+                _pointer:
+                    Phaser.Input.Pointer,
+
+                _localX:
+                    number,
+
+                _localY:
+                    number,
+
+                event:
+                    Phaser.Types.Input.EventData
+            ) => {
+                event.stopPropagation();
+            }
+        );
+
+        const panelWidth =
+            Math.min(
+                610,
+                width - 50
+            );
+
+        const panelHeight =
+            Math.min(
+                520,
+                height - 40
+            );
+
+        const panelX =
+            width / 2;
+
+        const panelY =
+            height / 2;
+
+        const panel =
+            this.add
+                .rectangle(
+                    panelX,
+                    panelY,
+                    panelWidth,
+                    panelHeight,
+                    0x111c26,
+                    0.99
+                )
+                .setStrokeStyle(
+                    4,
+                    0x50c8ff,
+                    1
+                );
 
         const title =
-            this.add.text(
-                this.scale.width / 2,
-                200,
-                'GAME OVER',
-                {
-                    fontSize: '72px',
-                    color: '#ff0000'
-                }
-            )
+            this.add
+                .text(
+                    panelX,
+                    panelY - 195,
+                    'GAME OVER',
+                    {
+                        font:
+                            'bold 52px Orbitron',
+
+                        color:
+                            '#ff4c4c',
+
+                        stroke:
+                            '#000000',
+
+                        strokeThickness:
+                            7
+                    }
+                )
+                .setOrigin(0.5);
+
+        const scoreLabel =
+            this.add
+                .text(
+                    panelX,
+                    panelY - 105,
+                    `FINAL SCORE: ${this.finalScore.toLocaleString()}`,
+                    {
+                        font:
+                            'bold 27px Orbitron',
+
+                        color:
+                            '#ffffff',
+
+                        stroke:
+                            '#000000',
+
+                        strokeThickness:
+                            4
+                    }
+                )
+                .setOrigin(0.5);
+
+        this.gameOverScoreStatus =
+            this.add
+                .text(
+                    panelX,
+                    panelY - 48,
+                    'Saving high score...',
+                    {
+                        font:
+                            '17px Orbitron',
+
+                        color:
+                            '#82e6ff',
+
+                        align:
+                            'center',
+
+                        stroke:
+                            '#000000',
+
+                        strokeThickness:
+                            3,
+
+                        wordWrap: {
+                            width:
+                                panelWidth - 70
+                        }
+                    }
+                )
                 .setOrigin(0.5);
 
         const retryButton =
-            this.add.text(
-                this.scale.width / 2,
-                350,
-                'Retry',
-                {
-                    fontSize: '32px'
+            this.createStyledButton(
+                panelX,
+                panelY + 65,
+                'RETRY',
+                '#1d6f94',
+                () => {
+                    this.restartGameScene();
                 }
-            )
-                .setOrigin(0.5)
-                .setInteractive();
+            );
+
+        const leaderboardButton =
+            this.createStyledButton(
+                panelX,
+                panelY + 135,
+                'LEADERBOARD',
+                '#6943a5',
+                () => {
+                    this.openLeaderboard();
+                }
+            );
 
         const mainMenuButton =
-            this.add.text(
-                this.scale.width / 2,
-                430,
-                'Main Menu',
-                {
-                    fontSize: '32px'
+            this.createStyledButton(
+                panelX,
+                panelY + 205,
+                'MAIN MENU',
+                '#8f2d2d',
+                () => {
+                    this.goToMainMenu();
                 }
-            )
-                .setOrigin(0.5)
-                .setInteractive();
+            );
 
-        retryButton.on(
-            'pointerdown',
-            () => this.restartGameScene()
+        this.gameOverContainer.add([
+            overlay,
+            panel,
+            title,
+            scoreLabel,
+            this.gameOverScoreStatus,
+            retryButton,
+            leaderboardButton,
+            mainMenuButton
+        ]);
+
+        /*
+         * This is the only location that submits a score.
+         *
+         * Pause, retry, closing Reddit, refreshing, and
+         * returning through another menu do not call it.
+         */
+        void this.submitFinalScore();
+    }
+
+    private async submitFinalScore():
+        Promise<void> {
+        /*
+         * Prevent double submissions.
+         */
+        if (this.gameDataSaved) {
+            return;
+        }
+
+        this.gameDataSaved = true;
+
+        try {
+            const response =
+                await fetch(
+                    '/api/highscore',
+                    {
+                        method:
+                            'POST',
+
+                        headers: {
+                            'Content-Type':
+                                'application/json'
+                        },
+
+                        body:
+                            JSON.stringify({
+                                score:
+                                    this.finalScore
+                            })
+                    }
+                );
+
+            const responseData =
+                await response.json() as unknown;
+
+            if (!response.ok) {
+                const errorData =
+                    responseData as ApiErrorResponse;
+
+                throw new Error(
+                    errorData.message ??
+                    'Unable to save score.'
+                );
+            }
+
+            const data =
+                responseData as SubmitHighScoreResponse;
+
+            if (
+                data.type !==
+                'submit-high-score'
+            ) {
+                throw new Error(
+                    'Unexpected server response.'
+                );
+            }
+
+            if (
+                !this.gameOverScoreStatus
+            ) {
+                return;
+            }
+
+            if (data.isNewBest) {
+                this.gameOverScoreStatus
+                    .setColor(
+                        '#ffd84a'
+                    )
+                    .setText(
+                        [
+                            'NEW PERSONAL BEST!',
+                            `BEST: ${data.personalBest.toLocaleString()}`,
+                            data.rank !== null
+                                ? `GLOBAL RANK: #${data.rank}`
+                                : ''
+                        ]
+                            .filter(Boolean)
+                            .join('\n')
+                    );
+
+                return;
+            }
+
+            this.gameOverScoreStatus
+                .setColor(
+                    '#82e6ff'
+                )
+                .setText(
+                    [
+                        'Score saved',
+                        `PERSONAL BEST: ${data.personalBest.toLocaleString()}`,
+                        data.rank !== null
+                            ? `GLOBAL RANK: #${data.rank}`
+                            : ''
+                    ]
+                        .filter(Boolean)
+                        .join('\n')
+                );
+        } catch (error) {
+            console.error(
+                '[BattleUI] Failed to submit score:',
+                error
+            );
+
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : 'Unknown error';
+
+            if (
+                this.gameOverScoreStatus
+            ) {
+                this.gameOverScoreStatus
+                    .setColor(
+                        '#ff8b8b'
+                    )
+                    .setText(
+                        [
+                            'HIGH SCORE NOT SAVED',
+                            message
+                        ].join('\n')
+                    );
+            }
+        }
+    }
+
+    private openLeaderboard(): void {
+        this.scene.stop(
+            'BattleUI'
         );
 
-        mainMenuButton.on(
-            'pointerdown',
-            () => this.goToMainMenu()
+        this.scene.stop(
+            'Game'
+        );
+
+        this.scene.start(
+            'Leaderboard'
         );
     }
 
@@ -1395,31 +1722,5 @@ export default class BattleUI extends Scene {
         this.scene.resume('Game');
         (this.scene.get('Game') as any).isGamePaused = false;
     }
-
-    async saveGameData() {
-        const gameData = {
-            incomingCash: this.cash,
-            score: this.score,
-            latestBaseLevel: (this.scene.get('Game') as any).base.baseLevel
-        };
-        try {
-            const response = await fetch('/save-game', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(gameData),
-            });
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            const data = await response.json();
-            return console.log('Success:', data);
-        } catch (error) {
-            return console.error('Error:', error);
-        }
-    }
-
-
 }
 

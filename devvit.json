@@ -17,6 +17,9 @@
     "dir": "dist/server",
     "entry": "index.cjs"
   },
+  "permissions": {
+    "redis": true
+  },
   "menu": {
     "items": [
       {
