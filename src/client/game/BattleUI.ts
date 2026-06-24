@@ -1147,10 +1147,6 @@ export default class BattleUI extends Scene {
     }
 
     createGameOverScreen(): void {
-        /*
-         * Prevent the death animation or another callback
-         * from creating multiple game-over screens.
-         */
         if (
             this.gameOverContainer &&
             this.gameOverContainer.active
@@ -1164,11 +1160,7 @@ export default class BattleUI extends Scene {
         const height =
             this.scale.height;
 
-        /*
-         * Freeze the score at the moment this screen opens.
-         * Further gameplay changes cannot alter the submitted
-         * result.
-         */
+        // further gameplay changes cannot alter the submitted score, so we calculate it here
         this.finalScore =
             Math.max(
                 0,
@@ -1372,20 +1364,13 @@ export default class BattleUI extends Scene {
             mainMenuButton
         ]);
 
-        /*
-         * This is the only location that submits a score.
-         *
-         * Pause, retry, closing Reddit, refreshing, and
-         * returning through another menu do not call it.
-         */
+        // This is the only location that submits a score
         void this.submitFinalScore();
     }
 
     private async submitFinalScore():
         Promise<void> {
-        /*
-         * Prevent double submissions.
-         */
+        // prevent double submission
         if (this.gameDataSaved) {
             return;
         }
@@ -1393,6 +1378,14 @@ export default class BattleUI extends Scene {
         this.gameDataSaved = true;
 
         try {
+            const finalCashEarned =
+                Math.max(
+                    0,
+                    Math.floor(
+                        this.cash
+                    )
+                );
+
             const response =
                 await fetch(
                     '/api/highscore',
@@ -1408,7 +1401,14 @@ export default class BattleUI extends Scene {
                         body:
                             JSON.stringify({
                                 score:
-                                    this.finalScore
+                                    this.finalScore,
+
+                                cashEarned:
+                                    finalCashEarned,
+
+                                highestBaseSeen:
+                                    (this.scene.get('Game') as any)
+                                        .base.baseLevel
                             })
                     }
                 );
@@ -1444,25 +1444,53 @@ export default class BattleUI extends Scene {
                 return;
             }
 
-            if (data.isNewBest) {
-                this.gameOverScoreStatus
-                    .setColor(
-                        '#ffd84a'
-                    )
-                    .setText(
-                        [
-                            'NEW PERSONAL BEST!',
-                            `BEST: ${data.personalBest.toLocaleString()}`,
-                            data.rank !== null
-                                ? `GLOBAL RANK: #${data.rank}`
-                                : ''
-                        ]
-                            .filter(Boolean)
-                            .join('\n')
-                    );
+            const messages: string[] = [];
 
-                return;
+            if (data.isNewBest) {
+                messages.push(
+                    'NEW ALL-TIME BEST!'
+                );
+            } else if (data.isNewDailyBest) {
+                messages.push(
+                    'NEW DAILY BEST!'
+                );
+            } else {
+                messages.push(
+                    'RESULT SAVED'
+                );
             }
+
+            messages.push(
+                `ALL-TIME BEST: ${data.personalBest.toLocaleString()}`
+            );
+
+            messages.push(
+                `TODAY'S BEST: ${data.todayBest.toLocaleString()}`
+            );
+
+            messages.push(
+                `CASH EARNED: +${data.cashEarned.toLocaleString()}`
+            );
+
+            messages.push(
+                `TOTAL CASH: ${data.totalCash.toLocaleString()}`
+            );
+
+            if (data.rank !== null) {
+                messages.push(
+                    `GLOBAL RANK: #${data.rank}`
+                );
+            }
+
+            this.gameOverScoreStatus
+                ?.setColor(
+                    data.isNewBest
+                        ? '#ffd84a'
+                        : '#82e6ff'
+                )
+                .setText(
+                    messages.join('\n')
+                );
 
             this.gameOverScoreStatus
                 .setColor(

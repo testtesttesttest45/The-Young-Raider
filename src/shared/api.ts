@@ -18,15 +18,32 @@ export type DecrementResponse = {
 };
 
 // leaderboard
-
 export type LeaderboardEntry = {
     rank: number;
     username: string;
     score: number;
+    highestBaseSeen: number;
+};
+
+export type PlayerProfileResponse = {
+    type: 'player-profile';
+
+    username: string;
+
+    allTimeHighScore: number;
+    todayHighScore: number;
+
+    highestBaseSeen: number;
+
+    cash: number;
+
+    globalRank: number | null;
 };
 
 export type SubmitHighScoreRequest = {
     score: number;
+    cashEarned: number;
+    highestBaseSeen: number;
 };
 
 export type SubmitHighScoreResponse = {
@@ -35,11 +52,21 @@ export type SubmitHighScoreResponse = {
     username: string;
 
     submittedScore: number;
+    submittedBaseSeen: number;
+
     personalBest: number;
+    todayBest: number;
+
+    highestBaseSeen: number;
+
+    totalCash: number;
+    cashEarned: number;
 
     rank: number | null;
 
     isNewBest: boolean;
+    isNewDailyBest: boolean;
+    isNewHighestBaseSeen: boolean;
 };
 
 export type LeaderboardResponse = {
@@ -50,6 +77,8 @@ export type LeaderboardResponse = {
     username: string | null;
 
     personalBest: number;
+    personalHighestBaseSeen: number;
+
     playerRank: number | null;
 };
 

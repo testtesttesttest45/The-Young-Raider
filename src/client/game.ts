@@ -11,6 +11,7 @@ import {
     Leaderboard
 } from './scenes/Leaderboard';
 
+
 const GAME_WIDTH = 1366;
 const GAME_HEIGHT = 768;
 const GAME_ASPECT_RATIO = GAME_WIDTH / GAME_HEIGHT;

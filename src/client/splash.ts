@@ -1,30 +1,113 @@
-import { navigateTo, context, requestExpandedMode } from '@devvit/web/client';
+import {
+  context,
+  requestExpandedMode
+} from '@devvit/web/client';
 
-const docsLink = document.getElementById('docs-link') as HTMLDivElement;
-const playtestLink = document.getElementById('playtest-link') as HTMLDivElement;
-const discordLink = document.getElementById('discord-link') as HTMLDivElement;
-const startButton = document.getElementById('start-button') as HTMLButtonElement;
+const startButton =
+  document.getElementById(
+    'start-button'
+  ) as HTMLButtonElement | null;
 
-startButton.addEventListener('click', (e) => {
-  requestExpandedMode(e, 'game');
-});
+const welcomeText =
+  document.getElementById(
+    'welcome-text'
+  ) as HTMLParagraphElement | null;
 
-docsLink.addEventListener('click', () => {
-  navigateTo('https://developers.reddit.com/docs');
-});
+async function loadFonts():
+  Promise<void> {
+  try {
+    await Promise.all([
+      document.fonts.load(
+        '400 16px Orbitron'
+      ),
 
-playtestLink.addEventListener('click', () => {
-  navigateTo('https://www.reddit.com/r/Devvit');
-});
+      document.fonts.load(
+        '700 24px Orbitron'
+      )
+    ]);
 
-discordLink.addEventListener('click', () => {
-  navigateTo('https://discord.com/invite/R7yu2wh9Qz');
-});
-
-const titleElement = document.getElementById('title') as HTMLHeadingElement;
-
-function init() {
-  titleElement.textContent = `Hey ${context.username ?? 'user'} 👋`;
+    await document.fonts.ready;
+  } catch (error) {
+    console.error(
+      '[Splash] Failed to load fonts:',
+      error
+    );
+  }
 }
 
-init();
+function setWelcomeMessage():
+  void {
+  if (!welcomeText) {
+    return;
+  }
+
+  const username =
+    context.username;
+
+  welcomeText.textContent =
+    username
+      ? `Welcome, u/${username}`
+      : 'Welcome, Raider';
+}
+
+function registerStartButton():
+  void {
+  if (!startButton) {
+    console.error(
+      '[Splash] Start button was not found.'
+    );
+
+    return;
+  }
+
+  startButton.addEventListener(
+    'click',
+    event => {
+      startButton.disabled = true;
+
+      const buttonText =
+        startButton.querySelector(
+          '.button-text'
+        );
+
+      if (buttonText) {
+        buttonText.textContent =
+          'LOADING...';
+      }
+
+      try {
+        requestExpandedMode(
+          event,
+          'game'
+        );
+      } catch (error) {
+        console.error(
+          '[Splash] Failed to open game:',
+          error
+        );
+
+        startButton.disabled = false;
+
+        if (buttonText) {
+          buttonText.textContent =
+            'PLAY NOW';
+        }
+      }
+    }
+  );
+}
+
+async function init():
+  Promise<void> {
+  setWelcomeMessage();
+
+  registerStartButton();
+
+  await loadFonts();
+
+  document.body.classList.add(
+    'fonts-loaded'
+  );
+}
+
+void init();
