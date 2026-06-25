@@ -27,18 +27,25 @@ export type LeaderboardEntry = {
 
 export type PlayerProfileResponse = {
     type: 'player-profile';
-
     username: string;
-
     allTimeHighScore: number;
     todayHighScore: number;
-
     highestBaseSeen: number;
-
     cash: number;
-
     globalRank: number | null;
+    canRequestCash: boolean;
+    cashRequestAvailableAt: number;
+    cashRequestCooldownRemainingMs: number;
+
+    canClaimDailyReward: boolean;
+    dailyRewardCash: number;
+    dailyRewardNextResetAt: number;
+    dailyRewardRemainingMs: number;
 };
+
+export type ClaimDailyRewardResponse = { type: 'claim-daily-reward'; status: 'success'; message: string; rewardCash: number; totalCash: number; nextResetAt: number };
+
+export type CreateCashRequestResponse = { type: 'create-cash-request'; status: 'success'; message: string; requestId: string; nextRequestAvailableAt: number };
 
 export type SubmitHighScoreRequest = {
     score: number;
@@ -86,3 +93,76 @@ export type ApiErrorResponse = {
     status: 'error';
     message: string;
 };
+
+export type ShareScoreRequest = {
+    score: number;
+    highestBaseSeen: number;
+    isNewHighScore: boolean;
+};
+
+export type ShareScoreResponse = {
+    type: 'share-score';
+    status: 'success';
+    message: string;
+};
+
+export type SharedScorePostData = {
+    postType: 'shared-score';
+    username: string;
+    score: number;
+    highestBaseSeen: number;
+    isNewHighScore: boolean;
+};
+
+export type SharedScorePostResponse = {
+    type: 'shared-score-post';
+    data: SharedScorePostData;
+};
+
+export type ShareProfileResponse = {
+    type: 'share-leaderboard';
+    status: 'success';
+    message: string;
+};
+
+export type SharedProfilePostData = {
+    postType: 'shared-profile';
+    username: string;
+    highestScore: number;
+    highestBaseSeen: number;
+    globalRank: number | null;
+};
+
+export type SharedProfilePostResponse = {
+    type: 'shared-profile-post';
+    data: SharedProfilePostData;
+};
+
+export type CashDonationEntry = { username: string; donatedAt: number };
+export type CashRequestViewData = {
+    requestId: string;
+
+    requesterUsername: string;
+
+    receivedCount: number;
+    limit: number;
+    cashCollected: number;
+
+    donors: CashDonationEntry[];
+
+    currentUsername: string | null;
+    currentUserCash: number | null;
+
+    hasDonated: boolean;
+    isRequester: boolean;
+    isComplete: boolean;
+
+    expiresAt: number;
+    remainingTimeMs: number;
+    isExpired: boolean;
+
+    canDonate: boolean;
+};
+
+export type CashRequestPostResponse = { type: 'cash-request-post'; data: CashRequestViewData };
+export type DonateCashResponse = { type: 'donate-cash'; status: 'success'; message: string; data: CashRequestViewData };

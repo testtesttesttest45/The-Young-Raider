@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+        />
+
+        <title>Request Cash</title>
+
+        <link
+            rel="stylesheet"
+            href="cash-request.css"
+        />
+    </head>
+
+    <body>
+        <main class="request-card">
+            <section
+                id="loading-view"
+                class="loading-view"
+                role="status"
+                aria-live="polite"
+            >
+                <div class="loading-spinner"></div>
+                <p>LOADING CASH REQUEST...</p>
+            </section>
+
+            <section
+                id="request-content"
+                class="request-content"
+                hidden
+            >
+                <div class="card-header">
+                    <p class="eyebrow">
+                        THE YOUNG RAIDER
+                    </p>
+
+                    <h1>
+                        COMMUNITY CASH REQUEST
+                    </h1>
+
+                    <p
+                        id="requester-name"
+                        class="requester-name"
+                    ></p>
+                </div>
+
+                <section class="hero-panel">
+                    <div class="hero-coin-wrap">
+                        <div class="hero-coin-glow"></div>
+
+                        <img
+                            class="hero-coin"
+                            src="/assets/images/cash.png"
+                            alt="Cash"
+                        />
+                    </div>
+
+                    <div class="hero-main">
+                        <div class="top-stats">
+                            <div class="stat-chip timer-chip">
+                                <span class="chip-label">
+                                    TIME LEFT
+                                </span>
+
+                                <strong id="countdown">
+                                    05:00:00
+                                </strong>
+                            </div>
+
+                            <div class="stat-chip received-chip">
+                                <span class="chip-label">
+                                    RECEIVED
+                                </span>
+
+                                <strong id="progress-value">
+                                    0 / 10
+                                </strong>
+                            </div>
+                        </div>
+
+                        <div class="cash-summary">
+                            <div class="cash-summary-label">
+                                CASH COLLECTED
+                            </div>
+
+                            <div class="cash-summary-value">
+                                <img
+                                    class="cash-inline-icon"
+                                    src="/assets/images/cash.png"
+                                    alt="Cash"
+                                />
+
+                                <span id="cash-collected">
+                                    0 CASH COLLECTED
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="progress-track">
+                            <div
+                                id="progress-fill"
+                                class="progress-fill"
+                            ></div>
+                        </div>
+
+                        <button id="donate-button">
+                            DONATE 1 CASH
+                        </button>
+
+                        <p
+                            id="status-text"
+                            class="status-text"
+                            aria-live="polite"
+                        ></p>
+                    </div>
+                </section>
+
+                <section class="supporters-panel">
+                    <div class="supporters-header">
+                        <h2>
+                            SUPPORTERS
+                        </h2>
+
+                        <span class="supporters-subtitle">
+                            COMMUNITY HELPERS
+                        </span>
+                    </div>
+
+                    <div
+                        id="donation-history"
+                        class="donation-history"
+                    ></div>
+                </section>
+            </section>
+        </main>
+
+        <script
+            type="module"
+            src="cash-request.ts"
+        ></script>
+    </body>
+</html>

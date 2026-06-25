@@ -8,10 +8,10 @@ const characterMap: Record<number, any> = {
         dashSlashSpritesheetKey: 'test_dash',
         shieldSpritesheetKey: 'test_shield',
         shieldMoveSpritesheetKey: 'test_shield_move',
-        name: 'Dark Ether Messiah',
+        name: 'The Boy',
         cost: 100,
         tier: 'hard',
-        range: 100,
+        range: 110,
         speed: 220,
         damage: 65,
         health: 100,
@@ -22,7 +22,7 @@ const characterMap: Record<number, any> = {
         idle: 'testIdle',
 
         description:
-            'Defender of the Dark Ether. Versatile and powerful, he is a force to be reckoned with.'
+            'Young and determined, the Boy will stop at nothing to save his village from the evil that has taken over.',
     },
     2: {
         spritesheetKey: 'character2',
@@ -33,7 +33,7 @@ const characterMap: Record<number, any> = {
         name: 'Orc',
         cost: 55,
         tier: 'easy',
-        health: 17000,
+        health: 170,
         damage: 20,
         range: 75,
         speed: 180,

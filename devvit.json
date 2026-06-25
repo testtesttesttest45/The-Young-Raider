@@ -7,6 +7,18 @@
         "inline": true,
         "entry": "splash.html"
       },
+      "sharedScore": {
+        "inline": true,
+        "entry": "score-share.html"
+      },
+      "sharedProfile": {
+        "inline": true,
+        "entry": "profile-share.html"
+      },
+      "cashRequest": {
+        "inline": true,
+        "entry": "cash-request.html"
+      },
       "game": {
         "entry": "game.html"
       }
@@ -16,9 +28,7 @@
     "dir": "dist/server",
     "entry": "index.cjs"
   },
-  "permissions": {
-    "redis": true
-  },
+  "permissions": { "redis": true, "reddit": { "asUser": [ "SUBMIT_POST" ] } },
   "menu": {
     "items": [
       {

@@ -3,10 +3,7 @@ const HUD_HEIGHT = 110;
 import { Scene } from 'phaser';
 import * as Phaser from 'phaser';
 import BattleShop from './BattleShop';
-import type {
-    ApiErrorResponse,
-    SubmitHighScoreResponse
-} from '../../shared/api';
+import type { ApiErrorResponse, SubmitHighScoreResponse } from '../../shared/api';
 
 declare global {
     interface Window {
@@ -14,8 +11,8 @@ declare global {
     }
 }
 const musicManager: any = {
-    play: (_path?: string) => { },
-    stop: () => { }
+    play: (_path?: string) => {},
+    stop: () => {},
 };
 
 export default class BattleUI extends Scene {
@@ -91,17 +88,20 @@ export default class BattleUI extends Scene {
     shopText: any;
     shopIcon: any;
 
-
     inputBlocker: any;
     gameOverContainer: any;
 
-    gameOverScoreStatus:
-        Phaser.GameObjects.Text | null;
+    gameOverScoreStatus: Phaser.GameObjects.Text | null;
 
-    finalScore:
-        number;
-
+    private finalScore = 0;
+    private finalBaseSeen = 1;
+    private isNewHighScore = false;
+    private scoreSubmissionPromise: Promise<void> | null = null;
     pauseContainer: any;
+
+    private gameOverResultTitle: Phaser.GameObjects.Text | null = null;
+
+    private gameOverResultRows: Phaser.GameObjects.Container | null = null;
 
     fireballTimer: number;
     cashIcon: any;
@@ -130,8 +130,9 @@ export default class BattleUI extends Scene {
         this.finalScore = 0;
     }
 
-    resetState() {
-        console.log('State resetted');
+    resetState(): void {
+        console.log('State reset');
+
         this.gold = 200000;
         this.score = 0;
         this.scoreText = null;
@@ -149,9 +150,18 @@ export default class BattleUI extends Scene {
 
         this.playerHealthBaseText = null;
         this.playerHealthBonusText = null;
+
         this.gameDataSaved = false;
         this.gameOverScoreStatus = null;
+
         this.finalScore = 0;
+        this.finalBaseSeen = 1;
+        this.isNewHighScore = false;
+        this.scoreSubmissionPromise = null;
+        this.gameOverResultTitle = null;
+        this.gameOverResultRows = null;
+        this.gameOverContainer = null;
+
         this.shop.reset();
     }
 
@@ -181,9 +191,7 @@ export default class BattleUI extends Scene {
 
     updateCashDisplay() {
         if (this.cashText) {
-            this.cashText.setText(
-                String(this.cash)
-            );
+            this.cashText.setText(String(this.cash));
         }
     }
 
@@ -198,42 +206,15 @@ export default class BattleUI extends Scene {
         const HUD_DEPTH = 100;
         const CONTENT_DEPTH = 102;
 
-        const hudBackground = this.add
-            .rectangle(
-                0,
-                0,
-                width,
-                HUD_HEIGHT,
-                0x29445c,
-                0.38
-            )
-            .setOrigin(0, 0)
-            .setScrollFactor(0)
-            .setDepth(HUD_DEPTH)
-            .setInteractive();
+        const hudBackground = this.add.rectangle(0, 0, width, HUD_HEIGHT, 0x29445c, 0.38).setOrigin(0, 0).setScrollFactor(0).setDepth(HUD_DEPTH).setInteractive();
 
-        hudBackground.on(
-            'pointerdown',
-            (
-                _pointer: Phaser.Input.Pointer,
-                _localX: number,
-                _localY: number,
-                event: Phaser.Types.Input.EventData
-            ) => {
-                event.stopPropagation();
-            }
-        );
+        hudBackground.on('pointerdown', (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
+            event.stopPropagation();
+        });
 
         // Bottom border
         this.add
-            .rectangle(
-                0,
-                HUD_HEIGHT - 3,
-                width,
-                3,
-                0x31b8ff,
-                0.55
-            )
+            .rectangle(0, HUD_HEIGHT - 3, width, 3, 0x31b8ff, 0.55)
             .setOrigin(0, 0)
             .setScrollFactor(0)
             .setDepth(HUD_DEPTH + 1);
@@ -247,420 +228,228 @@ export default class BattleUI extends Scene {
         const leftSectionWidth = 430;
 
         const rightSectionWidth = 280;
-        const rightSectionX =
-            width -
-            rightSectionWidth -
-            12;
+        const rightSectionX = width - rightSectionWidth - 12;
 
-        const centerSectionX =
-            leftSectionX +
-            leftSectionWidth +
-            sectionGap;
+        const centerSectionX = leftSectionX + leftSectionWidth + sectionGap;
 
-        const centerSectionWidth =
-            rightSectionX -
-            centerSectionX -
-            sectionGap;
-
+        const centerSectionWidth = rightSectionX - centerSectionX - sectionGap;
 
         // Section backgrounds
         this.add
-            .rectangle(
-                leftSectionX,
-                sectionY,
-                leftSectionWidth,
-                sectionHeight,
-                0x31536d,
-                0.58
-            )
+            .rectangle(leftSectionX, sectionY, leftSectionWidth, sectionHeight, 0x31536d, 0.58)
             .setOrigin(0, 0)
             .setStrokeStyle(1, 0x3b6685, 0.9)
             .setScrollFactor(0)
             .setDepth(HUD_DEPTH + 1);
 
         this.add
-            .rectangle(
-                centerSectionX,
-                sectionY,
-                centerSectionWidth,
-                sectionHeight,
-                0x31536d,
-                0.58
-            )
+            .rectangle(centerSectionX, sectionY, centerSectionWidth, sectionHeight, 0x31536d, 0.58)
             .setOrigin(0, 0)
             .setStrokeStyle(1, 0x3b6685, 0.9)
             .setScrollFactor(0)
             .setDepth(HUD_DEPTH + 1);
 
         this.add
-            .rectangle(
-                rightSectionX,
-                sectionY,
-                rightSectionWidth,
-                sectionHeight,
-                0x31536d,
-                0.58
-            )
+            .rectangle(rightSectionX, sectionY, rightSectionWidth, sectionHeight, 0x31536d, 0.58)
             .setOrigin(0, 0)
-            .setStrokeStyle(1, 0x72b4dc,
-                0.75)
+            .setStrokeStyle(1, 0x72b4dc, 0.75)
             .setScrollFactor(0)
             .setDepth(HUD_DEPTH + 1);
 
-        const playerIconX =
-            leftSectionX + 12;
+        const playerIconX = leftSectionX + 12;
 
-        const playerTextX =
-            leftSectionX + 78;
+        const playerTextX = leftSectionX + 78;
 
-        const playerSectionRight =
-            leftSectionX +
-            leftSectionWidth -
-            12;
+        const playerSectionRight = leftSectionX + leftSectionWidth - 12;
 
-        const leftStatX =
-            playerTextX;
+        const leftStatX = playerTextX;
 
-        const leftBonusX =
-            playerTextX + 112;
+        const leftBonusX = playerTextX + 112;
 
-        const rightStatX =
-            playerTextX + 175;
+        const rightStatX = playerTextX + 175;
 
-        const rightBonusX =
-            playerSectionRight;
+        const rightBonusX = playerSectionRight;
 
         this.playerIcon = this.add
-            .image(
-                playerIconX,
-                sectionY + sectionHeight / 2,
-                player.icon
-            )
+            .image(playerIconX, sectionY + sectionHeight / 2, player.icon)
             .setOrigin(0, 0.5)
             .setScale(0.46)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
         this.playerNameText = this.add
-            .text(
-                playerTextX,
-                15,
-                player.name,
-                {
-                    font: 'bold 15px Orbitron',
-                    color: '#ffffff'
-                }
-            )
+            .text(playerTextX, 15, player.name, {
+                font: 'bold 15px Orbitron',
+                color: '#ffffff',
+            })
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
         this.playerHealthText = this.add
-            .text(
-                leftStatX,
-                39,
-                'Health: --/--',
-                {
-                    font: '13px Orbitron',
-                    color: '#7dff8b'
-                }
-            )
+            .text(leftStatX, 39, 'Health: --/--', {
+                font: '13px Orbitron',
+                color: '#7dff8b',
+            })
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
         this.playerHealthBonusText = this.add
-            .text(
-                playerSectionRight,
-                39,
-                '',
-                {
-                    font: '11px Orbitron',
-                    color: '#31b8ff'
-                }
-            )
+            .text(playerSectionRight, 39, '', {
+                font: '11px Orbitron',
+                color: '#31b8ff',
+            })
             .setOrigin(1, 0)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
         this.playerDamageText = this.add
-            .text(
-                leftStatX,
-                64,
-                'Damage: --',
-                {
-                    font: '12px Orbitron',
-                    color: '#ffffff'
-                }
-            )
+            .text(leftStatX, 64, 'Damage: --', {
+                font: '12px Orbitron',
+                color: '#ffffff',
+            })
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
         this.playerDamageBonusText = this.add
-            .text(
-                leftBonusX,
-                64,
-                '',
-                {
-                    font: '10px Orbitron',
-                    color: '#31b8ff'
-                }
-            )
+            .text(leftBonusX, 64, '', {
+                font: '10px Orbitron',
+                color: '#31b8ff',
+            })
             .setOrigin(0, 0)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
         this.playerAttackSpeedText = this.add
-            .text(
-                rightStatX,
-                64,
-                'Attack Speed: --',
-                {
-                    font: '12px Orbitron',
-                    color: '#ffffff'
-                }
-            )
+            .text(rightStatX, 64, 'Attack Speed: --', {
+                font: '12px Orbitron',
+                color: '#ffffff',
+            })
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
         this.playerAttackSpeedBonusText = this.add
-            .text(
-                rightBonusX,
-                64,
-                '',
-                {
-                    font: '10px Orbitron',
-                    color: '#31b8ff'
-                }
-            )
+            .text(rightBonusX, 64, '', {
+                font: '10px Orbitron',
+                color: '#31b8ff',
+            })
             .setOrigin(1, 0)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
         this.playerSpeedText = this.add
-            .text(
-                leftStatX,
-                87,
-                'Speed: --',
-                {
-                    font: '12px Orbitron',
-                    color: '#ffffff'
-                }
-            )
+            .text(leftStatX, 87, 'Speed: --', {
+                font: '12px Orbitron',
+                color: '#ffffff',
+            })
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
         this.playerSpeedBonusText = this.add
-            .text(
-                leftBonusX,
-                87,
-                '',
-                {
-                    font: '10px Orbitron',
-                    color: '#31b8ff'
-                }
-            )
+            .text(leftBonusX, 87, '', {
+                font: '10px Orbitron',
+                color: '#31b8ff',
+            })
             .setOrigin(0, 0)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
+        const timerIconX = centerSectionX + 22;
 
-
-        const timerIconX =
-            centerSectionX + 22;
-
-        const timerBarX =
-            centerSectionX + 44;
+        const timerBarX = centerSectionX + 44;
 
         const multiplierAreaWidth = 96;
 
-        const timerBarWidth =
-            Math.max(
-                130,
-                centerSectionWidth -
-                multiplierAreaWidth -
-                74
-            );
+        const timerBarWidth = Math.max(130, centerSectionWidth - multiplierAreaWidth - 74);
 
         const timerBarHeight = 10;
 
-        const multiplierX =
-            centerSectionX +
-            centerSectionWidth -
-            multiplierAreaWidth / 2 -
-            8;
+        const multiplierX = centerSectionX + centerSectionWidth - multiplierAreaWidth / 2 - 8;
         // Catastrophe row
-        this.catastropheIcon = this.add
-            .image(
-                timerIconX,
-                29,
-                'catastrophe'
-            )
-            .setScale(0.29)
-            .setOrigin(0.5)
-            .setScrollFactor(0)
-            .setDepth(CONTENT_DEPTH);
+        this.catastropheIcon = this.add.image(timerIconX, 29, 'catastrophe').setScale(0.29).setOrigin(0.5).setScrollFactor(0).setDepth(CONTENT_DEPTH);
 
         this.approachingText = this.add
-            .text(
-                timerBarX,
-                14,
-                'Catastrophe',
-                {
-                    font: '12px Orbitron',
-                    color: '#ffffff'
-                }
-            )
+            .text(timerBarX, 14, 'Catastrophe', {
+                font: '12px Orbitron',
+                color: '#ffffff',
+            })
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
-        this.timerBarBackground = this.add
-            .rectangle(
-                timerBarX,
-                36,
-                timerBarWidth,
-                timerBarHeight,
-                0xffffff,
-                0.18
-            )
-            .setOrigin(0, 0)
-            .setScrollFactor(0)
-            .setDepth(CONTENT_DEPTH);
+        this.timerBarBackground = this.add.rectangle(timerBarX, 36, timerBarWidth, timerBarHeight, 0xffffff, 0.18).setOrigin(0, 0).setScrollFactor(0).setDepth(CONTENT_DEPTH);
 
         this.timerBarFill = this.add
-            .rectangle(
-                timerBarX,
-                36,
-                0,
-                timerBarHeight,
-                0x00ff66
-            )
+            .rectangle(timerBarX, 36, 0, timerBarHeight, 0x00ff66)
             .setOrigin(0, 0)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH + 1);
 
-        this.stormMaxTime =
-            gameScene.catastrophe.stormInterval;
+        this.stormMaxTime = gameScene.catastrophe.stormInterval;
 
         this.currentTime = 0;
 
         // Strengthen row
-        this.strengthenIcon = this.add
-            .image(
-                timerIconX,
-                77,
-                'strengthen'
-            )
-            .setScale(0.29)
-            .setOrigin(0.5)
-            .setScrollFactor(0)
-            .setDepth(CONTENT_DEPTH);
+        this.strengthenIcon = this.add.image(timerIconX, 77, 'strengthen').setScale(0.29).setOrigin(0.5).setScrollFactor(0).setDepth(CONTENT_DEPTH);
 
         this.add
-            .text(
-                timerBarX,
-                62,
-                'Enemy strengthens',
-                {
-                    font: '12px Orbitron',
-                    color: '#ffffff'
-                }
-            )
+            .text(timerBarX, 62, 'Enemy strengthens', {
+                font: '12px Orbitron',
+                color: '#ffffff',
+            })
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
-        this.strengthenBarBackground = this.add
-            .rectangle(
-                timerBarX,
-                84,
-                timerBarWidth,
-                timerBarHeight,
-                0xffffff,
-                0.18
-            )
-            .setOrigin(0, 0)
-            .setScrollFactor(0)
-            .setDepth(CONTENT_DEPTH);
+        this.strengthenBarBackground = this.add.rectangle(timerBarX, 84, timerBarWidth, timerBarHeight, 0xffffff, 0.18).setOrigin(0, 0).setScrollFactor(0).setDepth(CONTENT_DEPTH);
 
         this.strengthenBarFill = this.add
-            .rectangle(
-                timerBarX,
-                84,
-                0,
-                timerBarHeight,
-                0xff3c3c
-            )
+            .rectangle(timerBarX, 84, 0, timerBarHeight, 0xff3c3c)
             .setOrigin(0, 0)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH + 1);
 
-        this.strengthenMaxTime =
-            enemy?.enemyStrengthenInterval ?? 1;
+        this.strengthenMaxTime = enemy?.enemyStrengthenInterval ?? 1;
 
         this.strengthenCurrentTime = 0;
 
         // Strength level hexagon
         this.strengthenedSquare = this.add.graphics();
 
-        const strengthenLevelX =
-            timerBarX + timerBarWidth + 15;
+        const strengthenLevelX = timerBarX + timerBarWidth + 15;
 
-        const strengthenLevelY =
-            84 + timerBarHeight / 2;
+        const strengthenLevelY = 84 + timerBarHeight / 2;
 
         this.strengthenedSquareContainer = this.add
-            .container(
-                strengthenLevelX,
-                strengthenLevelY
-            )
+            .container(strengthenLevelX, strengthenLevelY)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH + 1);
 
         this.drawHexagon();
 
-        this.strengthenedSquareContainer.add(
-            this.strengthenedSquare
-        );
+        this.strengthenedSquareContainer.add(this.strengthenedSquare);
 
         this.strengthenedSquareText = this.add
-            .text(
-                0,
-                0,
-                '1',
-                {
-                    font: '13px Orbitron',
-                    color: '#ffffff'
-                }
-            )
+            .text(0, 0, '1', {
+                font: '13px Orbitron',
+                color: '#ffffff',
+            })
             .setOrigin(0.5);
 
-        this.strengthenedSquareContainer.add(
-            this.strengthenedSquareText
-        );
+        this.strengthenedSquareContainer.add(this.strengthenedSquareText);
 
         // Multiplier title
         this.add
-            .text(
-                multiplierX,
-                14,
-                'SCORE MULTIPLIER',
-                {
-                    font: '10px Orbitron',
-                    color: '#b9c8d6'
-                }
-            )
+            .text(multiplierX, 14, 'SCORE MULTIPLIER', {
+                font: '10px Orbitron',
+                color: '#b9c8d6',
+            })
             .setOrigin(0.5, 0)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
         this.multiplierText = this.add
-            .text(
-                multiplierX,
-                31,
-                `x${this.multiplier}`,
-                {
-                    font: 'bold 18px Orbitron',
-                    color: '#ffe866'
-                }
-            )
+            .text(multiplierX, 31, `x${this.multiplier}`, {
+                font: 'bold 18px Orbitron',
+                color: '#ffe866',
+            })
             .setOrigin(0.5, 0)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
@@ -668,98 +457,58 @@ export default class BattleUI extends Scene {
         const multiplierBarWidth = 76;
 
         const multiplierBarBackground = this.add
-            .rectangle(
-                multiplierX - multiplierBarWidth / 2,
-                57,
-                multiplierBarWidth,
-                10,
-                0xffffff,
-                0.18
-            )
+            .rectangle(multiplierX - multiplierBarWidth / 2, 57, multiplierBarWidth, 10, 0xffffff, 0.18)
             .setOrigin(0, 0)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
         this.multiplierBarFill = this.add
-            .rectangle(
-                multiplierBarBackground.x,
-                multiplierBarBackground.y,
-                multiplierBarWidth,
-                10,
-                0xffd900
-            )
+            .rectangle(multiplierBarBackground.x, multiplierBarBackground.y, multiplierBarWidth, 10, 0xffd900)
             .setOrigin(0, 0)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH + 1);
 
-        this.lastMultiplierUpdate =
-            gameScene.activeGameTime;
+        this.lastMultiplierUpdate = gameScene.activeGameTime;
 
-        const rightContentX =
-            rightSectionX + 14;
+        const rightContentX = rightSectionX + 14;
 
-        const rightSectionCenterX =
-            rightSectionX +
-            rightSectionWidth / 2;
+        const rightSectionCenterX = rightSectionX + rightSectionWidth / 2;
 
         this.scoreText = this.add
-            .text(
-                rightContentX,
-                16,
-                'Score: 0',
-                {
-                    font: 'bold 15px Orbitron',
-                    color: '#ffffff'
-                }
-            )
+            .text(rightContentX, 16, 'Score: 0', {
+                font: 'bold 15px Orbitron',
+                color: '#ffffff',
+            })
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
         this.shopIcon = this.add
-            .image(
-                rightContentX + 10,
-                52,
-                'gold'
-            )
+            .image(rightContentX + 10, 52, 'gold')
             .setScale(0.34)
             .setOrigin(0.5)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
         this.goldText = this.add
-            .text(
-                rightContentX + 27,
-                43,
-                String(this.gold),
-                {
-                    font: '13px Orbitron',
-                    color: '#ffd84a'
-                }
-            )
+            .text(rightContentX + 27, 43, String(this.gold), {
+                font: '13px Orbitron',
+                color: '#ffd84a',
+            })
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
         this.cashIcon = this.add
-            .image(
-                rightContentX + 103,
-                52,
-                'cash'
-            )
+            .image(rightContentX + 103, 52, 'cash')
             .setScale(0.34)
             .setOrigin(0.5)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
         this.cashText = this.add
-            .text(
-                rightContentX + 120,
-                43,
-                String(this.cash),
-                {
-                    font: '13px Orbitron',
-                    color: '#82e6ff'
-                }
-            )
+            .text(rightContentX + 120, 43, String(this.cash), {
+                font: '13px Orbitron',
+                color: '#82e6ff',
+            })
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH);
 
@@ -767,101 +516,51 @@ export default class BattleUI extends Scene {
         const shopButtonHeight = 26;
 
         this.shopButtonContainer = this.add
-            .container(
-                rightSectionCenterX - 35,
-                84
-            )
-            .setSize(
-                shopButtonWidth,
-                shopButtonHeight
-            )
+            .container(rightSectionCenterX - 35, 84)
+            .setSize(shopButtonWidth, shopButtonHeight)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH + 1)
             .setInteractive({
-                useHandCursor: true
+                useHandCursor: true,
             });
 
-        const shopButtonBackground = this.add
-            .rectangle(
-                0,
-                0,
-                shopButtonWidth,
-                shopButtonHeight,
-                0x1d6f94,
-                1
-            )
-            .setStrokeStyle(
-                2,
-                0x63d5ff
-            );
+        const shopButtonBackground = this.add.rectangle(0, 0, shopButtonWidth, shopButtonHeight, 0x1d6f94, 1).setStrokeStyle(2, 0x63d5ff);
 
         this.shopText = this.add
-            .text(
-                0,
-                0,
-                'SHOP',
-                {
-                    font: 'bold 13px Orbitron',
-                    color: '#ffffff'
-                }
-            )
+            .text(0, 0, 'SHOP', {
+                font: 'bold 13px Orbitron',
+                color: '#ffffff',
+            })
             .setOrigin(0.5);
 
-        this.shopButtonContainer.add([
-            shopButtonBackground,
-            this.shopText
-        ]);
+        this.shopButtonContainer.add([shopButtonBackground, this.shopText]);
 
-        this.shopButtonContainer.on(
-            'pointerdown',
-            (
-                _pointer: Phaser.Input.Pointer,
-                _localX: number,
-                _localY: number,
-                event: Phaser.Types.Input.EventData
-            ) => {
-                event.stopPropagation();
-                this.shop.open();
-            }
-        );
+        this.shopButtonContainer.on('pointerdown', (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
+            event.stopPropagation();
+            this.shop.open();
+        });
 
         const pauseButton = this.add
-            .text(
-                rightSectionX +
-                rightSectionWidth -
-                30,
-                84,
-                'Ⅱ',
-                {
-                    font: 'bold 18px Orbitron',
-                    color: '#ffffff',
-                    backgroundColor: '#a92e2e',
-                    padding: {
-                        x: 8,
-                        y: 5
-                    }
-                }
-            )
+            .text(rightSectionX + rightSectionWidth - 30, 84, 'Ⅱ', {
+                font: 'bold 18px Orbitron',
+                color: '#ffffff',
+                backgroundColor: '#a92e2e',
+                padding: {
+                    x: 8,
+                    y: 5,
+                },
+            })
             .setOrigin(0.5)
             .setScrollFactor(0)
             .setDepth(CONTENT_DEPTH + 1)
             .setInteractive({
-                useHandCursor: true
+                useHandCursor: true,
             });
 
-
-        pauseButton.on(
-            'pointerdown',
-            (
-                _pointer: Phaser.Input.Pointer,
-                _localX: number,
-                _localY: number,
-                event: Phaser.Types.Input.EventData
-            ) => {
-                event.stopPropagation();
-                this.pauseGame();
-            }
-        );
+        pauseButton.on('pointerdown', (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
+            event.stopPropagation();
+            this.pauseGame();
+        });
 
         this.flashing = false;
         this.flashingTween = null;
@@ -876,83 +575,34 @@ export default class BattleUI extends Scene {
     }
 
     displayPlayerStats(x: number, y: number): void {
-        const {
-            originalHealth,
-            currentHealth,
-            maxHealth,
-            damage,
-            originalDamage,
-            attackSpeed,
-            originalAttackSpeed,
-            speed,
-            originalSpeed
-        } = (this.scene.get('Game') as any).player;
+        const { originalHealth, currentHealth, maxHealth, damage, originalDamage, attackSpeed, originalAttackSpeed, speed, originalSpeed } = (this.scene.get('Game') as any).player;
 
-        const bonusHealth =
-            maxHealth - originalHealth;
+        const bonusHealth = maxHealth - originalHealth;
 
-        const bonusDamage =
-            damage - originalDamage;
+        const bonusDamage = damage - originalDamage;
 
-        const bonusAttackSpeed =
-            Math.round(
-                (attackSpeed - originalAttackSpeed) * 100
-            ) / 100;
+        const bonusAttackSpeed = Math.round((attackSpeed - originalAttackSpeed) * 100) / 100;
 
-        const bonusSpeed =
-            speed - originalSpeed;
+        const bonusSpeed = speed - originalSpeed;
 
-        this.playerHealthText.setText(
-            `Health: ${currentHealth}/${maxHealth}`
-        );
+        this.playerHealthText.setText(`Health: ${currentHealth}/${maxHealth}`);
 
-        this.playerHealthText.setColor(
-            this.hasHealthBelowThreshold(
-                currentHealth,
-                maxHealth
-            )
-                ? '#ff0000'
-                : '#7dff8b'
-        );
+        this.playerHealthText.setColor(this.hasHealthBelowThreshold(currentHealth, maxHealth) ? '#ff0000' : '#7dff8b');
 
-        this.playerDamageText.setText(
-            `Damage: ${damage}`
-        );
+        this.playerDamageText.setText(`Damage: ${damage}`);
 
-        this.playerAttackSpeedText.setText(
-            `Attack Speed: ${attackSpeed}`
-        );
+        this.playerAttackSpeedText.setText(`Attack Speed: ${attackSpeed}`);
 
-        this.playerSpeedText.setText(
-            `Speed: ${speed}`
-        );
+        this.playerSpeedText.setText(`Speed: ${speed}`);
 
-        this.playerHealthBonusText.setText(
-            bonusHealth > 0
-                ? `(+${bonusHealth})`
-                : ''
-        );
+        this.playerHealthBonusText.setText(bonusHealth > 0 ? `(+${bonusHealth})` : '');
 
-        this.playerDamageBonusText.setText(
-            bonusDamage > 0
-                ? `(+${bonusDamage})`
-                : ''
-        );
+        this.playerDamageBonusText.setText(bonusDamage > 0 ? `(+${bonusDamage})` : '');
 
-        this.playerAttackSpeedBonusText.setText(
-            bonusAttackSpeed > 0
-                ? `(+${bonusAttackSpeed})`
-                : ''
-        );
+        this.playerAttackSpeedBonusText.setText(bonusAttackSpeed > 0 ? `(+${bonusAttackSpeed})` : '');
 
-        this.playerSpeedBonusText.setText(
-            bonusSpeed > 0
-                ? `(+${bonusSpeed})`
-                : ''
-        );
+        this.playerSpeedBonusText.setText(bonusSpeed > 0 ? `(+${bonusSpeed})` : '');
     }
-
-
 
     updateTimer(currentTime: number) {
         this.currentTime = currentTime;
@@ -972,7 +622,6 @@ export default class BattleUI extends Scene {
                 this.stopFlashing();
             }
         }
-
     }
 
     startFlashing() {
@@ -985,7 +634,7 @@ export default class BattleUI extends Scene {
                 ease: 'Linear',
                 duration: 500,
                 repeat: -1,
-                yoyo: true
+                yoyo: true,
             });
         }
     }
@@ -1003,7 +652,7 @@ export default class BattleUI extends Scene {
             const stormDamage = (this.scene.get('Game') as any).catastrophe.damage;
             this.approachingText.setText(`Storm launching!\nIncoming Damage: ${stormDamage}`);
         } else {
-            this.approachingText.setText("Catastrophe approaches");
+            this.approachingText.setText('Catastrophe approaches');
         }
     }
 
@@ -1014,10 +663,14 @@ export default class BattleUI extends Scene {
     }
 
     createBaseRebuildTimer() {
-        this.baseRebuildText = this.add.text(this.scale.width / 2, 150, '', {
-            font: '20px Orbitron',
-            color: '#000'
-        }).setOrigin(0.5, 0).setScrollFactor(0).setVisible(false);
+        this.baseRebuildText = this.add
+            .text(this.scale.width / 2, 150, '', {
+                font: '20px Orbitron',
+                color: '#000',
+            })
+            .setOrigin(0.5, 0)
+            .setScrollFactor(0)
+            .setVisible(false);
 
         this.baseRebuildGraphics = this.add.graphics().setScrollFactor(0).setVisible(false);
     }
@@ -1051,24 +704,12 @@ export default class BattleUI extends Scene {
         this.displayPlayerStats(this.scale.width - 350, 500);
         this.shop.update();
         if (this.strengthenedSquareText) {
-
-            const enemies =
-                (this.scene.get('Game') as any)
-                    .enemies;
+            const enemies = (this.scene.get('Game') as any).enemies;
 
             if (enemies.length > 0) {
+                const highestStrengthLevel = Math.max(...enemies.map((e: any) => e.strengthenLevel ?? 1));
 
-                const highestStrengthLevel =
-                    Math.max(
-                        ...enemies.map(
-                            (e: any) =>
-                                e.strengthenLevel ?? 1
-                        )
-                    );
-
-                this.strengthenedSquareText.setText(
-                    `${highestStrengthLevel}`
-                );
+                this.strengthenedSquareText.setText(`${highestStrengthLevel}`);
             }
         }
     }
@@ -1116,7 +757,6 @@ export default class BattleUI extends Scene {
         this.isMultiplierPaused = true;
     }
 
-
     updateStrengthenTimer(currentTime: number) {
         this.strengthenCurrentTime = currentTime;
         const fillWidth = Math.max(0, (this.strengthenCurrentTime / this.strengthenMaxTime) * this.strengthenBarBackground.width);
@@ -1137,8 +777,8 @@ export default class BattleUI extends Scene {
         this.strengthenedSquare.beginPath();
         for (let i = 0; i < 6; i++) {
             // calculate vertex positions
-            const x = radius * Math.cos(2 * Math.PI * i / 6 - Math.PI / 2);
-            const y = radius * Math.sin(2 * Math.PI * i / 6 - Math.PI / 2);
+            const x = radius * Math.cos((2 * Math.PI * i) / 6 - Math.PI / 2);
+            const y = radius * Math.sin((2 * Math.PI * i) / 6 - Math.PI / 2);
             if (i === 0) this.strengthenedSquare.moveTo(x, y);
             else this.strengthenedSquare.lineTo(x, y);
         }
@@ -1147,230 +787,384 @@ export default class BattleUI extends Scene {
     }
 
     createGameOverScreen(): void {
-        if (
-            this.gameOverContainer &&
-            this.gameOverContainer.active
-        ) {
+        if (this.gameOverContainer && this.gameOverContainer.active) {
             return;
         }
 
-        const width =
-            this.scale.width;
+        const width = this.scale.width;
+        const height = this.scale.height;
 
-        const height =
-            this.scale.height;
+        const gameScene = this.scene.get('Game') as any;
 
-        // further gameplay changes cannot alter the submitted score, so we calculate it here
-        this.finalScore =
-            Math.max(
-                0,
-                Math.floor(
-                    this.score
-                )
-            );
+        this.finalScore = Math.max(0, Math.floor(this.score));
 
-        this.gameOverContainer =
-            this.add
-                .container(
-                    0,
-                    0
-                )
-                .setDepth(4000);
+        this.finalBaseSeen = Math.max(1, Math.floor(gameScene.base?.baseLevel ?? 1));
 
-        const overlay =
-            this.add
-                .rectangle(
-                    0,
-                    0,
-                    width,
-                    height,
-                    0x000000,
-                    0.88
-                )
-                .setOrigin(
-                    0,
-                    0
-                )
-                .setInteractive();
+        this.isNewHighScore = false;
 
-        overlay.on(
-            'pointerdown',
-            (
-                _pointer:
-                    Phaser.Input.Pointer,
+        this.gameOverContainer = this.add.container(0, 0).setDepth(4000);
 
-                _localX:
-                    number,
+        // dark overlay
+        const overlay = this.add.rectangle(0, 0, width, height, 0x02070c, 0.84).setOrigin(0, 0).setInteractive();
 
-                _localY:
-                    number,
+        overlay.on('pointerdown', (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
+            event.stopPropagation();
+        });
 
-                event:
-                    Phaser.Types.Input.EventData
-            ) => {
+        const panelWidth = Math.min(700, width - 42);
+
+        const panelHeight = Math.min(610, height - 30);
+
+        const panelX = width / 2;
+
+        const panelY = height / 2;
+
+        const panelLeft = panelX - panelWidth / 2;
+
+        const panelTop = panelY - panelHeight / 2;
+
+        // min panel shadow and layered background
+        const panelGraphics = this.add.graphics();
+
+        panelGraphics.fillStyle(0x000000, 0.45);
+
+        panelGraphics.fillRoundedRect(panelLeft + 9, panelTop + 11, panelWidth, panelHeight, 24);
+
+        panelGraphics.fillStyle(0x0b1721, 0.99);
+
+        panelGraphics.fillRoundedRect(panelLeft, panelTop, panelWidth, panelHeight, 24);
+
+        panelGraphics.lineStyle(3, 0x52cfff, 0.95);
+
+        panelGraphics.strokeRoundedRect(panelLeft, panelTop, panelWidth, panelHeight, 24);
+
+        panelGraphics.lineStyle(1, 0x9be7ff, 0.18);
+
+        panelGraphics.strokeRoundedRect(panelLeft + 8, panelTop + 8, panelWidth - 16, panelHeight - 16, 18);
+
+        panelGraphics.fillStyle(0xff4f58, 1);
+
+        panelGraphics.fillRoundedRect(panelX - 90, panelTop + 17, 180, 5, 3);
+
+        panelGraphics.fillStyle(0xff4f58, 0.07);
+
+        const runCompleteLabel = this.add
+            .text(panelX, panelTop + 39, 'RUN COMPLETE', {
+                font: 'bold 12px Orbitron',
+
+                color: '#ff8c92',
+
+                letterSpacing: 5,
+            })
+            .setOrigin(0.5);
+
+        const title = this.add
+            .text(panelX, panelTop + 86, 'GAME OVER', {
+                font: 'bold 48px Orbitron',
+
+                color: '#ffffff',
+
+                stroke: '#25070a',
+
+                strokeThickness: 7,
+
+                shadow: {
+                    offsetX: 0,
+
+                    offsetY: 4,
+
+                    color: '#ff3344',
+
+                    blur: 13,
+
+                    fill: true,
+                },
+            })
+            .setOrigin(0.5);
+
+        const titleDivider = this.add.graphics();
+
+        titleDivider.lineStyle(2, 0x50c8ff, 0.45);
+
+        titleDivider.lineBetween(panelLeft + 52, panelTop + 135, panelX - 115, panelTop + 135);
+
+        titleDivider.lineBetween(panelX + 115, panelTop + 135, panelLeft + panelWidth - 52, panelTop + 135);
+
+        titleDivider.fillStyle(0x50c8ff, 0.85);
+
+        // result card
+        const statGap = 18;
+
+        const statCardWidth = (panelWidth - 108 - statGap) / 2;
+
+        const statCardHeight = 108;
+
+        const statCardY = panelTop + 164;
+
+        const scoreCardX = panelX - statGap / 2 - statCardWidth;
+
+        const baseCardX = panelX + statGap / 2;
+
+        const statGraphics = this.add.graphics();
+
+        // score card
+        statGraphics.fillStyle(0x102735, 0.95);
+
+        statGraphics.fillRoundedRect(scoreCardX, statCardY, statCardWidth, statCardHeight, 15);
+
+        statGraphics.lineStyle(2, 0x49cfff, 0.72);
+
+        statGraphics.strokeRoundedRect(scoreCardX, statCardY, statCardWidth, statCardHeight, 15);
+
+        statGraphics.fillStyle(0x49cfff, 0.08);
+
+        // base card
+        statGraphics.fillStyle(0x2a2312, 0.94);
+
+        statGraphics.fillRoundedRect(baseCardX, statCardY, statCardWidth, statCardHeight, 15);
+
+        statGraphics.lineStyle(2, 0xffd84a, 0.72);
+
+        statGraphics.strokeRoundedRect(baseCardX, statCardY, statCardWidth, statCardHeight, 15);
+
+        statGraphics.fillStyle(0xffd84a, 0.07);
+
+        const scoreCaption = this.add
+            .text(scoreCardX + statCardWidth / 2, statCardY + 22, 'FINAL SCORE', {
+                font: 'bold 11px Orbitron',
+
+                color: '#83dcff',
+
+                letterSpacing: 3,
+            })
+            .setOrigin(0.5);
+
+        const scoreLabel = this.add
+            .text(scoreCardX + statCardWidth / 2, statCardY + 67, this.finalScore.toLocaleString(), {
+                font: 'bold 35px Orbitron',
+
+                color: '#ffffff',
+
+                stroke: '#000000',
+
+                strokeThickness: 5,
+            })
+            .setOrigin(0.5);
+
+        const baseCaption = this.add
+            .text(baseCardX + statCardWidth / 2, statCardY + 22, 'BASE REACHED', {
+                font: 'bold 11px Orbitron',
+
+                color: '#ffe77c',
+
+                letterSpacing: 3,
+            })
+            .setOrigin(0.5);
+
+        const baseLabel = this.add
+            .text(baseCardX + statCardWidth / 2, statCardY + 67, `${this.finalBaseSeen}`, {
+                font: 'bold 31px Orbitron',
+
+                color: '#ffd84a',
+
+                stroke: '#000000',
+
+                strokeThickness: 5,
+            })
+            .setOrigin(0.5);
+
+        // status result area
+        const statusAreaTop = statCardY + statCardHeight + 20;
+
+        const statusAreaHeight = 142;
+
+        const statusLeft = panelLeft + 54;
+
+        const statusWidth = panelWidth - 108;
+
+        const statusGraphics = this.add.graphics();
+
+        // main result area background
+        statusGraphics.fillStyle(0x071119, 0.92);
+
+        statusGraphics.fillRoundedRect(statusLeft, statusAreaTop, statusWidth, statusAreaHeight, 15);
+
+        statusGraphics.lineStyle(1, 0x5ccff5, 0.28);
+
+        statusGraphics.strokeRoundedRect(statusLeft, statusAreaTop, statusWidth, statusAreaHeight, 15);
+
+        // header section
+        statusGraphics.fillStyle(0x102733, 0.9);
+
+        statusGraphics.fillRoundedRect(statusLeft + 1, statusAreaTop + 1, statusWidth - 2, 38, 14);
+
+        statusGraphics.fillRect(statusLeft + 1, statusAreaTop + 22, statusWidth - 2, 17);
+
+        statusGraphics.lineStyle(1, 0x62d9ff, 0.25);
+
+        statusGraphics.lineBetween(statusLeft + 20, statusAreaTop + 39, statusLeft + statusWidth - 20, statusAreaTop + 39);
+
+        this.gameOverResultTitle = this.add
+            .text(panelX, statusAreaTop + 20, 'SAVING RUN...', {
+                font: 'bold 15px Orbitron',
+
+                color: '#82e6ff',
+
+                letterSpacing: 2,
+
+                stroke: '#000000',
+
+                strokeThickness: 3,
+            })
+            .setOrigin(0.5);
+
+        this.gameOverScoreStatus = this.add
+            .text(panelX, statusAreaTop + 89, 'Please wait...', {
+                font: '12px Orbitron',
+
+                color: '#7fa6b8',
+
+                align: 'center',
+
+                stroke: '#000000',
+
+                strokeThickness: 2,
+            })
+            .setOrigin(0.5);
+
+        this.gameOverResultRows = this.add.container(0, 0).setVisible(false);
+
+        const createGameOverButton = (x: number, y: number, label: string, backgroundColor: string, borderColor: number, callback: () => void): Phaser.GameObjects.Text => {
+            const button = this.add
+                .text(x, y, label, {
+                    font: 'bold 15px Orbitron',
+
+                    color: '#ffffff',
+
+                    align: 'center',
+
+                    fixedWidth: 245,
+
+                    fixedHeight: 46,
+
+                    padding: {
+                        top: 13,
+                    },
+
+                    backgroundColor,
+                })
+                .setOrigin(0.5)
+                .setStroke('#000000', 3)
+                .setShadow(0, 4, 'rgba(0,0,0,0.65)', 5, true, true)
+                .setInteractive({
+                    useHandCursor: true,
+                });
+
+            const border = this.add.graphics();
+
+            border.lineStyle(2, borderColor, 0.9);
+
+            border.strokeRoundedRect(x - 122.5, y - 23, 245, 46, 8);
+
+            button.on('pointerover', () => {
+                button.setScale(1.025).setAlpha(1);
+            });
+
+            button.on('pointerout', () => {
+                button.setScale(1).setAlpha(1);
+            });
+
+            button.on('pointerdown', (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
                 event.stopPropagation();
+
+                button.setScale(0.97);
+
+                callback();
+            });
+
+            button.on('pointerup', () => {
+                if (button.active) {
+                    button.setScale(1.025);
+                }
+            });
+
+            this.gameOverContainer.add(border);
+
+            return button;
+        };
+
+        const buttonRowOneY = panelTop + panelHeight - 103;
+
+        const buttonRowTwoY = panelTop + panelHeight - 45;
+
+        const buttonColumnOffset = 132;
+
+        const retryButton = createGameOverButton(panelX - buttonColumnOffset, buttonRowOneY, '↻  RETRY', '#17658c', 0x63d5ff, () => {
+            this.restartGameScene();
+        });
+
+        const shareButton = createGameOverButton(panelX + buttonColumnOffset, buttonRowOneY, 'SHARE RUN', '#24744a', 0x70e69b, () => {
+            if (shareButton.getData('sharing')) {
+                return;
             }
-        );
 
-        const panelWidth =
-            Math.min(
-                610,
-                width - 50
-            );
+            shareButton.setData('sharing', true);
 
-        const panelHeight =
-            Math.min(
-                520,
-                height - 40
-            );
+            shareButton.disableInteractive().setAlpha(0.62).setText('SHARING...');
 
-        const panelX =
-            width / 2;
-
-        const panelY =
-            height / 2;
-
-        const panel =
-            this.add
-                .rectangle(
-                    panelX,
-                    panelY,
-                    panelWidth,
-                    panelHeight,
-                    0x111c26,
-                    0.99
-                )
-                .setStrokeStyle(
-                    4,
-                    0x50c8ff,
-                    1
-                );
-
-        const title =
-            this.add
-                .text(
-                    panelX,
-                    panelY - 195,
-                    'GAME OVER',
-                    {
-                        font:
-                            'bold 52px Orbitron',
-
-                        color:
-                            '#ff4c4c',
-
-                        stroke:
-                            '#000000',
-
-                        strokeThickness:
-                            7
-                    }
-                )
-                .setOrigin(0.5);
-
-        const scoreLabel =
-            this.add
-                .text(
-                    panelX,
-                    panelY - 105,
-                    `FINAL SCORE: ${this.finalScore.toLocaleString()}`,
-                    {
-                        font:
-                            'bold 27px Orbitron',
-
-                        color:
-                            '#ffffff',
-
-                        stroke:
-                            '#000000',
-
-                        strokeThickness:
-                            4
-                    }
-                )
-                .setOrigin(0.5);
-
-        this.gameOverScoreStatus =
-            this.add
-                .text(
-                    panelX,
-                    panelY - 48,
-                    'Saving high score...',
-                    {
-                        font:
-                            '17px Orbitron',
-
-                        color:
-                            '#82e6ff',
-
-                        align:
-                            'center',
-
-                        stroke:
-                            '#000000',
-
-                        strokeThickness:
-                            3,
-
-                        wordWrap: {
-                            width:
-                                panelWidth - 70
-                        }
-                    }
-                )
-                .setOrigin(0.5);
-
-        const retryButton =
-            this.createStyledButton(
-                panelX,
-                panelY + 65,
-                'RETRY',
-                '#1d6f94',
-                () => {
-                    this.restartGameScene();
+            void this.shareScorePost().then((success) => {
+                if (!shareButton.active) {
+                    return;
                 }
-            );
 
-        const leaderboardButton =
-            this.createStyledButton(
-                panelX,
-                panelY + 135,
-                'LEADERBOARD',
-                '#6943a5',
-                () => {
-                    this.openLeaderboard();
-                }
-            );
+                if (success) {
+                    shareButton.setText('SHARED!').setAlpha(1);
 
-        const mainMenuButton =
-            this.createStyledButton(
-                panelX,
-                panelY + 205,
-                'MAIN MENU',
-                '#8f2d2d',
-                () => {
-                    this.goToMainMenu();
+                    return;
                 }
-            );
+
+                shareButton.setText('SHARE RUN').setAlpha(1).setInteractive({
+                    useHandCursor: true,
+                });
+
+                shareButton.setData('sharing', false);
+            });
+        });
+
+        const leaderboardButton = createGameOverButton(panelX - buttonColumnOffset, buttonRowTwoY, 'LEADERBOARD', '#523684', 0xa788ef, () => {
+            this.openLeaderboard();
+        });
+
+        const mainMenuButton = createGameOverButton(panelX + buttonColumnOffset, buttonRowTwoY, 'MAIN MENU', '#712b32', 0xff747d, () => {
+            this.goToMainMenu();
+        });
 
         this.gameOverContainer.add([
             overlay,
-            panel,
+            panelGraphics,
+            titleDivider,
+            statGraphics,
+            statusGraphics,
+            this.gameOverResultTitle,
+            this.gameOverResultRows,
+            runCompleteLabel,
             title,
+            scoreCaption,
             scoreLabel,
+            baseCaption,
+            baseLabel,
             this.gameOverScoreStatus,
             retryButton,
+            shareButton,
             leaderboardButton,
-            mainMenuButton
+            mainMenuButton,
         ]);
 
-        // This is the only location that submits a score
-        void this.submitFinalScore();
+        // share button waits for this
+        this.scoreSubmissionPromise = this.submitFinalScore();
     }
 
-    private async submitFinalScore():
-        Promise<void> {
-        // prevent double submission
+    private async submitFinalScore(): Promise<void> {
         if (this.gameDataSaved) {
             return;
         }
@@ -1378,184 +1172,82 @@ export default class BattleUI extends Scene {
         this.gameDataSaved = true;
 
         try {
-            const finalCashEarned =
-                Math.max(
-                    0,
-                    Math.floor(
-                        this.cash
-                    )
-                );
+            const finalCashEarned = Math.max(0, Math.floor(this.cash));
 
-            const response =
-                await fetch(
-                    '/api/highscore',
-                    {
-                        method:
-                            'POST',
+            const response = await fetch('/api/highscore', {
+                method: 'POST',
 
-                        headers: {
-                            'Content-Type':
-                                'application/json'
-                        },
+                headers: {
+                    'Content-Type': 'application/json',
+                },
 
-                        body:
-                            JSON.stringify({
-                                score:
-                                    this.finalScore,
+                body: JSON.stringify({
+                    score: this.finalScore,
 
-                                cashEarned:
-                                    finalCashEarned,
+                    cashEarned: finalCashEarned,
 
-                                highestBaseSeen:
-                                    (this.scene.get('Game') as any)
-                                        .base.baseLevel
-                            })
-                    }
-                );
+                    highestBaseSeen: this.finalBaseSeen,
+                }),
+            });
 
-            const responseData =
-                await response.json() as unknown;
+            const responseData = (await response.json()) as unknown;
 
             if (!response.ok) {
-                const errorData =
-                    responseData as ApiErrorResponse;
+                const errorData = responseData as ApiErrorResponse;
 
-                throw new Error(
-                    errorData.message ??
-                    'Unable to save score.'
-                );
+                throw new Error(errorData.message ?? 'Unable to save score.');
             }
 
-            const data =
-                responseData as SubmitHighScoreResponse;
+            const data = responseData as SubmitHighScoreResponse;
 
-            if (
-                data.type !==
-                'submit-high-score'
-            ) {
-                throw new Error(
-                    'Unexpected server response.'
-                );
+            if (data.type !== 'submit-high-score') {
+                throw new Error('Unexpected server response.');
             }
 
-            if (
-                !this.gameOverScoreStatus
-            ) {
+            this.isNewHighScore = data.isNewBest === true;
+
+            if (!this.gameOverScoreStatus) {
                 return;
             }
+            this.isNewHighScore = data.isNewBest === true;
 
-            const messages: string[] = [];
-
-            if (data.isNewBest) {
-                messages.push(
-                    'NEW ALL-TIME BEST!'
-                );
-            } else if (data.isNewDailyBest) {
-                messages.push(
-                    'NEW DAILY BEST!'
-                );
-            } else {
-                messages.push(
-                    'RESULT SAVED'
-                );
-            }
-
-            messages.push(
-                `ALL-TIME BEST: ${data.personalBest.toLocaleString()}`
-            );
-
-            messages.push(
-                `TODAY'S BEST: ${data.todayBest.toLocaleString()}`
-            );
-
-            messages.push(
-                `CASH EARNED: +${data.cashEarned.toLocaleString()}`
-            );
-
-            messages.push(
-                `TOTAL CASH: ${data.totalCash.toLocaleString()}`
-            );
-
-            if (data.rank !== null) {
-                messages.push(
-                    `GLOBAL RANK: #${data.rank}`
-                );
-            }
-
-            this.gameOverScoreStatus
-                ?.setColor(
-                    data.isNewBest
-                        ? '#ffd84a'
-                        : '#82e6ff'
-                )
-                .setText(
-                    messages.join('\n')
-                );
-
-            this.gameOverScoreStatus
-                .setColor(
-                    '#82e6ff'
-                )
-                .setText(
-                    [
-                        'Score saved',
-                        `PERSONAL BEST: ${data.personalBest.toLocaleString()}`,
-                        data.rank !== null
-                            ? `GLOBAL RANK: #${data.rank}`
-                            : ''
-                    ]
-                        .filter(Boolean)
-                        .join('\n')
-                );
+            this.displayGameOverResults(data);
         } catch (error) {
-            console.error(
-                '[BattleUI] Failed to submit score:',
-                error
-            );
+            console.error('[BattleUI] Failed to submit score:', error);
 
-            const message =
-                error instanceof Error
-                    ? error.message
-                    : 'Unknown error';
+            const message = error instanceof Error ? error.message : 'Failed to save run.';
 
-            if (
-                this.gameOverScoreStatus
-            ) {
-                this.gameOverScoreStatus
-                    .setColor(
-                        '#ff8b8b'
-                    )
-                    .setText(
-                        [
-                            'HIGH SCORE NOT SAVED',
-                            message
-                        ].join('\n')
-                    );
+            if (this.gameOverResultTitle) {
+                this.gameOverResultTitle.setText('SAVE FAILED').setColor('#ff7b86').setShadow(0, 0, '#ff5a66', 8, true, true);
             }
+
+            if (this.gameOverScoreStatus) {
+                this.gameOverScoreStatus.setVisible(true).setColor('#ff9aa5').setText(message);
+            }
+
+            this.gameOverResultRows?.setVisible(false);
         }
     }
 
     private openLeaderboard(): void {
-        this.scene.stop(
-            'BattleUI'
-        );
+        this.scene.sleep('Game');
+        this.scene.sleep('BattleUI');
 
-        this.scene.stop(
-            'Game'
-        );
+        this.scene.launch('Leaderboard', {
+            returnTo: 'game-over',
+        });
 
-        this.scene.start(
-            'Leaderboard'
-        );
+        this.scene.bringToTop('Leaderboard');
     }
 
     createStyledButton(x: number, y: number, text: string, backgroundColor: string, callback: () => void) {
-        let button = this.add.text(x, y, text, {
-            font: '28px Orbitron',
-            color: '#ffffff',
-            padding: { x: 20, y: 10 },
-            backgroundColor: backgroundColor
-        })
+        let button = this.add
+            .text(x, y, text, {
+                font: '28px Orbitron',
+                color: '#ffffff',
+                padding: { x: 20, y: 10 },
+                backgroundColor: backgroundColor,
+            })
             .setOrigin(0.5)
             .setInteractive()
             .on('pointerdown', callback);
@@ -1567,8 +1259,7 @@ export default class BattleUI extends Scene {
     }
 
     restartGameScene(): void {
-        const gameScene =
-            this.scene.get('Game') as any;
+        const gameScene = this.scene.get('Game') as any;
 
         if (this.scene.isPaused('Game')) {
             this.scene.resume('Game');
@@ -1587,7 +1278,6 @@ export default class BattleUI extends Scene {
     }
 
     goToMainMenu() {
-
         this.scene.stop('BattleUI');
 
         this.scene.stop('Game');
@@ -1596,13 +1286,9 @@ export default class BattleUI extends Scene {
     }
 
     pauseGame(): void {
-        const gameScene =
-            this.scene.get('Game') as any;
+        const gameScene = this.scene.get('Game') as any;
 
-        if (
-            this.pauseContainer &&
-            this.pauseContainer.active
-        ) {
+        if (this.pauseContainer && this.pauseContainer.active) {
             return;
         }
 
@@ -1615,43 +1301,20 @@ export default class BattleUI extends Scene {
     }
 
     createPauseScreen(): void {
-        if (
-            this.pauseContainer &&
-            this.pauseContainer.active
-        ) {
+        if (this.pauseContainer && this.pauseContainer.active) {
             return;
         }
 
         const width = this.scale.width;
         const height = this.scale.height;
 
-        this.pauseContainer = this.add
-            .container(0, 0)
-            .setDepth(3000);
+        this.pauseContainer = this.add.container(0, 0).setDepth(3000);
 
-        const overlay = this.add
-            .rectangle(
-                0,
-                0,
-                width,
-                height,
-                0x000000,
-                0.78
-            )
-            .setOrigin(0, 0)
-            .setInteractive();
+        const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.78).setOrigin(0, 0).setInteractive();
 
-        overlay.on(
-            'pointerdown',
-            (
-                _pointer: Phaser.Input.Pointer,
-                _localX: number,
-                _localY: number,
-                event: Phaser.Types.Input.EventData
-            ) => {
-                event.stopPropagation();
-            }
-        );
+        overlay.on('pointerdown', (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
+            event.stopPropagation();
+        });
 
         const panelWidth = 420;
         const panelHeight = 360;
@@ -1659,81 +1322,34 @@ export default class BattleUI extends Scene {
         const panelX = width / 2;
         const panelY = height / 2;
 
-        const panel = this.add
-            .rectangle(
-                panelX,
-                panelY,
-                panelWidth,
-                panelHeight,
-                0x121b24,
-                0.98
-            )
-            .setStrokeStyle(
-                3,
-                0x50c8ff,
-                1
-            );
+        const panel = this.add.rectangle(panelX, panelY, panelWidth, panelHeight, 0x121b24, 0.98).setStrokeStyle(3, 0x50c8ff, 1);
 
         const title = this.add
-            .text(
-                panelX,
-                panelY - 125,
-                'PAUSED',
-                {
-                    font: 'bold 48px Orbitron',
-                    color: '#ffffff'
-                }
-            )
+            .text(panelX, panelY - 125, 'PAUSED', {
+                font: 'bold 48px Orbitron',
+                color: '#ffffff',
+            })
             .setOrigin(0.5);
 
-        const resumeButton =
-            this.createStyledButton(
-                panelX,
-                panelY - 35,
-                'Resume',
-                '#247f4c',
-                () => {
-                    this.closePauseScreen();
-                    this.scene.resume('Game');
+        const resumeButton = this.createStyledButton(panelX, panelY - 35, 'Resume', '#247f4c', () => {
+            this.closePauseScreen();
+            this.scene.resume('Game');
 
-                    const gameScene =
-                        this.scene.get('Game') as any;
+            const gameScene = this.scene.get('Game') as any;
 
-                    gameScene.isGamePaused = false;
-                }
-            );
+            gameScene.isGamePaused = false;
+        });
 
-        const retryButton =
-            this.createStyledButton(
-                panelX,
-                panelY + 45,
-                'Retry',
-                '#1d6f94',
-                () => {
-                    this.restartGameScene();
-                }
-            );
+        const retryButton = this.createStyledButton(panelX, panelY + 45, 'Retry', '#1d6f94', () => {
+            this.restartGameScene();
+        });
 
-        const mainMenuButton =
-            this.createStyledButton(
-                panelX,
-                panelY + 125,
-                'Main Menu',
-                '#8f2d2d',
-                () => {
-                    this.closePauseScreen();
-                    this.goToMainMenu();
-                }
-            );
+        const mainMenuButton = this.createStyledButton(panelX, panelY + 125, 'Main Menu', '#8f2d2d', () => {
+            this.closePauseScreen();
+            this.goToMainMenu();
+        });
 
-        this.pauseContainer.add([
-            overlay,
-            panel,
-            title,
-            resumeButton,
-            retryButton,
-            mainMenuButton
-        ]);
+        this.pauseContainer.add([overlay, panel, title, resumeButton, retryButton, mainMenuButton]);
     }
 
     private closePauseScreen(): void {
@@ -1750,5 +1366,158 @@ export default class BattleUI extends Scene {
         this.scene.resume('Game');
         (this.scene.get('Game') as any).isGamePaused = false;
     }
-}
 
+    private async shareScorePost(): Promise<boolean> {
+        if (this.scoreSubmissionPromise) {
+            await this.scoreSubmissionPromise;
+        }
+        const score = this.finalScore;
+
+        const highestBaseSeen = this.finalBaseSeen;
+
+        const isNewHighScore = this.isNewHighScore;
+
+        try {
+            if (this.gameOverScoreStatus) {
+                this.gameOverScoreStatus.setText('Creating Reddit post...').setColor('#82e6ff');
+            }
+
+            const response = await fetch('/api/share-score', {
+                method: 'POST',
+
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+
+                body: JSON.stringify({
+                    score,
+                    highestBaseSeen,
+                    isNewHighScore,
+                }),
+            });
+
+            const rawResponse = await response.text();
+
+            let data: {
+                message?: string;
+            } = {};
+
+            try {
+                data = rawResponse ? JSON.parse(rawResponse) : {};
+            } catch {
+                throw new Error('The server returned invalid data.');
+            }
+
+            if (!response.ok) {
+                throw new Error(data.message ?? 'Unable to share score.');
+            }
+
+            if (this.gameOverScoreStatus) {
+                this.gameOverScoreStatus.setText(data.message ?? 'Score shared!').setColor('#65ff9a');
+            }
+
+            return true;
+        } catch (error) {
+            console.error('[Share Score] Failed:', error);
+
+            const message = error instanceof Error ? error.message : 'Unable to share score.';
+
+            if (this.gameOverScoreStatus) {
+                this.gameOverScoreStatus.setText(message).setColor('#ff7777');
+            }
+
+            return false;
+        }
+    }
+
+    private displayGameOverResults(data: SubmitHighScoreResponse): void {
+        if (!this.gameOverResultRows || !this.gameOverResultTitle || !this.gameOverScoreStatus) {
+            return;
+        }
+
+        this.gameOverResultRows.removeAll(true);
+        this.gameOverResultRows.setVisible(true);
+
+        this.gameOverScoreStatus.setVisible(false);
+
+        if (this.isNewHighScore) {
+            this.gameOverResultTitle.setText('★ NEW HIGH SCORE ★').setColor('#ffd84a').setShadow(0, 0, '#ffd84a', 10, true, true);
+        } else if (data.isNewDailyBest) {
+            this.gameOverResultTitle.setText('NEW DAILY BEST').setColor('#b891ff').setShadow(0, 0, '#8d5fff', 8, true, true);
+        } else {
+            this.gameOverResultTitle.setText('RUN SAVED').setColor('#72e7a3').setShadow(0, 0, '#36ba71', 6, true, true);
+        }
+
+        const width = this.scale.width;
+        const height = this.scale.height;
+
+        const panelWidth = Math.min(700, width - 42);
+        const panelHeight = Math.min(610, height - 30);
+
+        const panelX = width / 2;
+        const panelTop = height / 2 - panelHeight / 2;
+
+        const statCardY = panelTop + 164;
+        const statCardHeight = 108;
+
+        const statusAreaTop = statCardY + statCardHeight + 20;
+
+        const leftX = panelX - panelWidth / 2 + 92;
+        const rightX = panelX + panelWidth / 2 - 92;
+
+        const rowStartY = statusAreaTop + 60;
+        const rowSpacing = 24;
+
+        const rows = [
+            {
+                label: 'ALL-TIME BEST',
+                value: data.personalBest.toLocaleString(),
+                color: '#82e6ff',
+            },
+            {
+                label: 'CASH EARNED',
+                value: `+${data.cashEarned.toLocaleString()}`,
+                color: '#72e7a3',
+                iconKey: 'cash',
+            },
+            {
+                label: 'GLOBAL RANK',
+                value: data.rank !== null ? `#${data.rank}` : 'UNRANKED',
+                color: data.rank !== null ? '#d7b0ff' : '#7f95a2',
+            },
+        ];
+
+        rows.forEach((row, index) => {
+            const y = rowStartY + index * rowSpacing;
+
+            const labelText = this.add
+                .text(leftX, y, row.label, {
+                    font: '11px Orbitron',
+                    color: '#ffffff',
+                    stroke: '#000000',
+                    strokeThickness: 2,
+                })
+                .setOrigin(0, 0.5);
+
+            const valueText = this.add
+                .text(rightX, y, row.value, {
+                    font: 'bold 14px Orbitron',
+                    color: row.color,
+                    stroke: '#000000',
+                    strokeThickness: 3,
+                })
+                .setOrigin(1, 0.5);
+
+            this.gameOverResultRows?.add([labelText, valueText]);
+
+            if ('iconKey' in row && row.iconKey) {
+                const icon = this.add
+                    .image(rightX - valueText.width - 12, y, row.iconKey)
+                    .setDisplaySize(18, 18)
+                    .setOrigin(1, 0.5);
+
+                this.gameOverResultRows?.add(icon);
+            }
+        });
+    }
+}

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+        />
+
+        <title>Shared Raider Score</title>
+
+        <link
+            rel="stylesheet"
+            href="score-share.css"
+        />
+    </head>
+
+    <body>
+        <main class="score-card">
+            <div
+                id="reward-shine"
+                class="reward-shine"
+                aria-hidden="true"
+                hidden
+            >
+                <div
+                    class="reward-shine-layer reward-shine-back"
+                ></div>
+
+                <div
+                    class="reward-shine-layer reward-shine-front"
+                ></div>
+
+                <div class="reward-glow"></div>
+            </div>
+
+            <div
+                id="score-loading"
+                class="score-loading"
+                role="status"
+                aria-live="polite"
+            >
+                <div class="loading-spinner"></div>
+
+                <p>LOADING RAIDER SCORE...</p>
+            </div>
+
+            <div
+                id="score-content"
+                class="score-content"
+                hidden
+            >
+                <p class="eyebrow">
+                    THE YOUNG RAIDER
+                </p>
+
+                <h1 id="player-name"></h1>
+
+                <p id="achievement" class="achievement"></p>
+
+                <div
+                    id="score"
+                    class="score-value"
+                ></div>
+
+                <div class="base-value">
+                    BASE REACHED:
+                    <strong id="base"></strong>
+                </div>
+
+                <button id="play-button">
+                    PLAY THE YOUNG RAIDER
+                </button>
+
+                <p
+                    id="status"
+                    class="status"
+                >
+                    CAN YOU BEAT THIS RAIDER?
+                </p>
+            </div>
+        </main>
+
+
+        <script
+            type="module"
+            src="score-share.ts"
+        ></script>
+    </body>
+</html>

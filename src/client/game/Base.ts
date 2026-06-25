@@ -61,7 +61,7 @@ class Base {
         this.health = this.totalHealth;
         this.healthBar = null;
         this.isDestroyed = false;
-        this.rebuildTime = 10000;
+        this.rebuildTime = 5000;
         this.destroyedTime = 0;
         this.customSquare = null;
         this.isRebuilding = false;
@@ -284,15 +284,9 @@ class Base {
                         fontSize: '11px',
                         color: '#ffffff',
 
-                        /*
-                         * Dark outline around every character.
-                         */
                         stroke: '#000000',
                         strokeThickness: 3,
 
-                        /*
-                         * Semi-transparent backing behind the text.
-                         */
                         backgroundColor:
                             'rgba(0, 0, 0, 0.72)',
 

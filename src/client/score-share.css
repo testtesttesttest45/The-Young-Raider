@@ -1,0 +1,428 @@
+@font-face {
+    font-family: 'Orbitron';
+    src: url('/assets/fonts/Orbitron-Regular.ttf')
+        format('truetype');
+}
+
+@font-face {
+    font-family: 'Orbitron';
+    src: url('/assets/fonts/Orbitron-Bold.ttf')
+        format('truetype');
+    font-weight: 700;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+}
+
+body {
+    display: grid;
+    place-items: center;
+    padding: 14px;
+
+    font-family: 'Orbitron', sans-serif;
+    color: white;
+
+    background:
+        linear-gradient(
+            to bottom,
+            rgba(0, 0, 0, 0.12),
+            rgba(0, 0, 0, 0.32)
+        ),
+        url('/assets/bg.png')
+            center / cover no-repeat;
+}
+
+.score-card {
+    position: relative;
+
+    width: min(720px, 100%);
+    min-height: 285px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    padding: 24px 26px;
+
+    overflow: visible;
+
+    text-align: center;
+
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+.score-content {
+    position: relative;
+    z-index: 2;
+
+    width: 100%;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    animation:
+        score-content-enter
+        0.42s ease-out both;
+}
+
+.score-loading {
+    position: relative;
+    z-index: 2;
+
+    min-height: 220px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    color: #d7f5ff;
+
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+
+    text-align: center;
+}
+
+.loading-spinner {
+    width: 44px;
+    height: 44px;
+
+    margin-bottom: 18px;
+
+    border: 4px solid
+        rgba(130, 230, 255, 0.18);
+
+    border-top-color: #82e6ff;
+    border-right-color: #ffd84a;
+
+    border-radius: 50%;
+
+    box-shadow:
+        0 0 20px
+            rgba(130, 230, 255, 0.25);
+
+    animation:
+        loading-spinner-rotate
+        0.85s linear infinite;
+}
+
+.score-loading p {
+    margin: 0;
+
+    text-shadow:
+        0 0 10px
+            rgba(130, 230, 255, 0.45);
+}
+
+.score-loading.is-error {
+    color: #ff8d8d;
+}
+
+.score-loading.is-error .loading-spinner {
+    display: none;
+}
+
+@keyframes loading-spinner-rotate {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes score-content-enter {
+    from {
+        opacity: 0;
+
+        transform:
+            translateY(8px)
+            scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+
+        transform:
+            translateY(0)
+            scale(1);
+    }
+}
+
+.eyebrow {
+    margin: 0 0 8px;
+
+    color: #82e6ff;
+
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 4px;
+}
+
+h1 {
+    margin: 0;
+
+    max-width: 100%;
+
+    overflow: hidden;
+
+    color: #ffffff;
+
+    font-size: clamp(
+        20px,
+        4.5vw,
+        34px
+    );
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    text-shadow:
+        0 0 12px
+            rgba(85, 215, 255, 0.42);
+}
+
+.achievement {
+    margin: 13px 0 0;
+
+    color: #8cffad;
+
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 3px;
+}
+
+.score-value {
+    margin-top: 2px;
+
+    color: #ffd84a;
+
+    font-size: clamp(
+        42px,
+        10vw,
+        72px
+    );
+    font-weight: 700;
+
+    line-height: 1;
+
+    text-shadow:
+        0 0 18px
+            rgba(255, 216, 74, 0.38);
+}
+
+.base-value {
+    margin-top: 10px;
+
+    color: #c8e7f4;
+
+    font-size: 12px;
+    letter-spacing: 1px;
+}
+
+.base-value strong {
+    color: #82e6ff;
+}
+
+button {
+    margin-top: 19px;
+
+    padding: 12px 25px;
+
+    border: 2px solid #a3ffc1;
+    border-radius: 10px;
+
+    color: white;
+
+    font: 700 13px
+        'Orbitron',
+        sans-serif;
+
+    cursor: pointer;
+
+    background:
+        linear-gradient(
+            #39c86d,
+            #157c3d
+        );
+
+    box-shadow:
+        0 5px 0 #0b4c25,
+        0 0 18px
+            rgba(68, 212, 123, 0.18);
+}
+
+button:active {
+    transform: translateY(3px);
+
+    box-shadow:
+        0 2px 0 #0b4c25;
+}
+
+button:disabled {
+    cursor: default;
+    opacity: 0.65;
+}
+
+.status {
+    min-height: 13px;
+    margin: 13px 0 0;
+
+    color: #f4f4f4;
+
+    font-size: 9px;
+    letter-spacing: 1px;
+}
+.reward-shine {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+
+    width: 520px;
+    height: 520px;
+
+    transform: translate(-50%, -50%);
+
+    pointer-events: none;
+
+    z-index: 0;
+}
+
+.reward-shine-layer {
+    position: absolute;
+    inset: 0;
+
+    border-radius: 50%;
+
+    transform-origin: center;
+
+    opacity: 0.25;
+}
+
+.reward-shine-back {
+    background:
+        repeating-conic-gradient(
+            from 0deg,
+            rgba(255, 216, 74, 0.65) 0deg 7deg,
+            transparent 7deg 18deg
+        );
+
+    filter: blur(1px);
+
+    animation:
+        rotate-shine-clockwise
+        18s linear infinite;
+}
+
+.reward-shine-front {
+    inset: 52px;
+
+    background:
+        repeating-conic-gradient(
+            from 12deg,
+            rgba(130, 230, 255, 0.62) 0deg 5deg,
+            transparent 5deg 15deg
+        );
+
+    opacity: 0.22;
+
+    animation:
+        rotate-shine-counter
+        12s linear infinite;
+}
+
+.reward-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+
+    width: 250px;
+    height: 250px;
+
+    border-radius: 50%;
+
+    transform:
+        translate(-50%, -50%);
+
+    background:
+        radial-gradient(
+            circle,
+            rgba(255, 225, 105, 0.36) 0%,
+            rgba(255, 213, 73, 0.14) 38%,
+            transparent 72%
+        );
+
+    filter: blur(6px);
+
+    animation:
+        reward-glow-pulse
+        2.4s ease-in-out infinite;
+}
+
+.score-card > *:not(.reward-shine) 
+{ position: relative; z-index: 2; 
+} 
+
+.reward-shine { 
+    z-index: 1;
+}
+
+@keyframes rotate-shine-clockwise {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes rotate-shine-counter {
+    from {
+        transform: rotate(360deg);
+    }
+
+    to {
+        transform: rotate(0deg);
+    }
+}
+
+@keyframes reward-glow-pulse {
+    0%,
+    100% {
+        opacity: 0.55;
+
+        transform:
+            translate(-50%, -50%)
+            scale(0.92);
+    }
+
+    50% {
+        opacity: 1;
+
+        transform:
+            translate(-50%, -50%)
+            scale(1.08);
+    }
+}

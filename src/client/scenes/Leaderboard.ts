@@ -26,12 +26,14 @@ export class Leaderboard extends Scene {
     private centerX = 0;
     private centerY = 0;
     private panelHeight = 0;
+    private returnTo: 'main-menu' | 'game-over' = 'main-menu';
+    private shareStatusText: GameObjects.Text | null = null;
 
     constructor() {
         super('Leaderboard');
     }
 
-    init(): void {
+    init(data?: { returnTo?: 'main-menu' | 'game-over' }): void {
         this.background = null;
         this.contentContainer = null;
         this.statusText = null;
@@ -50,6 +52,9 @@ export class Leaderboard extends Scene {
         this.centerX = 0;
         this.centerY = 0;
         this.panelHeight = 0;
+
+        this.returnTo = data?.returnTo ?? 'main-menu';
+        this.shareStatusText = null;
     }
 
     create(): void {
@@ -100,12 +105,6 @@ export class Leaderboard extends Scene {
                 align: 'center',
             })
             .setOrigin(0.5);
-
-        const backButton = this.createButton(this.centerX, this.centerY + this.panelHeight / 2 - 42, 'BACK', '#1d6f94');
-
-        backButton.on('pointerdown', () => {
-            this.scene.start('MainMenu');
-        });
 
         this.scale.on('resize', this.handleResize, this);
 
@@ -256,8 +255,8 @@ export class Leaderboard extends Scene {
         }
 
         this.createPaginationControls();
-
         this.createPlayerSummary();
+        this.createFooterControls();
     }
 
     private createPaginationControls(): void {
@@ -383,5 +382,137 @@ export class Leaderboard extends Scene {
         this.cameras.resize(gameSize.width, gameSize.height);
 
         this.scene.restart();
+    }
+
+    private async shareLeaderboard(): Promise<boolean> {
+        try {
+            const response = await fetch('/api/share-leaderboard', {
+                method: 'POST',
+
+                headers: {
+                    Accept: 'application/json',
+                },
+            });
+
+            const rawResponse = await response.text();
+
+            let data: {
+                message?: string;
+            } = {};
+
+            try {
+                data = rawResponse ? JSON.parse(rawResponse) : {};
+            } catch {
+                throw new Error('The server returned invalid data.');
+            }
+
+            if (!response.ok) {
+                throw new Error(data.message ?? 'Unable to share profile.');
+            }
+
+            this.showShareStatus(data.message ?? 'Leaderboard shared!', true);
+
+            return true;
+        } catch (error) {
+            console.error('[Leaderboard] Failed to share profile:', error);
+
+            const message = error instanceof Error ? error.message : 'Unable to share profile.';
+
+            this.showShareStatus(message, false);
+
+            return false;
+        }
+    }
+
+    private createFooterControls(): void {
+        const footerY = this.centerY + this.panelHeight / 2 - 42;
+
+        const shareButton = this.createButton(this.centerX - 155, footerY, 'SHARE LEADERBOARD', '#24744a', 16);
+
+        const backButton = this.createButton(this.centerX + 155, footerY, 'BACK', '#1d6f94', 16);
+
+        if (!this.username) {
+            shareButton.setText('LOGIN TO SHARE').setAlpha(0.55).disableInteractive();
+        }
+
+        shareButton.on('pointerdown', () => {
+            if (!this.username || shareButton.getData('sharing')) {
+                return;
+            }
+
+            shareButton.setData('sharing', true);
+
+            shareButton.disableInteractive().setAlpha(0.65).setText('SHARING...');
+
+            void this.shareLeaderboard().then((success) => {
+                if (!shareButton.active) {
+                    return;
+                }
+
+                if (success) {
+                    shareButton.setText('SHARED!').setAlpha(1);
+
+                    return;
+                }
+
+                shareButton.setText('SHARE LEADERBOARD').setAlpha(1).setInteractive({
+                    useHandCursor: true,
+                });
+
+                shareButton.setData('sharing', false);
+            });
+        });
+
+        backButton.on('pointerdown', () => {
+            if (this.returnTo === 'game-over') {
+                this.scene.stop('Leaderboard');
+
+                this.scene.wake('Game');
+                this.scene.wake('BattleUI');
+
+                this.scene.bringToTop('BattleUI');
+
+                return;
+            }
+
+            this.scene.start('MainMenu');
+        });
+
+        this.contentContainer?.add([shareButton, backButton]);
+    }
+
+    private showShareStatus(message: string, success: boolean): void {
+        this.shareStatusText?.destroy();
+
+        const messageY = this.centerY - this.panelHeight / 2 + 116;
+
+        this.shareStatusText = this.add
+            .text(this.centerX, messageY, message, {
+                font: 'bold 12px Orbitron',
+
+                color: success ? '#72e7a3' : '#ff8b8b',
+
+                backgroundColor: success ? '#143426' : '#3b171b',
+
+                padding: {
+                    x: 16,
+                    y: 7,
+                },
+
+                stroke: '#000000',
+
+                strokeThickness: 3,
+
+                align: 'center',
+            })
+            .setOrigin(0.5)
+            .setDepth(200);
+
+        this.time.delayedCall(4000, () => {
+            if (this.shareStatusText?.active) {
+                this.shareStatusText.destroy();
+                this.shareStatusText = null;
+            }
+        });
     }
 }

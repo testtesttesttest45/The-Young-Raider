@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+        />
+
+        <title>Raider Profile</title>
+
+        <link
+            rel="stylesheet"
+            href="score-share.css"
+        />
+    </head>
+
+    <body>
+        <main class="score-card">
+            <div
+                id="score-loading"
+                class="score-loading"
+                role="status"
+            >
+                <div class="loading-spinner"></div>
+
+                <p>LOADING RAIDER PROFILE...</p>
+            </div>
+
+            <div
+                id="profile-content"
+                class="score-content"
+                hidden
+            >
+                <p class="eyebrow">
+                    THE YOUNG RAIDER
+                </p>
+
+                <h1 id="player-name"></h1>
+
+                <p class="achievement">
+                    RAIDER RECORD
+                </p>
+
+                <div
+                    id="highest-score"
+                    class="score-value"
+                ></div>
+
+                <div class="base-value">
+                    HIGHEST BASE:
+                    <strong
+                        id="highest-base"
+                    ></strong>
+                </div>
+
+                <div class="base-value">
+                    GLOBAL RANK:
+                    <strong
+                        id="global-rank"
+                    ></strong>
+                </div>
+
+                <button id="play-button">
+                    PLAY THE YOUNG RAIDER
+                </button>
+
+                <p class="status">
+                    CAN YOU BEAT THIS RAIDER?
+                </p>
+            </div>
+        </main>
+
+        <script
+            type="module"
+            src="profile-share.ts"
+        ></script>
+    </body>
+</html>
