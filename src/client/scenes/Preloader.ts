@@ -1,4 +1,5 @@
 import { GameObjects, Loader, Scene } from "phaser";
+import characterMap from "../game/CharacterMap";
 
 export class Preloader extends Scene {
   constructor() {
@@ -402,43 +403,6 @@ export class Preloader extends Scene {
     this.load.image("winterFrost", "images/winterFrost.png");
     this.load.image("treasureFinder", "images/treasureFinder.png");
 
-    this.load.spritesheet("test_idle", "images/test_idle.png", {
-      frameWidth: 128,
-      frameHeight: 128,
-    });
-    this.load.spritesheet("test_moving", "images/test_moving.png", {
-      frameWidth: 128,
-      frameHeight: 128,
-    });
-    this.load.spritesheet("test_attack", "images/test_attack.png", {
-      frameWidth: 128,
-      frameHeight: 128,
-    });
-
-    this.load.spritesheet("test_death", "images/test_death.png", {
-      frameWidth: 128,
-      frameHeight: 128,
-    });
-
-    this.load.spritesheet("test_slash", "images/test_slash.png", {
-      frameWidth: 128,
-      frameHeight: 128,
-    });
-
-    this.load.spritesheet("test_dash", "images/test_dash.png", {
-      frameWidth: 128,
-      frameHeight: 128,
-    });
-
-    this.load.spritesheet("test_shield", "images/test_shield.png", {
-      frameWidth: 128,
-      frameHeight: 128,
-    });
-
-    this.load.spritesheet("test_shield_move", "images/test_shield_move.png", {
-      frameWidth: 128,
-      frameHeight: 128,
-    });
     this.load.spritesheet(
       "treasure_monster_idle",
       "images/treasure_monster_idle.png",
@@ -449,15 +413,17 @@ export class Preloader extends Scene {
     );
 
     this.load.spritesheet(
-      "treasure_monster_death",
-      "images/treasure_monster_death.png",
+      "treasure_monster_die",
+      "images/treasure_monster_die.png",
       {
         frameWidth: 128,
         frameHeight: 128,
       },
     );
 
-    this.loadEnemySpritesheets(2, 16);
+    this.loadEnemySpritesheets(1, 15);
+    this.loadRaiderPreviewSpritesheets();
+    this.loadRaiderIcons();
   }
 
   private loadEnemySpritesheets(
@@ -472,11 +438,11 @@ export class Preloader extends Scene {
       characterCode++
     ) {
       animationNames.forEach((animationName) => {
-        const spritesheetKey = `character${characterCode}_${animationName}`;
+        const spritesheetKey = `enemy${characterCode}_${animationName}`;
 
         this.load.spritesheet(
           spritesheetKey,
-          `characters/${spritesheetKey}.png`,
+          `characters/enemy/${spritesheetKey}.png`,
           {
             frameWidth: 128,
             frameHeight: 128,
@@ -484,5 +450,37 @@ export class Preloader extends Scene {
         );
       });
     }
+  }
+
+  private loadRaiderPreviewSpritesheets(): void {
+    Object.values(characterMap).forEach((character) => {
+      if (character.type !== "raider") {
+        return;
+      }
+
+      // preload only the idle for collections page
+      this.load.spritesheet(
+        character.spritesheetKey,
+        `characters/raider/${character.spritesheetKey}.png`,
+        {
+          frameWidth: 128,
+          frameHeight: 128,
+        },
+      );
+    });
+  }
+
+  private loadRaiderIcons(): void {
+    Object.values(characterMap).forEach((character) => {
+      if (character.type !== "raider") {
+        return;
+      }
+
+      this.load.image(
+        character.icon,
+        // raider1Icon.png
+        `images/Raider Icons/${character.icon}.png`
+      );
+    });
   }
 }

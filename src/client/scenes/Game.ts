@@ -1,12 +1,16 @@
 import { Scene } from "phaser";
 import * as Phaser from "phaser";
-
 import Camp from "../game/Camp";
 import Base from "../game/Base";
 import Player from "../game/Player";
 import Enemy from "../game/Enemy";
 import Catastrophe from "../game/Catastrophe";
 import GameControls from "../game/GameControls";
+import type {
+  ApiErrorResponse,
+  GetSelectedRaiderResponse,
+} from "../../shared/api";
+import characterMap, { type RaiderDefinition } from "../game/CharacterMap";
 
 const WORLD_W = 1280;
 const WORLD_H = 720;
@@ -37,20 +41,35 @@ export class Game extends Scene {
 
   enemyClicked = false;
 
-  characterInUse = 1;
+  characterInUse = 16;
 
   gold = 0;
 
   hasHandledPlayerDeath = false;
+  private initializationVersion = 0;
+  private gameInitialized = false;
+  private loadingOverlay: Phaser.GameObjects.Container | null = null;
 
   constructor() {
     super("Game");
   }
 
   create(): void {
+    this.initializationVersion += 1;
+
+    const currentInitialization = this.initializationVersion;
+
+    this.gameInitialized = false;
+
+    this.player = null;
+    this.controls = undefined as any;
+    this.base = null;
+    this.catastrophe = null;
+    this.battleUI = null;
+
     this.isGamePaused = false;
     this.isGameOver = false;
-    this.allowInput = true;
+    this.allowInput = false;
     this.hasHandledPlayerDeath = false;
 
     this.activeGameTime = 0;
@@ -66,14 +85,81 @@ export class Game extends Scene {
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
 
+    // prevent page blank while loading raider assets
+    this.createWorldBackground();
+    this.createLoadingOverlay();
+
+    void this.initializeGame(currentInitialization);
+  }
+
+  private createWorldBackground(): void {
     const island = this.add.image(WORLD_W / 2, WORLD_H / 2, "land");
 
     const cover = Math.max(WORLD_W / island.width, WORLD_H / island.height);
 
     island.setScale(cover);
 
-    // keep a large distance between the player and camps
+    this.cameras.main.setBounds(0, 0, WORLD_W, WORLD_H);
+
+    this.handleResize(this.scale.gameSize);
+  }
+
+  private createLoadingOverlay(): void {
+    const width = this.scale.width;
+    const height = this.scale.height;
+
+    const backdrop = this.add
+      .rectangle(0, 0, width, height, 0x02070c, 0.72)
+      .setOrigin(0, 0)
+      .setScrollFactor(0);
+
+    const panel = this.add
+      .rectangle(width / 2, height / 2, 330, 120, 0x0b1c29, 0.96)
+      .setStrokeStyle(2, 0x55d7ff, 0.8)
+      .setScrollFactor(0);
+
+    const title = this.add
+      .text(width / 2, height / 2 - 18, "PREPARING RAID", {
+        font: "bold 17px Orbitron",
+        color: "#ffffff",
+        stroke: "#000000",
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0);
+
+    const subtitle = this.add
+      .text(width / 2, height / 2 + 20, "Loading your selected Raider...", {
+        font: "11px Orbitron",
+        color: "#a9efff",
+        stroke: "#000000",
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0);
+
+    this.loadingOverlay = this.add
+      .container(0, 0, [backdrop, panel, title, subtitle])
+      .setDepth(5000);
+  }
+
+  private async initializeGame(initializationVersion: number): Promise<void> {
+    this.characterInUse = await this.loadSelectedRaider();
+
+    if (!this.sys.isActive()) {
+      return;
+    }
+
+    this.characterInUse = this.characterInUse ?? 16;
+
+    await this.loadSelectedRaiderAssets(this.characterInUse);
+
+    if (!this.sys.isActive()) {
+      return;
+    }
+
     const playerStartX = WORLD_W / 2;
+
     const playerStartY = WORLD_H - 90;
 
     const campPositions = [
@@ -100,10 +186,6 @@ export class Game extends Scene {
     });
 
     this.camp1 = this.camps[0];
-
-    this.characterInUse = parseInt(
-      localStorage.getItem("selectedCharacter") ?? "1",
-    );
 
     this.player = new Player(
       this,
@@ -135,14 +217,65 @@ export class Game extends Scene {
 
     this.scene.launch("BattleUI");
 
-    this.cameras.main.setBounds(0, 0, WORLD_W, WORLD_H);
-
-    this.handleResize(this.scale.gameSize);
-
     this.scale.on("resize", this.handleResize, this);
+    this.loadingOverlay?.destroy(true);
+    this.loadingOverlay = null;
+    this.gameInitialized = true;
+    this.allowInput = true;
+  }
+
+  private async loadSelectedRaider(): Promise<number> {
+    try {
+      const response = await fetch("/api/selected-raider", {
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      const responseData = (await response.json()) as unknown;
+
+      if (!response.ok) {
+        const errorData = responseData as ApiErrorResponse;
+
+        throw new Error(errorData.message ?? "Unable to load selected Raider.");
+      }
+
+      const data = responseData as GetSelectedRaiderResponse;
+
+      if (data.type !== "selected-raider") {
+        throw new Error("Unexpected selected-Raider response.");
+      }
+
+      const validRaiderCodes = [16, 17, 18, 19];
+
+      if (!validRaiderCodes.includes(data.characterCode)) {
+        throw new Error(
+          `Invalid Raider code returned by server: ${data.characterCode}`,
+        );
+      }
+
+      return data.characterCode;
+    } catch (error) {
+      console.error("[Game] Failed to load selected Raider:", error);
+
+      // Runtime fallback only. Nothing is saved locally.
+      return 16;
+    }
   }
 
   override update(time: number, delta: number): void {
+    if (
+      !this.gameInitialized ||
+      !this.player ||
+      !this.player.robotSprite ||
+      !this.player.robotSprite.active ||
+      !this.player.robotSprite.anims ||
+      !this.controls ||
+      !this.base ||
+      !this.catastrophe
+    ) {
+      return;
+    }
     const playerDead = this.player?.isDead === true;
 
     const battleUI = this.scene.get("BattleUI") as any;
@@ -398,11 +531,15 @@ export class Game extends Scene {
   }
 
   selectEnemyCharacterCode(): number {
-    // Characters 2–16 are enemies
-    return Phaser.Math.Between(2, 16);
+    // Characters 1–15 are enemies
+    return Phaser.Math.Between(1, 15);
   }
 
   private shutdown(): void {
+    this.initializationVersion += 1;
+
+    this.gameInitialized = false;
+    this.allowInput = false;
     this.controls?.shutdown();
 
     this.scale.off("resize", this.handleResize, this);
@@ -426,5 +563,119 @@ export class Game extends Scene {
     });
 
     this.enemies = [];
+    if (this.player?.currentTween) {
+      this.player.currentTween.stop();
+      this.player.currentTween = null;
+    }
+
+    if (this.player?.moveTween) {
+      this.player.moveTween.stop();
+      this.player.moveTween = null;
+    }
+
+    this.player?.attackEvent?.destroy?.();
+
+    this.player?.robotSprite?.off?.();
+
+    this.player = null;
+    this.base = null;
+    this.catastrophe = null;
+    this.controls = undefined as any;
+
+    this.enemies = [];
+    this.camps = [];
+  }
+  private async loadSelectedRaiderAssets(characterCode: number): Promise<void> {
+    const character = characterMap[characterCode];
+
+    if (!character || character.type !== "raider") {
+      throw new Error(`[Game] Invalid Raider code: ${characterCode}`);
+    }
+
+    const assets = [
+      {
+        key: character.movingSpritesheetKey,
+
+        path: `characters/raider/${character.movingSpritesheetKey}.png`,
+      },
+      {
+        key: character.attackSpritesheetKey,
+
+        path: `characters/raider/${character.attackSpritesheetKey}.png`,
+      },
+      {
+        key: character.deathSpritesheetKey,
+
+        path: `characters/raider/${character.deathSpritesheetKey}.png`,
+      },
+      {
+        key: character.slashSpritesheetKey,
+
+        path: `characters/raider/${character.slashSpritesheetKey}.png`,
+      },
+      {
+        key: character.dashSlashSpritesheetKey,
+
+        path: `characters/raider/${character.dashSlashSpritesheetKey}.png`,
+      },
+      {
+        key: character.shieldSpritesheetKey,
+
+        path: `characters/raider/${character.shieldSpritesheetKey}.png`,
+      },
+      {
+        key: character.shieldMoveSpritesheetKey,
+
+        path: `characters/raider/${character.shieldMoveSpritesheetKey}.png`,
+      },
+    ];
+
+    const missingAssets = assets.filter((asset) => {
+      return !this.textures.exists(asset.key);
+    });
+
+    if (missingAssets.length === 0) {
+      console.log("[Game] Raider assets already loaded:", characterCode);
+
+      return;
+    }
+
+    console.log(
+      "[Game] Loading Raider assets:",
+      characterCode,
+      missingAssets.map((asset) => asset.key),
+    );
+
+    await new Promise<void>((resolve, reject) => {
+      const handleLoadError = (file: Phaser.Loader.File): void => {
+        cleanup();
+
+        reject(new Error(`[Game] Failed to load ${file.key}`));
+      };
+
+      const handleComplete = (): void => {
+        cleanup();
+        resolve();
+      };
+
+      const cleanup = (): void => {
+        this.load.off("loaderror", handleLoadError);
+
+        this.load.off("complete", handleComplete);
+      };
+
+      this.load.once("loaderror", handleLoadError);
+
+      this.load.once("complete", handleComplete);
+
+      missingAssets.forEach((asset) => {
+        this.load.spritesheet(asset.key, `../assets/${asset.path}`, {
+          frameWidth: 128,
+          frameHeight: 128,
+        });
+      });
+
+      this.load.start();
+    });
   }
 }

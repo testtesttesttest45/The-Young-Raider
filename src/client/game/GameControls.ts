@@ -142,7 +142,7 @@ export default class GameControls {
 
     private readonly mobileRightSafePadding = 115;
 
-    private readonly mobileButtonHitPadding = 28;
+    private readonly mobileButtonHitPadding = 8;
 
     constructor(scene: Game) {
         this.scene = scene;

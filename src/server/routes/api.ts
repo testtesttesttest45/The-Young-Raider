@@ -2,6 +2,10 @@ import { Hono } from "hono";
 
 import { context, redis, reddit } from "@devvit/web/server";
 import { randomUUID } from "node:crypto";
+import {
+  RAIDER_UNLOCK_REQUIREMENTS,
+  type RaiderUnlockRequirement,
+} from "../../shared/raiderUnlocks";
 
 import type {
   ApiErrorResponse,
@@ -24,6 +28,13 @@ import type {
   CreateCashRequestResponse,
   DonateCashResponse,
   ClaimDailyRewardResponse,
+  GetSelectedRaiderResponse,
+  SaveSelectedRaiderRequest,
+  SaveSelectedRaiderResponse,
+  RaiderCollectionItem,
+  RaiderCollectionResponse,
+  UnlockRaiderRequest,
+  UnlockRaiderResponse,
 } from "../../shared/api";
 
 export const api = new Hono();
@@ -51,6 +62,88 @@ const CASH_REQUEST_KEY_PREFIX = "the-young-raider:cash-request:";
 
 const DAILY_REWARD_CASH = 5;
 const DAILY_REWARD_CLAIM_KEY = "the-young-raider:daily-reward:last-claim-date";
+
+const PLAYER_SELECTED_RAIDER_KEY = "the-young-raider:players:selected-raider";
+
+const DEFAULT_RAIDER_CODE = 16;
+
+const VALID_RAIDER_CODES = new Set([16, 17, 18, 19]);
+
+const PLAYER_OWNED_RAIDERS_KEY = "the-young-raider:players:owned-raiders";
+
+function getOwnedRaiderField(username: string, characterCode: number): string {
+  return `${username}:${characterCode}`;
+}
+
+async function playerOwnsRaider(
+  username: string,
+  characterCode: number,
+): Promise<boolean> {
+  if (characterCode === 16) {
+    return true;
+  }
+
+  const value = await redis.hGet(
+    PLAYER_OWNED_RAIDERS_KEY,
+    getOwnedRaiderField(username, characterCode),
+  );
+
+  return value === "1";
+}
+
+function parseStoredCash(rawValue: string | undefined | null): number {
+  if (!rawValue) {
+    return 0;
+  }
+
+  const parsedValue = Number.parseInt(rawValue, 10);
+
+  return Number.isFinite(parsedValue) ? Math.max(0, parsedValue) : 0;
+}
+
+function getRaiderRequirement(
+  characterCode: number,
+): RaiderUnlockRequirement | null {
+  return RAIDER_UNLOCK_REQUIREMENTS[characterCode] ?? null;
+}
+
+async function getPlayerCollectionValues(username: string): Promise<{
+  allTimeHighScore: number;
+  cash: number;
+}> {
+  const [scoreValue, cashValue] = await Promise.all([
+    redis.zScore(LEADERBOARD_KEY, username),
+
+    redis.hGet(PLAYER_CASH_KEY, username),
+  ]);
+
+  return {
+    allTimeHighScore:
+      scoreValue === undefined || scoreValue === null
+        ? 0
+        : Math.max(0, Math.floor(scoreValue)),
+
+    cash: parseStoredCash(cashValue),
+  };
+}
+
+function hasMetRaiderRequirement(
+  requirement: RaiderUnlockRequirement,
+  allTimeHighScore: number,
+  cash: number,
+): boolean {
+  switch (requirement.type) {
+    case "free":
+      return true;
+
+    case "highscore":
+      return allTimeHighScore >= requirement.amount;
+
+    case "cash":
+      return cash >= requirement.amount;
+  }
+}
+
 type GameDayInfo = {
   dateKey: string;
   nextResetAt: number;
@@ -242,6 +335,41 @@ async function getPlayerRank(username: string): Promise<number | null> {
 
   const totalPlayers = await redis.zCard(LEADERBOARD_KEY);
   return totalPlayers - ascendingRank;
+}
+
+function getGameDayInfo(currentTime: number = Date.now()): GameDayInfo {
+  const currentDate = new Date(currentTime);
+  const year = currentDate.getUTCFullYear();
+  const month = currentDate.getUTCMonth();
+  const day = currentDate.getUTCDate();
+  const dateKey = [
+    year.toString(),
+    (month + 1).toString().padStart(2, "0"),
+    day.toString().padStart(2, "0"),
+  ].join("-");
+  const nextResetAt = Date.UTC(year, month, day + 1, 0, 0, 0, 0);
+  return {
+    dateKey,
+    nextResetAt,
+    remainingMs: Math.max(0, nextResetAt - currentTime),
+  };
+}
+
+function parseSelectedRaider(rawValue: string | undefined | null): number {
+  if (!rawValue) {
+    return DEFAULT_RAIDER_CODE;
+  }
+
+  const characterCode = Number.parseInt(rawValue, 10);
+
+  if (
+    !Number.isInteger(characterCode) ||
+    !VALID_RAIDER_CODES.has(characterCode)
+  ) {
+    return DEFAULT_RAIDER_CODE;
+  }
+
+  return characterCode;
 }
 
 // Template initialization route
@@ -1013,9 +1141,6 @@ api.post("/share-leaderboard", async (c) => {
       );
     }
 
-    /*
-     * Read the authoritative values from Redis.
-     */
     const [scoreValue, highestBaseValue, globalRank] = await Promise.all([
       redis.zScore(LEADERBOARD_KEY, username),
       redis.hGet(PLAYER_HIGHEST_BASE_KEY, username),
@@ -1596,20 +1721,467 @@ api.post("/donate-cash", async (c) => {
   }
 });
 
-function getGameDayInfo(currentTime: number = Date.now()): GameDayInfo {
-  const currentDate = new Date(currentTime);
-  const year = currentDate.getUTCFullYear();
-  const month = currentDate.getUTCMonth();
-  const day = currentDate.getUTCDate();
-  const dateKey = [
-    year.toString(),
-    (month + 1).toString().padStart(2, "0"),
-    day.toString().padStart(2, "0"),
-  ].join("-");
-  const nextResetAt = Date.UTC(year, month, day + 1, 0, 0, 0, 0);
-  return {
-    dateKey,
-    nextResetAt,
-    remainingMs: Math.max(0, nextResetAt - currentTime),
-  };
-}
+api.get("/selected-raider", async (c) => {
+  try {
+    const username = await reddit.getCurrentUsername();
+
+    if (!username) {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "You must be logged in to load your selected Raider.",
+        },
+        401,
+      );
+    }
+
+    const savedValue = await redis.hGet(PLAYER_SELECTED_RAIDER_KEY, username);
+
+    const savedCharacterCode = parseSelectedRaider(savedValue);
+
+    const ownsSavedRaider = await playerOwnsRaider(
+      username,
+      savedCharacterCode,
+    );
+
+    const characterCode = ownsSavedRaider
+      ? savedCharacterCode
+      : DEFAULT_RAIDER_CODE;
+
+    if (characterCode !== savedCharacterCode) {
+      await redis.hSet(PLAYER_SELECTED_RAIDER_KEY, {
+        [username]: String(DEFAULT_RAIDER_CODE),
+      });
+    }
+
+    return c.json<GetSelectedRaiderResponse>({
+      type: "selected-raider",
+      characterCode,
+    });
+  } catch (error) {
+    console.error("[Selected Raider] Failed to load:", error);
+
+    const message =
+      error instanceof Error ? error.message : "Unknown selected-Raider error";
+
+    return c.json<ApiErrorResponse>(
+      {
+        status: "error",
+        message: `Unable to load selected Raider: ${message}`,
+      },
+      500,
+    );
+  }
+});
+
+api.post("/selected-raider", async (c) => {
+  try {
+    const username = await reddit.getCurrentUsername();
+
+    if (!username) {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "You must be logged in to select a Raider.",
+        },
+        401,
+      );
+    }
+
+    const body = await c.req
+      .json<SaveSelectedRaiderRequest>()
+      .catch(() => null);
+
+    if (!body) {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "A Raider character code is required.",
+        },
+        400,
+      );
+    }
+
+    const characterCode = Number(body.characterCode);
+
+    if (
+      !Number.isInteger(characterCode) ||
+      !VALID_RAIDER_CODES.has(characterCode)
+    ) {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "The selected character is not a valid Raider.",
+        },
+        400,
+      );
+    }
+
+    const ownsRaider = await playerOwnsRaider(username, characterCode);
+
+    if (!ownsRaider) {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "You have not unlocked this Raider.",
+        },
+        403,
+      );
+    }
+
+    await redis.hSet(PLAYER_SELECTED_RAIDER_KEY, {
+      [username]: String(characterCode),
+    });
+
+    return c.json<SaveSelectedRaiderResponse>({
+      type: "save-selected-raider",
+      status: "success",
+      characterCode,
+      message: "Your selected Raider has been saved.",
+    });
+  } catch (error) {
+    console.error("[Selected Raider] Failed to save:", error);
+
+    const message =
+      error instanceof Error ? error.message : "Unknown selected-Raider error";
+
+    return c.json<ApiErrorResponse>(
+      {
+        status: "error",
+        message: `Unable to save selected Raider: ${message}`,
+      },
+      500,
+    );
+  }
+});
+
+api.get("/raider-collection", async (c) => {
+  try {
+    const username = await reddit.getCurrentUsername();
+
+    if (!username) {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "You must be logged in to load your Raider collection.",
+        },
+        401,
+      );
+    }
+
+    const [savedSelectedValue, playerValues] = await Promise.all([
+      redis.hGet(PLAYER_SELECTED_RAIDER_KEY, username),
+
+      getPlayerCollectionValues(username),
+    ]);
+
+    const savedSelectedRaider = parseSelectedRaider(savedSelectedValue);
+
+    const raiderCodes = Array.from(VALID_RAIDER_CODES).sort(
+      (first, second) => first - second,
+    );
+
+    const ownershipValues = await Promise.all(
+      raiderCodes.map(async (characterCode) => {
+        const owned = await playerOwnsRaider(username, characterCode);
+
+        return {
+          characterCode,
+          owned,
+        };
+      }),
+    );
+
+    const savedSelectedOwnership = ownershipValues.find(
+      (entry) => entry.characterCode === savedSelectedRaider,
+    );
+
+    const selectedRaider = savedSelectedOwnership?.owned
+      ? savedSelectedRaider
+      : DEFAULT_RAIDER_CODE;
+
+    if (selectedRaider !== savedSelectedRaider) { // repair prev broken selection
+      await redis.hSet(PLAYER_SELECTED_RAIDER_KEY, {
+        [username]: String(DEFAULT_RAIDER_CODE),
+      });
+    }
+
+    const raiders: RaiderCollectionItem[] = ownershipValues.map(
+      ({ characterCode, owned }) => {
+        const requirement = getRaiderRequirement(characterCode);
+
+        if (!requirement) {
+          throw new Error(
+            `Missing unlock requirement for Raider ${characterCode}.`,
+          );
+        }
+
+        return {
+          characterCode,
+
+          owned,
+
+          selected: characterCode === selectedRaider,
+
+          unlockType: requirement.type,
+
+          requirementAmount: requirement.amount,
+
+          requirementMet:
+            owned ||
+            hasMetRaiderRequirement(
+              requirement,
+              playerValues.allTimeHighScore,
+              playerValues.cash,
+            ),
+        };
+      },
+    );
+
+    return c.json<RaiderCollectionResponse>({
+      type: "raider-collection",
+
+      selectedRaider,
+
+      allTimeHighScore: playerValues.allTimeHighScore,
+
+      cash: playerValues.cash,
+
+      raiders,
+    });
+  } catch (error) {
+    console.error("[Raider Collection] Failed:", error);
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unknown Raider collection error";
+
+    return c.json<ApiErrorResponse>(
+      {
+        status: "error",
+        message: `Unable to load Raider collection: ${message}`,
+      },
+      500,
+    );
+  }
+});
+
+api.post("/unlock-raider", async (c) => {
+  try {
+    const username = await reddit.getCurrentUsername();
+
+    if (!username) {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "You must be logged in to unlock a Raider.",
+        },
+        401,
+      );
+    }
+
+    const body = await c.req.json<UnlockRaiderRequest>().catch(() => null);
+
+    if (!body) {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "A Raider character code is required.",
+        },
+        400,
+      );
+    }
+
+    const characterCode = Number(body.characterCode);
+
+    if (
+      !Number.isInteger(characterCode) ||
+      !VALID_RAIDER_CODES.has(characterCode)
+    ) {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "The selected character is not a valid Raider.",
+        },
+        400,
+      );
+    }
+
+    const requirement = getRaiderRequirement(characterCode);
+
+    if (!requirement) {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "This Raider has no unlock requirement configured.",
+        },
+        500,
+      );
+    }
+
+    const alreadyOwned = await playerOwnsRaider(username, characterCode);
+
+    if (alreadyOwned) {
+      const cashValue = await redis.hGet(PLAYER_CASH_KEY, username);
+
+      return c.json<UnlockRaiderResponse>({
+        type: "unlock-raider",
+        status: "success",
+
+        characterCode,
+
+        remainingCash: parseStoredCash(cashValue),
+
+        message: "This Raider is already unlocked.",
+      });
+    }
+
+    if (requirement.type === "free") {
+      return c.json<UnlockRaiderResponse>({
+        type: "unlock-raider",
+        status: "success",
+
+        characterCode,
+
+        remainingCash: (await getPlayerCollectionValues(username)).cash,
+
+        message: "This Raider is already available.",
+      });
+    }
+
+    if (requirement.type === "highscore") {
+      const scoreValue = await redis.zScore(LEADERBOARD_KEY, username);
+
+      const allTimeHighScore =
+        scoreValue === undefined || scoreValue === null
+          ? 0
+          : Math.max(0, Math.floor(scoreValue));
+
+      if (allTimeHighScore < requirement.amount) {
+        return c.json<ApiErrorResponse>(
+          {
+            status: "error",
+
+            message: `You need an all-time high score of ${requirement.amount.toLocaleString()} to unlock this Raider.`,
+          },
+          403,
+        );
+      }
+
+      await redis.hSet(PLAYER_OWNED_RAIDERS_KEY, {
+        [getOwnedRaiderField(username, characterCode)]: "1",
+      });
+
+      const cashValue = await redis.hGet(PLAYER_CASH_KEY, username);
+
+      return c.json<UnlockRaiderResponse>({
+        type: "unlock-raider",
+        status: "success",
+
+        characterCode,
+
+        remainingCash: parseStoredCash(cashValue),
+
+        message: "Raider unlocked!",
+      });
+    }
+
+    // cash unlock with hash transaction
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const transaction = await redis.watch(
+        PLAYER_CASH_KEY,
+        PLAYER_OWNED_RAIDERS_KEY,
+      );
+
+      const [cashValue, ownershipValue] = await Promise.all([
+        redis.hGet(PLAYER_CASH_KEY, username),
+
+        redis.hGet(
+          PLAYER_OWNED_RAIDERS_KEY,
+          getOwnedRaiderField(username, characterCode),
+        ),
+      ]);
+
+      const currentCash = parseStoredCash(cashValue);
+
+      if (ownershipValue === "1") {
+        await transaction.unwatch();
+
+        return c.json<UnlockRaiderResponse>({
+          type: "unlock-raider",
+          status: "success",
+
+          characterCode,
+
+          remainingCash: currentCash,
+
+          message: "This Raider is already unlocked.",
+        });
+      }
+
+      if (currentCash < requirement.amount) {
+        await transaction.unwatch();
+
+        const missingCash = requirement.amount - currentCash;
+
+        return c.json<ApiErrorResponse>(
+          {
+            status: "error",
+
+            message: `You need ${missingCash} more cash to unlock this Raider.`,
+          },
+          403,
+        );
+      }
+
+      await transaction.multi();
+
+      await transaction.hIncrBy(PLAYER_CASH_KEY, username, -requirement.amount);
+
+      await transaction.hSet(PLAYER_OWNED_RAIDERS_KEY, {
+        [getOwnedRaiderField(username, characterCode)]: "1",
+      });
+
+      const result = await transaction.exec();
+
+      if (result === null) {
+        continue;
+      }
+
+      return c.json<UnlockRaiderResponse>({
+        type: "unlock-raider",
+        status: "success",
+
+        characterCode,
+
+        remainingCash: currentCash - requirement.amount,
+
+        message: `Raider unlocked for ${requirement.amount} cash!`,
+      });
+    }
+
+    return c.json<ApiErrorResponse>(
+      {
+        status: "error",
+
+        message: "Your collection changed while unlocking. Please try again.",
+      },
+      409,
+    );
+  } catch (error) {
+    console.error("[Unlock Raider] Failed:", error);
+
+    const message =
+      error instanceof Error ? error.message : "Unknown Raider unlock error";
+
+    return c.json<ApiErrorResponse>(
+      {
+        status: "error",
+
+        message: `Unable to unlock Raider: ${message}`,
+      },
+      500,
+    );
+  }
+});

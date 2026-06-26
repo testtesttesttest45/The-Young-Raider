@@ -1,2021 +1,1653 @@
-import characterMap from './CharacterMap';
-import Base from './Base';
-import * as Phaser from 'phaser';
-import PlayerAbilities from './PlayerAbilities';
-
+import characterMap from "./CharacterMap";
+import Base from "./Base";
+import * as Phaser from "phaser";
+import PlayerAbilities from "./PlayerAbilities";
 
 class Player {
-    scene: any;
+  scene: any;
 
-    robotSprite: any;
-    position: any;
-    currentTween: any;
+  robotSprite: any;
+  position: any;
+  currentTween: any;
 
-    idleAnimationIndex: any;
-    lastAnimationChange: any;
-    lastActionTime: any;
+  idleAnimationIndex: any;
+  lastAnimationChange: any;
+  lastActionTime: any;
 
-    lastDirection: any;
-    directions: any[];
+  lastDirection: any;
+  directions: any[];
 
-    directionAveragingSteps: any;
+  directionAveragingSteps: any;
 
-    characterCode: any;
+  characterCode: any;
 
-    range: any;
-    speed: any;
-    originalSpeed: any;
+  range: any;
+  speed: any;
+  originalSpeed: any;
 
-    damage: any;
-    originalDamage: any;
+  damage: any;
+  originalDamage: any;
 
-    attackSpeed: any;
-    originalAttackSpeed: any;
+  attackSpeed: any;
+  originalAttackSpeed: any;
 
-    spritesheetKey: any;
-    movingSpritesheetKey: any;
-    attackSpritesheetKey: any;
-    deathSpritesheetKey: any;
-    isAttacking: any;
-    attackEvent: any;
+  spritesheetKey: any;
+  movingSpritesheetKey: any;
+  attackSpritesheetKey: any;
+  deathSpritesheetKey: any;
+  isAttacking: any;
+  attackEvent: any;
 
-    originalHealth: any;
-    maxHealth: any;
-    currentHealth: any;
+  originalHealth: any;
+  maxHealth: any;
+  currentHealth: any;
 
-    healthBar: any;
+  healthBar: any;
 
-    isDead: any;
+  isDead: any;
 
-    idleAnimations: any[];
+  idleAnimations: any[];
 
-    isMovingTowardsEnemy: any;
-    continueAttacking: any;
-    attackAnimationComplete: any;
+  isMovingTowardsEnemy: any;
+  continueAttacking: any;
+  attackAnimationComplete: any;
 
-    projectile: any;
-    attackCount: any;
+  projectile: any;
+  attackCount: any;
 
-    enemies: any[];
+  enemies: any[];
 
-    targetedEnemy: any;
+  targetedEnemy: any;
 
-    name: any;
-    icon: any;
+  name: any;
+  icon: any;
 
-    isImmuneToStorms: any;
+  isImmuneToStorms: any;
 
-    healPercentage: any;
+  healPercentage: any;
 
-    healTimer: any;
-    detectionField: any;
+  healTimer: any;
+  detectionField: any;
 
-    attacker: any;
-    attackingWho: any;
+  attacker: any;
+  attackingWho: any;
 
-    moveTween: any;
-    isMoving: any;
-    isActionLocked: boolean;
-    attackIndicator: Phaser.GameObjects.Graphics | null;
-    attackIndicatorWidth: number;
-    attackIndicatorOffset: number;
-    hasAppliedAttackDamage: boolean;
-    isJoystickMoving: boolean;
-    abilities: PlayerAbilities;
+  moveTween: any;
+  isMoving: any;
+  isActionLocked: boolean;
+  attackIndicator: Phaser.GameObjects.Graphics | null;
+  attackIndicatorWidth: number;
+  attackIndicatorOffset: number;
+  hasAppliedAttackDamage: boolean;
+  isJoystickMoving: boolean;
+  abilities: PlayerAbilities;
 
-    shieldIndicator:
-        Phaser.GameObjects.Graphics | null;
+  shieldIndicator: Phaser.GameObjects.Graphics | null;
 
-    shieldIndicatorRadius: number;
-    shieldIndicatorOffset: number;
-    shieldIndicatorHalfAngle: number;
+  shieldIndicatorRadius: number;
+  shieldIndicatorOffset: number;
+  shieldIndicatorHalfAngle: number;
 
-    constructor(
-        scene: any,
-        initialX: number,
-        initialY: number,
-        characterCode: number = 1,
-        enemies: any[]
-    ) {
-        this.scene = scene;
-        this.robotSprite = null;
-        this.position = { x: initialX, y: initialY };
-        this.currentTween = null;
-        this.idleAnimationIndex = 0;
-        this.lastAnimationChange = this.scene.activeGameTime;
-        this.lastActionTime = this.scene.activeGameTime;
-        this.lastDirection = 'south';
-        this.directions = [];
-        this.directionAveragingSteps = 10;
-        this.characterCode = characterCode;
-        const character = characterMap[this.characterCode];
-        this.abilities =
-            new PlayerAbilities(
-                this,
-                character
-            );
-        this.range = character.range;
-        this.speed = character.speed;
-        this.originalSpeed = character.speed;
-        this.originalDamage = character.damage;
-        this.damage = character.damage;
-        this.attackSpeed = character.attackSpeed;
-        this.originalAttackSpeed = character.attackSpeed;
-        this.spritesheetKey = character.spritesheetKey;
-        this.movingSpritesheetKey =
-            character.movingSpritesheetKey;
-        this.attackSpritesheetKey =
-            character.attackSpritesheetKey;
-        this.deathSpritesheetKey =
-            character.deathSpritesheetKey;
-        this.isAttacking = false;
-        this.attackEvent = null;
-        this.originalHealth = character.health;
-        this.maxHealth = character.health;
-        this.currentHealth = character.health;
-        this.healthBar = null;
-        this.isDead = false;
-        this.idleAnimations = [
-            'idlenorth',
-            'idlenortheast',
-            'idleeast',
-            'idlesoutheast',
-            'idlesouth',
-            'idlesouthwest',
-            'idlewest',
-            'idlenorthwest'
-        ];
-        this.isMovingTowardsEnemy = false;
-        this.continueAttacking = false;
-        this.attackAnimationComplete = true;
-        this.projectile = character.projectile;
-        this.attackCount = character.attackCount;
-        this.enemies = enemies;
-        this.targetedEnemy = null;
-        this.name = character.name;
-        this.icon = character.icon;
-        this.isImmuneToStorms = false;
-        this.healPercentage = 0.05;
-        this.isActionLocked = false;
+  constructor(
+    scene: any,
+    initialX: number,
+    initialY: number,
+    characterCode: number = 16,
+    enemies: any[],
+  ) {
+    this.scene = scene;
 
-        this.attackIndicator = null;
-        this.attackIndicatorWidth = 90;
-        this.attackIndicatorOffset = 25;
-        this.hasAppliedAttackDamage = false;
-        this.isJoystickMoving = false;
+    this.robotSprite = null;
 
-        this.shieldIndicator = null;
+    this.position = {
+      x: initialX,
+      y: initialY,
+    };
 
-        this.shieldIndicatorRadius = 115;
+    this.currentTween = null;
 
-        this.shieldIndicatorOffset = 18;
-        this.shieldIndicatorHalfAngle =
-            Phaser.Math.DegToRad(55);
+    this.idleAnimationIndex = 0;
+
+    this.lastAnimationChange = this.scene.activeGameTime;
+
+    this.lastActionTime = this.scene.activeGameTime;
+
+    this.lastDirection = "south";
+
+    this.directions = [];
+
+    this.directionAveragingSteps = 10;
+
+    this.characterCode = characterCode;
+
+    const character = characterMap[this.characterCode];
+
+    if (!character) {
+      throw new Error(
+        `[Player] Character ${this.characterCode} does not exist.`,
+      );
     }
 
-    create(): void {
+    if (character.type !== "raider") {
+      throw new Error(
+        `[Player] Character ${this.characterCode} is not a Raider.`,
+      );
+    }
 
-        const idleFrameRate = 24;
-        const movementFrameRate = 24;
-        const attackFrameRate = 24;
-        const deathFrameRate = 24;
+    this.range = character.range;
 
-        const animationKeys = [
-            'idlenorth',
-            'idlenortheast',
-            'idleeast',
-            'idlesoutheast',
-            'idlesouth',
-            'idlesouthwest',
-            'idlewest',
-            'idlenorthwest',
+    this.speed = character.speed;
+    this.originalSpeed = character.speed;
 
-            'movenorth',
-            'movenortheast',
-            'moveeast',
-            'movesoutheast',
-            'movesouth',
-            'movesouthwest',
-            'movewest',
-            'movenorthwest',
+    this.damage = character.damage;
+    this.originalDamage = character.damage;
 
-            'attacknorth',
-            'attacknortheast',
-            'attackeast',
-            'attacksoutheast',
-            'attacksouth',
-            'attacksouthwest',
-            'attackwest',
-            'attacknorthwest',
+    this.attackSpeed = character.attackSpeed;
+    this.originalAttackSpeed = character.attackSpeed;
 
-            'death'
-        ];
+    this.originalHealth = character.health;
+    this.maxHealth = character.health;
+    this.currentHealth = character.health;
 
-        animationKeys.forEach(
-            (animationKey: string) => {
-                if (this.scene.anims.exists(animationKey)) {
-                    this.scene.anims.remove(animationKey);
-                }
-            }
-        );
+    this.projectile = character.projectile;
+    this.attackCount = character.attackCount;
 
-        this.robotSprite = this.scene.add.sprite(
-            this.position.x,
-            this.position.y,
-            this.spritesheetKey,
-            0
-        );
+    this.spritesheetKey = character.spritesheetKey;
 
-        this.robotSprite
-            .setOrigin(0.5, 0.5)
-            .setScale(0.75)
-            .setDepth(10);
+    this.movingSpritesheetKey = character.movingSpritesheetKey;
 
-        const idleAnimations = [
-            {
-                key: 'idlenorth',
-                start: 0,
-                end: 39
-            },
-            {
-                key: 'idlenortheast',
-                start: 40,
-                end: 79
-            },
-            {
-                key: 'idleeast',
-                start: 80,
-                end: 119
-            },
-            {
-                key: 'idlesoutheast',
-                start: 120,
-                end: 159
-            },
-            {
-                key: 'idlesouth',
-                start: 160,
-                end: 199
-            },
-            {
-                key: 'idlesouthwest',
-                start: 200,
-                end: 239
-            },
-            {
-                key: 'idlewest',
-                start: 240,
-                end: 279
-            },
-            {
-                key: 'idlenorthwest',
-                start: 280,
-                end: 319
-            }
-        ];
+    this.attackSpritesheetKey = character.attackSpritesheetKey;
 
-        idleAnimations.forEach(
-            (
-                idleAnimation: {
-                    key: string;
-                    start: number;
-                    end: number;
-                }
-            ) => {
-                this.scene.anims.create({
-                    key: idleAnimation.key,
+    this.deathSpritesheetKey = character.deathSpritesheetKey;
 
-                    frames:
-                        this.scene.anims.generateFrameNumbers(
-                            this.spritesheetKey,
-                            {
-                                start: idleAnimation.start,
-                                end: idleAnimation.end
-                            }
-                        ),
+    this.name = character.name;
+    this.icon = character.icon;
 
-                    frameRate: idleFrameRate,
-                    repeat: -1
-                });
-            }
-        );
+    this.abilities = new PlayerAbilities(this, character);
 
-        // 20 frames per direction
+    this.isAttacking = false;
+    this.attackEvent = null;
 
-        const movementAnimations = [
-            {
-                key: 'movenorth',
-                start: 0,
-                end: 19
-            },
-            {
-                key: 'movenortheast',
-                start: 20,
-                end: 39
-            },
-            {
-                key: 'moveeast',
-                start: 40,
-                end: 59
-            },
-            {
-                key: 'movesoutheast',
-                start: 60,
-                end: 79
-            },
-            {
-                key: 'movesouth',
-                start: 80,
-                end: 99
-            },
-            {
-                key: 'movesouthwest',
-                start: 100,
-                end: 119
-            },
-            {
-                key: 'movewest',
-                start: 120,
-                end: 139
-            },
-            {
-                key: 'movenorthwest',
-                start: 140,
-                end: 159
-            }
-        ];
+    this.healthBar = null;
+    this.isDead = false;
 
-        movementAnimations.forEach(
-            (
-                movementAnimation: {
-                    key: string;
-                    start: number;
-                    end: number;
-                }
-            ) => {
-                this.scene.anims.create({
-                    key: movementAnimation.key,
+    this.idleAnimations = [
+      "idlenorth",
+      "idlenortheast",
+      "idleeast",
+      "idlesoutheast",
+      "idlesouth",
+      "idlesouthwest",
+      "idlewest",
+      "idlenorthwest",
+    ];
 
-                    frames:
-                        this.scene.anims.generateFrameNumbers(
-                            this.movingSpritesheetKey,
-                            {
-                                start: movementAnimation.start,
-                                end: movementAnimation.end
-                            }
-                        ),
+    this.isMovingTowardsEnemy = false;
+    this.continueAttacking = false;
+    this.attackAnimationComplete = true;
 
-                    frameRate: movementFrameRate,
-                    repeat: -1
-                });
-            }
-        );
+    this.enemies = enemies;
+    this.targetedEnemy = null;
 
-        // 29 frames per direction
+    this.isImmuneToStorms = false;
 
-        const attackAnimations = [
-            {
-                key: 'attacknorth',
-                start: 0,
-                end: 28
-            },
-            {
-                key: 'attacknortheast',
-                start: 29,
-                end: 57
-            },
-            {
-                key: 'attackeast',
-                start: 58,
-                end: 86
-            },
-            {
-                key: 'attacksoutheast',
-                start: 87,
-                end: 115
-            },
-            {
-                key: 'attacksouth',
-                start: 116,
-                end: 144
-            },
-            {
-                key: 'attacksouthwest',
-                start: 145,
-                end: 173
-            },
-            {
-                key: 'attackwest',
-                start: 174,
-                end: 202
-            },
-            {
-                key: 'attacknorthwest',
-                start: 203,
-                end: 231
-            }
-        ];
+    this.healPercentage = 0.05;
 
-        attackAnimations.forEach(
-            (
-                attackAnimation: {
-                    key: string;
-                    start: number;
-                    end: number;
-                }
-            ) => {
-                this.scene.anims.create({
-                    key: attackAnimation.key,
+    this.isActionLocked = false;
 
-                    frames:
-                        this.scene.anims.generateFrameNumbers(
-                            this.attackSpritesheetKey,
-                            {
-                                start: attackAnimation.start,
-                                end: attackAnimation.end
-                            }
-                        ),
+    this.attackIndicator = null;
+    this.attackIndicatorWidth = 90;
+    this.attackIndicatorOffset = 25;
+    this.hasAppliedAttackDamage = false;
 
-                    frameRate:
-                        attackFrameRate *
-                        this.originalAttackSpeed,
+    this.isJoystickMoving = false;
 
-                    repeat: 0
-                });
-            }
-        );
-        // 69 frames
+    this.shieldIndicator = null;
+    this.shieldIndicatorRadius = 115;
+    this.shieldIndicatorOffset = 18;
 
+    this.shieldIndicatorHalfAngle = Phaser.Math.DegToRad(55);
+  }
+
+  create(): void {
+    const idleFrameRate = 24;
+    const movementFrameRate = 24;
+    const attackFrameRate = 24;
+    const deathFrameRate = 24;
+
+    const animationKeys = [
+      "idlenorth",
+      "idlenortheast",
+      "idleeast",
+      "idlesoutheast",
+      "idlesouth",
+      "idlesouthwest",
+      "idlewest",
+      "idlenorthwest",
+
+      "movenorth",
+      "movenortheast",
+      "moveeast",
+      "movesoutheast",
+      "movesouth",
+      "movesouthwest",
+      "movewest",
+      "movenorthwest",
+
+      "attacknorth",
+      "attacknortheast",
+      "attackeast",
+      "attacksoutheast",
+      "attacksouth",
+      "attacksouthwest",
+      "attackwest",
+      "attacknorthwest",
+
+      "death",
+    ];
+
+    animationKeys.forEach((animationKey: string) => {
+      if (this.scene.anims.exists(animationKey)) {
+        this.scene.anims.remove(animationKey);
+      }
+    });
+
+    this.robotSprite = this.scene.add.sprite(
+      this.position.x,
+      this.position.y,
+      this.spritesheetKey,
+      0,
+    );
+
+    // idle: 41 frames per direction
+    this.robotSprite.setOrigin(0.5, 0.5).setScale(0.75).setDepth(10);
+
+    const idleAnimations = [
+      {
+        key: "idlenorth",
+        start: 0,
+        end: 40,
+      },
+      {
+        key: "idlenortheast",
+        start: 41,
+        end: 81,
+      },
+      {
+        key: "idleeast",
+        start: 82,
+        end: 122,
+      },
+      {
+        key: "idlesoutheast",
+        start: 123,
+        end: 163,
+      },
+      {
+        key: "idlesouth",
+        start: 164,
+        end: 204,
+      },
+      {
+        key: "idlesouthwest",
+        start: 205,
+        end: 245,
+      },
+      {
+        key: "idlewest",
+        start: 246,
+        end: 286,
+      },
+      {
+        key: "idlenorthwest",
+        start: 287,
+        end: 327,
+      },
+    ];
+
+    idleAnimations.forEach(
+      (idleAnimation: { key: string; start: number; end: number }) => {
         this.scene.anims.create({
-            key: 'death',
+          key: idleAnimation.key,
 
-            frames:
-                this.scene.anims.generateFrameNumbers(
-                    this.deathSpritesheetKey,
-                    {
-                        start: 0,
-                        end: 68
-                    }
-                ),
+          frames: this.scene.anims.generateFrameNumbers(this.spritesheetKey, {
+            start: idleAnimation.start,
+            end: idleAnimation.end,
+          }),
 
-            frameRate: deathFrameRate,
-            repeat: 0
+          frameRate: idleFrameRate,
+          repeat: -1,
         });
+      },
+    );
 
-        this.robotSprite.play(
-            `idle${this.lastDirection}`,
-            true
-        );
+    // 21 frames per direction
 
-        this.lastAnimationChange =
-            this.scene.activeGameTime;
+    const movementAnimations = [
+      {
+        key: "movenorth",
+        start: 0,
+        end: 20,
+      },
+      {
+        key: "movenortheast",
+        start: 21,
+        end: 41,
+      },
+      {
+        key: "moveeast",
+        start: 42,
+        end: 62,
+      },
+      {
+        key: "movesoutheast",
+        start: 63,
+        end: 83,
+      },
+      {
+        key: "movesouth",
+        start: 84,
+        end: 104,
+      },
+      {
+        key: "movesouthwest",
+        start: 105,
+        end: 125,
+      },
+      {
+        key: "movewest",
+        start: 126,
+        end: 146,
+      },
+      {
+        key: "movenorthwest",
+        start: 147,
+        end: 167,
+      },
+    ];
 
-        this.createHealthBar();
+    movementAnimations.forEach(
+      (movementAnimation: { key: string; start: number; end: number }) => {
+        this.scene.anims.create({
+          key: movementAnimation.key,
 
-        this.createAttackIndicator();
-        this.createShieldIndicator();
-        this.abilities.create();
+          frames: this.scene.anims.generateFrameNumbers(
+            this.movingSpritesheetKey,
+            {
+              start: movementAnimation.start,
+              end: movementAnimation.end,
+            },
+          ),
 
-        this.healTimer =
-            this.scene.time.addEvent({
-                delay: 3000,
-                callback: this.autoHeal,
-                callbackScope: this,
-                loop: true,
-                paused: true
-            });
-    }
-
-    autoHeal(): void {
-        if (this.currentHealth < this.maxHealth && !this.isDead) {
-            // calc heal amount as 5% of max health
-            let healAmount = Math.round(this.maxHealth * this.healPercentage);
-
-            healAmount = Math.min(healAmount, this.maxHealth - this.currentHealth);
-
-            this.currentHealth += healAmount;
-            this.updateHealthBar();
-            this.createHealingText(healAmount);
-        }
-    }
-
-    resetHealTimer() {
-        this.healTimer.reset({
-            delay: 4000,
-            callback: this.autoHeal,
-            callbackScope: this,
-            loop: true
+          frameRate: movementFrameRate,
+          repeat: -1,
         });
-        this.healTimer.paused = false;
-    }
+      },
+    );
 
-    createHealingText(amount: number) {
-        const healingText = this.scene.add.text(this.robotSprite.x, this.robotSprite.y - 100, `+${amount}`, { font: '36px Orbitron', fill: '#00ff00' });
-        healingText.setOrigin(0.5, 0.5);
-        healingText.setDepth(1);
-        this.scene.tweens.add({
-            targets: healingText,
-            y: healingText.y - 30,
-            alpha: 0,
-            duration: 4000,
-            ease: 'Power2',
-            onComplete: () => {
-                healingText.destroy();
-            }
+    // 30 frames per direction, total 240 frames
+
+    const attackAnimations = [
+      {
+        key: "attacknorth",
+        start: 0,
+        end: 29,
+      },
+      {
+        key: "attacknortheast",
+        start: 30,
+        end: 59,
+      },
+      {
+        key: "attackeast",
+        start: 60,
+        end: 89,
+      },
+      {
+        key: "attacksoutheast",
+        start: 90,
+        end: 119,
+      },
+      {
+        key: "attacksouth",
+        start: 120,
+        end: 149,
+      },
+      {
+        key: "attacksouthwest",
+        start: 150,
+        end: 179,
+      },
+      {
+        key: "attackwest",
+        start: 180,
+        end: 209,
+      },
+      {
+        key: "attacknorthwest",
+        start: 210,
+        end: 239,
+      },
+    ];
+
+    attackAnimations.forEach(
+      (attackAnimation: { key: string; start: number; end: number }) => {
+        this.scene.anims.create({
+          key: attackAnimation.key,
+
+          frames: this.scene.anims.generateFrameNumbers(
+            this.attackSpritesheetKey,
+            {
+              start: attackAnimation.start,
+              end: attackAnimation.end,
+            },
+          ),
+
+          frameRate: attackFrameRate * this.originalAttackSpeed,
+
+          repeat: 0,
         });
+      },
+    );
+    // 69 frames
+
+    this.scene.anims.create({
+      key: "death",
+
+      frames: this.scene.anims.generateFrameNumbers(this.deathSpritesheetKey, {
+        start: 0,
+        end: 68,
+      }),
+
+      frameRate: deathFrameRate,
+      repeat: 0,
+    });
+
+    this.robotSprite.play(`idle${this.lastDirection}`, true);
+
+    this.lastAnimationChange = this.scene.activeGameTime;
+
+    this.createHealthBar();
+
+    this.createAttackIndicator();
+    this.createShieldIndicator();
+    this.abilities.create();
+
+    this.healTimer = this.scene.time.addEvent({
+      delay: 3000,
+      callback: this.autoHeal,
+      callbackScope: this,
+      loop: true,
+      paused: true,
+    });
+  }
+
+  autoHeal(): void {
+    if (this.currentHealth < this.maxHealth && !this.isDead) {
+      // calc heal amount as 5% of max health
+      let healAmount = Math.round(this.maxHealth * this.healPercentage);
+
+      healAmount = Math.min(healAmount, this.maxHealth - this.currentHealth);
+
+      this.currentHealth += healAmount;
+      this.updateHealthBar();
+      this.createHealingText(healAmount);
+    }
+  }
+
+  resetHealTimer() {
+    this.healTimer.reset({
+      delay: 4000,
+      callback: this.autoHeal,
+      callbackScope: this,
+      loop: true,
+    });
+    this.healTimer.paused = false;
+  }
+
+  createHealingText(amount: number) {
+    const healingText = this.scene.add.text(
+      this.robotSprite.x,
+      this.robotSprite.y - 100,
+      `+${amount}`,
+      { font: "36px Orbitron", fill: "#00ff00" },
+    );
+    healingText.setOrigin(0.5, 0.5);
+    healingText.setDepth(1);
+    this.scene.tweens.add({
+      targets: healingText,
+      y: healingText.y - 30,
+      alpha: 0,
+      duration: 4000,
+      ease: "Power2",
+      onComplete: () => {
+        healingText.destroy();
+      },
+    });
+  }
+
+  moveStraight(
+    newX: number,
+    newY: number,
+    onCompleteCallback: (() => void) | null = null,
+  ): void {
+    if (this.isDead || this.isActionLocked) {
+      return;
     }
 
-    moveStraight(
-        newX: number,
-        newY: number,
-        onCompleteCallback: (() => void) | null = null
-    ): void {
-        if (
-            this.isDead ||
-            this.isActionLocked
-        ) {
-            return;
-        }
+    if (this.currentTween) {
+      this.currentTween.stop();
+      this.currentTween = null;
 
-        if (this.currentTween) {
-            this.currentTween.stop();
-            this.currentTween = null;
+      this.updatePosition();
+    }
 
-            this.updatePosition();
-        }
+    this.stopAttackingEnemy();
 
-        this.stopAttackingEnemy();
+    const currentAnim = this.robotSprite.anims.currentAnim;
 
-        const currentAnim =
-            this.robotSprite.anims.currentAnim;
+    const hasReachedTarget =
+      Math.round(this.robotSprite.x) === Math.round(newX) &&
+      Math.round(this.robotSprite.y) === Math.round(newY);
 
-        const hasReachedTarget =
-            Math.round(this.robotSprite.x) ===
-            Math.round(newX) &&
-            Math.round(this.robotSprite.y) ===
-            Math.round(newY);
+    if (hasReachedTarget && currentAnim && currentAnim.key.startsWith("idle")) {
+      return;
+    }
 
-        if (
-            hasReachedTarget &&
-            currentAnim &&
-            currentAnim.key.startsWith('idle')
-        ) {
-            return;
-        }
+    const direction = this.determineDirection(newX, newY);
 
-        const direction =
-            this.determineDirection(
-                newX,
-                newY
-            );
+    if (!direction) {
+      return;
+    }
 
-        if (!direction) {
-            return;
-        }
+    this.lastDirection = direction;
 
-        this.lastDirection = direction;
+    const movementAnimationKey = this.abilities.isShieldRaised
+      ? `shieldmove${direction}`
+      : `move${direction}`;
 
-        const movementAnimationKey =
-            this.abilities.isShieldRaised
-                ? `shieldmove${direction}`
-                : `move${direction}`;
+    if (!currentAnim || currentAnim.key !== movementAnimationKey) {
+      this.robotSprite.play(movementAnimationKey, true);
+    }
+    this.updateAttackIndicator();
+    this.updateShieldIndicator();
 
-        if (
-            !currentAnim ||
-            currentAnim.key !==
-            movementAnimationKey
-        ) {
-            this.robotSprite.play(
-                movementAnimationKey,
-                true
-            );
-        }
+    const distance = Phaser.Math.Distance.Between(
+      this.robotSprite.x,
+      this.robotSprite.y,
+      newX,
+      newY,
+    );
+
+    if (distance <= 1) {
+      const idleAnimationKey = this.abilities.isShieldRaised
+        ? `shieldidle${this.lastDirection}`
+        : `idle${this.lastDirection}`;
+
+      this.robotSprite.play(idleAnimationKey, true);
+
+      return;
+    }
+
+    const duration = (distance / this.speed) * 1000;
+
+    this.currentTween = this.scene.tweens.add({
+      targets: this.robotSprite,
+
+      x: newX,
+      y: newY,
+
+      duration,
+      ease: "Linear",
+
+      onUpdate: () => {
+        this.updatePosition();
         this.updateAttackIndicator();
         this.updateShieldIndicator();
+      },
 
-        const distance =
-            Phaser.Math.Distance.Between(
-                this.robotSprite.x,
-                this.robotSprite.y,
-                newX,
-                newY
-            );
-
-        if (distance <= 1) {
-            const idleAnimationKey =
-                this.abilities.isShieldRaised
-                    ? `shieldidle${this.lastDirection}`
-                    : `idle${this.lastDirection}`;
-
-            this.robotSprite.play(
-                idleAnimationKey,
-                true
-            );
-
-            return;
-        }
-
-        const duration =
-            distance / this.speed * 1000;
-
-        this.currentTween =
-            this.scene.tweens.add({
-                targets: this.robotSprite,
-
-                x: newX,
-                y: newY,
-
-                duration,
-                ease: 'Linear',
-
-                onUpdate: () => {
-                    this.updatePosition();
-                    this.updateAttackIndicator();
-                    this.updateShieldIndicator();
-                },
-
-                onComplete: () => {
-                    if (this.isDead) {
-                        return;
-                    }
-
-                    this.currentTween = null;
-                    this.updatePosition();
-
-                    const idleAnimationKey =
-                        this.abilities.isShieldRaised
-                            ? `shieldidle${this.lastDirection}`
-                            : `idle${this.lastDirection}`;
-
-                    this.robotSprite.play(
-                        idleAnimationKey,
-                        true
-                    );
-
-                    this.updateAttackIndicator();
-                    this.updateShieldIndicator();
-
-                    if (onCompleteCallback) {
-                        onCompleteCallback();
-                    }
-                }
-            });
-
-        this.lastActionTime =
-            this.scene.activeGameTime;
-    }
-
-    launchProjectile(enemy: any) {
-        if (!enemy) return;
-        let projectile = this.scene.add.sprite(this.robotSprite.x + 10, this.robotSprite.y - 80, this.projectile);
-        projectile.setOrigin(0.5, 0.5);
-        projectile.setScale(0.5);
-
-        let targetX = enemy.sprite.x;
-        let targetY = enemy.sprite.y;
-        let angle = Phaser.Math.Angle.Between(this.robotSprite.x, this.robotSprite.y, targetX, targetY);
-
-        projectile.setRotation(angle); // 90 deg.
-
-        // Calculate a more realistic impact point instead of the center of the enemy
-        const enemyWidth = enemy.sprite.width;
-        const enemyHeight = enemy.sprite.height;
-        const impactOffsetX = enemyWidth / 2 * Math.cos(angle); // ratio of the adjacent side to the hypotenuse of a right-angled triangle. gives x offset
-        const impactOffsetY = enemyHeight / 2 * Math.sin(angle); // ratio of the opposite side to the hypotenuse of a right-angled triangle gives y offset
-        targetX -= impactOffsetX;
-        targetY -= impactOffsetY;
-
-        this.scene.tweens.add({
-            targets: projectile,
-            x: targetX,
-            y: targetY,
-            duration: 500,
-            ease: 'Linear',
-            onComplete: () => {
-                if (enemy) {
-                    enemy.takeDamage(this.damage, this); // apply damage when projectile hits
-                }
-                projectile.destroy(); // after hitting the target
-            }
-        });
-    }
-
-    stopAttackingEnemy(): void {
-        this.isMovingTowardsEnemy = false;
-        this.continueAttacking = false;
-        this.attackingWho = null;
-        this.targetedEnemy = null;
-
-        if (this.attackEvent) {
-            this.attackEvent.remove(false);
-            this.attackEvent = null;
-        }
-
-        if (this.isActionLocked) {
-            return;
-        }
-
-        this.isAttacking = false;
-
-        const currentAnim =
-            this.robotSprite.anims.currentAnim;
-
-        if (
-            currentAnim &&
-            currentAnim.key.startsWith('attack')
-        ) {
-            const direction =
-                this.lastDirection ||
-                'south';
-
-            const idleAnimationKey =
-                this.abilities.isShieldRaised
-                    ? `shieldidle${direction}`
-                    : `idle${direction}`;
-
-            this.robotSprite.play(
-                idleAnimationKey,
-                true
-            );
-        }
-    }
-
-    calculateAverageDirection(directions: any[]) {
-        // Calculate the most frequent direction in the array
-        const directionCounts = directions.reduce(
-            (acc: any, dir: any) => {
-                acc[dir] = (acc[dir] || 0) + 1;
-                return acc;
-            }, {});
-
-        let mostFrequentDirection = null;
-        let maxCount = 0;
-        for (let dir in directionCounts) {
-            if (directionCounts[dir] > maxCount) {
-                mostFrequentDirection = dir;
-                maxCount = directionCounts[dir];
-            }
-        }
-        return mostFrequentDirection;
-    }
-
-    determineDirection(
-        newX: number,
-        newY: number
-    ) {
-        const dx = newX - this.position.x;
-        const dy = newY - this.position.y;
-        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-
-        if (angle >= -22.5 && angle < 22.5) return 'east';
-        if (angle >= 22.5 && angle < 67.5) return 'southeast';
-        if (angle >= 67.5 && angle < 112.5) return 'south';
-        if (angle >= 112.5 && angle < 157.5) return 'southwest';
-        if (angle >= 157.5 || angle < -157.5) return 'west';
-        if (angle >= -157.5 && angle < -112.5) return 'northwest';
-        if (angle >= -112.5 && angle < -67.5) return 'north';
-        if (angle >= -67.5 && angle < -22.5) return 'northeast';
-    }
-
-    // determineDirectionToEnemy() {
-    //     const enemyX = this.scene.enemy.sprite.x;
-    //     const enemyY = this.scene.enemy.sprite.y;
-    //     const dx = enemyX - this.robotSprite.x;
-    //     const dy = enemyY - this.robotSprite.y;
-    //     const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-
-    //     if (angle >= -22.5 && angle < 22.5) return 'east';
-    //     if (angle >= 22.5 && angle < 67.5) return 'southeast';
-    //     if (angle >= 67.5 && angle < 112.5) return 'south';
-    //     if (angle >= 112.5 && angle < 157.5) return 'southwest';
-    //     if (angle >= 157.5 || angle < -157.5) return 'west';
-    //     if (angle >= -157.5 && angle < -112.5) return 'northwest';
-    //     if (angle >= -112.5 && angle < -67.5) return 'north';
-    //     if (angle >= -67.5 && angle < -22.5) return 'northeast';
-    // }
-
-    determineDirectionToEnemy(enemy: any) {
-        const enemyX = enemy.sprite.x;
-        const enemyY = enemy.sprite.y;
-        const dx = enemyX - this.robotSprite.x;
-        const dy = enemyY - this.robotSprite.y;
-        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-
-        if (angle >= -22.5 && angle < 22.5) return 'east';
-        if (angle >= 22.5 && angle < 67.5) return 'southeast';
-        if (angle >= 67.5 && angle < 112.5) return 'south';
-        if (angle >= 112.5 && angle < 157.5) return 'southwest';
-        if (angle >= 157.5 || angle < -157.5) return 'west';
-        if (angle >= -157.5 && angle < -112.5) return 'northwest';
-        if (angle >= -112.5 && angle < -67.5) return 'north';
-        if (angle >= -67.5 && angle < -22.5) return 'northeast';
-    }
-
-    updatePosition() {
-        if (this.isDead) return;
-        this.position.x = this.robotSprite.x;
-        this.position.y = this.robotSprite.y;
-    }
-
-    getPosition() {
-        return this.robotSprite ? { x: this.robotSprite.x, y: this.robotSprite.y } : this.position;
-    }
-
-    createHealthBar() {
-        this.healthBar = this.scene.add.graphics();  // Create the graphics object, but don't draw anything yet
-
-        // Draw the initial health bar
-        this.updateHealthBar();
-    }
-
-    updateHealthBar() {
-        // Calculate the position of the health bar above the player
-        const barX = this.robotSprite.x - 70;
-        const barY = this.robotSprite.y - this.robotSprite.displayHeight / 2;
-
-        this.healthBar.clear();
-        this.healthBar.setPosition(barX, barY);
-
-        // Background of health bar (transparent part)
-        this.healthBar.fillStyle(0x000000, 0.5);
-        this.healthBar.fillRect(0, 0, 150, 10);
-
-        // Health portion
-        const healthPercentage = this.currentHealth / this.maxHealth;
-        const healthBarWidth = healthPercentage * 150;
-        // fill style dark green
-        this.healthBar.fillStyle(0x00ff00, 1);
-        this.healthBar.fillRect(0, 0, healthBarWidth, 10);
-    }
-
-    takeDamage(
-        damage: any,
-        source: any
-    ): void {
+      onComplete: () => {
         if (this.isDead) {
-            return;
+          return;
         }
 
-        if (
-            this.isImmuneToStorms &&
-            source === 'catastrophe'
-        ) {
-            return;
-        }
+        this.currentTween = null;
+        this.updatePosition();
 
-        // hield only blocks directional damage, not catastrophe
-        if (
-            this.abilities.shouldBlockDamage(
-                source
-            )
-        ) {
-            this.createShieldBlockedText();
-            return;
-        }
+        const idleAnimationKey = this.abilities.isShieldRaised
+          ? `shieldidle${this.lastDirection}`
+          : `idle${this.lastDirection}`;
 
-        const wasAtFullHealth =
-            this.currentHealth ===
-            this.maxHealth;
-
-        this.currentHealth -= damage;
-
-        this.currentHealth =
-            Math.max(
-                this.currentHealth,
-                0
-            );
-
-        const color =
-            source === 'catastrophe'
-                ? '#ff0'
-                : '#000';
-
-        this.createDamageText(
-            damage,
-            color
-        );
-
-        if (wasAtFullHealth) {
-            this.resetHealTimer();
-        }
-
-        if (
-            this.currentHealth <= 0 &&
-            !this.isDead
-        ) {
-            this.die();
-        }
-
-        this.updateHealthBar();
-    }
-
-    createShieldBlockedText(): void {
-        const blockedText =
-            this.scene.add.text(
-                this.robotSprite.x,
-                this.robotSprite.y - 90,
-                'BLOCKED',
-                {
-                    font: 'bold 24px Orbitron',
-                    color: '#66d9ff',
-                    stroke: '#000000',
-                    strokeThickness: 4
-                }
-            );
-
-        blockedText
-            .setOrigin(0.5)
-            .setDepth(5);
-
-        this.scene.tweens.add({
-            targets: blockedText,
-
-            y: blockedText.y - 28,
-            alpha: 0,
-
-            duration: 700,
-            ease: 'Power2',
-
-            onComplete: () => {
-                blockedText.destroy();
-            }
-        });
-    }
-
-    createDamageText(damage: any, color: any) {
-        const damageText = this.scene.add.text(this.robotSprite.x, this.robotSprite.y - 100, `-${damage}`, { font: '36px Orbitron', fill: color });
-        damageText.setOrigin(0.5, 0.5);
-        damageText.setDepth(1);
-        // Animation for damage text (move up and fade out)
-        this.scene.tweens.add({
-            targets: damageText,
-            y: damageText.y - 30, // Move up
-            alpha: 0, // Fade out
-            duration: 800,
-            ease: 'Power2',
-            onComplete: () => {
-                damageText.destroy(); // Remove the text object
-            }
-        });
-    }
-
-    die(): void {
-        if (this.isDead) return;
-
-        this.isDead = true;
-
-        console.log('Player died');
-
-        if (this.currentTween) {
-            this.currentTween.stop();
-        }
-
-        if (this.moveTween) {
-            this.moveTween.stop();
-        }
-
-        this.isMoving = false;
-        this.isAttacking = false;
-        this.abilities.onPlayerDeath();
-        this.continueAttacking = false;
-
-        this.robotSprite.stop();
-
-        this.robotSprite.play(
-            'death',
-            true
-        );
-
-        if (
-            this.attacker &&
-            !this.attacker.isDead
-        ) {
-            this.attacker.stopAttackingPlayer();
-        }
-
-        if (this.healthBar) {
-            this.healthBar.destroy();
-        }
-
-        this.robotSprite.once(
-            Phaser.Animations.Events.ANIMATION_COMPLETE,
-            (
-                animation:
-                    Phaser.Animations.Animation
-            ) => {
-                if (animation.key !== 'death') {
-                    return;
-                }
-
-                this.scene.scene
-                    .get('BattleUI')
-                    .createGameOverScreen();
-            }
-        );
-    }
-
-    update(time: number, delta: number): void {
-
-        this.abilities.update();
+        this.robotSprite.play(idleAnimationKey, true);
 
         this.updateAttackIndicator();
         this.updateShieldIndicator();
-        const isTweenMoving =
-            this.currentTween &&
-            this.currentTween.isPlaying();
 
-        const isMoving =
-            Boolean(
-                isTweenMoving ||
-                this.isJoystickMoving
-            );
-
-        const currentAnimation =
-            this.robotSprite.anims.currentAnim;
-
-        const isAttacking =
-            this.robotSprite.anims.isPlaying &&
-            currentAnimation &&
-            currentAnimation.key.startsWith('attack');
-
-        const isSlashAnimation =
-            this.robotSprite.anims.isPlaying &&
-            currentAnimation &&
-            currentAnimation.key.startsWith(
-                'slash'
-            );
-
-        const isDashSlashAnimation =
-            this.robotSprite.anims.isPlaying &&
-            currentAnimation &&
-            currentAnimation.key.startsWith(
-                'dashslash'
-            );
-
-        if (
-            !isMoving &&
-            !isAttacking &&
-            !isSlashAnimation &&
-            !isDashSlashAnimation &&
-            !this.isDead
-        ) {
-            const direction =
-                this.lastDirection ||
-                'south';
-
-            const idleKey =
-                this.abilities.isShieldRaised
-                    ? `shieldidle${direction}`
-                    : `idle${direction}`;
-
-            if (
-                this.robotSprite
-                    .anims.currentAnim?.key !==
-                idleKey
-            ) {
-                this.robotSprite.play(
-                    idleKey,
-                    true
-                );
-            }
-        } else {
-            this.lastActionTime = time;
+        if (onCompleteCallback) {
+          onCompleteCallback();
         }
+      },
+    });
 
-        if (
-            !currentAnimation ||
-            !currentAnimation.key.startsWith('attack')
-        ) {
-            this.isAttacking = false;
+    this.lastActionTime = this.scene.activeGameTime;
+  }
+
+  launchProjectile(enemy: any) {
+    if (!enemy) return;
+    let projectile = this.scene.add.sprite(
+      this.robotSprite.x + 10,
+      this.robotSprite.y - 80,
+      this.projectile,
+    );
+    projectile.setOrigin(0.5, 0.5);
+    projectile.setScale(0.5);
+
+    let targetX = enemy.sprite.x;
+    let targetY = enemy.sprite.y;
+    let angle = Phaser.Math.Angle.Between(
+      this.robotSprite.x,
+      this.robotSprite.y,
+      targetX,
+      targetY,
+    );
+
+    projectile.setRotation(angle); // 90 deg.
+
+    // Calculate a more realistic impact point instead of the center of the enemy
+    const enemyWidth = enemy.sprite.width;
+    const enemyHeight = enemy.sprite.height;
+    const impactOffsetX = (enemyWidth / 2) * Math.cos(angle); // ratio of the adjacent side to the hypotenuse of a right-angled triangle. gives x offset
+    const impactOffsetY = (enemyHeight / 2) * Math.sin(angle); // ratio of the opposite side to the hypotenuse of a right-angled triangle gives y offset
+    targetX -= impactOffsetX;
+    targetY -= impactOffsetY;
+
+    this.scene.tweens.add({
+      targets: projectile,
+      x: targetX,
+      y: targetY,
+      duration: 500,
+      ease: "Linear",
+      onComplete: () => {
+        if (enemy) {
+          enemy.takeDamage(this.damage, this); // apply damage when projectile hits
         }
+        projectile.destroy(); // after hitting the target
+      },
+    });
+  }
 
-        this.updateHealthBar();
+  stopAttackingEnemy(): void {
+    this.isMovingTowardsEnemy = false;
+    this.continueAttacking = false;
+    this.attackingWho = null;
+    this.targetedEnemy = null;
+
+    if (this.attackEvent) {
+      this.attackEvent.remove(false);
+      this.attackEvent = null;
     }
 
-    getDirectionVector(
-        direction: string
-    ): {
-        x: number;
-        y: number;
-    } {
-        const diagonal =
-            Math.SQRT1_2;
-
-        switch (direction) {
-            case 'north':
-                return {
-                    x: 0,
-                    y: -1
-                };
-
-            case 'northeast':
-                return {
-                    x: diagonal,
-                    y: -diagonal
-                };
-
-            case 'east':
-                return {
-                    x: 1,
-                    y: 0
-                };
-
-            case 'southeast':
-                return {
-                    x: diagonal,
-                    y: diagonal
-                };
-
-            case 'south':
-                return {
-                    x: 0,
-                    y: 1
-                };
-
-            case 'southwest':
-                return {
-                    x: -diagonal,
-                    y: diagonal
-                };
-
-            case 'west':
-                return {
-                    x: -1,
-                    y: 0
-                };
-
-            case 'northwest':
-                return {
-                    x: -diagonal,
-                    y: -diagonal
-                };
-
-            default:
-                return {
-                    x: 0,
-                    y: 1
-                };
-        }
+    if (this.isActionLocked) {
+      return;
     }
 
-    playAttackAnimation(targetEnemy: any) {
-        if (
-            this.abilities.isShieldRaised
-        ) {
-            return;
+    this.isAttacking = false;
+
+    const currentAnim = this.robotSprite.anims.currentAnim;
+
+    if (currentAnim && currentAnim.key.startsWith("attack")) {
+      const direction = this.lastDirection || "south";
+
+      const idleAnimationKey = this.abilities.isShieldRaised
+        ? `shieldidle${direction}`
+        : `idle${direction}`;
+
+      this.robotSprite.play(idleAnimationKey, true);
+    }
+  }
+
+  calculateAverageDirection(directions: any[]) {
+    // Calculate the most frequent direction in the array
+    const directionCounts = directions.reduce((acc: any, dir: any) => {
+      acc[dir] = (acc[dir] || 0) + 1;
+      return acc;
+    }, {});
+
+    let mostFrequentDirection = null;
+    let maxCount = 0;
+    for (let dir in directionCounts) {
+      if (directionCounts[dir] > maxCount) {
+        mostFrequentDirection = dir;
+        maxCount = directionCounts[dir];
+      }
+    }
+    return mostFrequentDirection;
+  }
+
+  determineDirection(newX: number, newY: number) {
+    const dx = newX - this.position.x;
+    const dy = newY - this.position.y;
+    const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+
+    if (angle >= -22.5 && angle < 22.5) return "east";
+    if (angle >= 22.5 && angle < 67.5) return "southeast";
+    if (angle >= 67.5 && angle < 112.5) return "south";
+    if (angle >= 112.5 && angle < 157.5) return "southwest";
+    if (angle >= 157.5 || angle < -157.5) return "west";
+    if (angle >= -157.5 && angle < -112.5) return "northwest";
+    if (angle >= -112.5 && angle < -67.5) return "north";
+    if (angle >= -67.5 && angle < -22.5) return "northeast";
+  }
+
+  // determineDirectionToEnemy() {
+  //     const enemyX = this.scene.enemy.sprite.x;
+  //     const enemyY = this.scene.enemy.sprite.y;
+  //     const dx = enemyX - this.robotSprite.x;
+  //     const dy = enemyY - this.robotSprite.y;
+  //     const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+  //     if (angle >= -22.5 && angle < 22.5) return 'east';
+  //     if (angle >= 22.5 && angle < 67.5) return 'southeast';
+  //     if (angle >= 67.5 && angle < 112.5) return 'south';
+  //     if (angle >= 112.5 && angle < 157.5) return 'southwest';
+  //     if (angle >= 157.5 || angle < -157.5) return 'west';
+  //     if (angle >= -157.5 && angle < -112.5) return 'northwest';
+  //     if (angle >= -112.5 && angle < -67.5) return 'north';
+  //     if (angle >= -67.5 && angle < -22.5) return 'northeast';
+  // }
+
+  determineDirectionToEnemy(enemy: any) {
+    const enemyX = enemy.sprite.x;
+    const enemyY = enemy.sprite.y;
+    const dx = enemyX - this.robotSprite.x;
+    const dy = enemyY - this.robotSprite.y;
+    const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+
+    if (angle >= -22.5 && angle < 22.5) return "east";
+    if (angle >= 22.5 && angle < 67.5) return "southeast";
+    if (angle >= 67.5 && angle < 112.5) return "south";
+    if (angle >= 112.5 && angle < 157.5) return "southwest";
+    if (angle >= 157.5 || angle < -157.5) return "west";
+    if (angle >= -157.5 && angle < -112.5) return "northwest";
+    if (angle >= -112.5 && angle < -67.5) return "north";
+    if (angle >= -67.5 && angle < -22.5) return "northeast";
+  }
+
+  updatePosition() {
+    if (this.isDead) return;
+    this.position.x = this.robotSprite.x;
+    this.position.y = this.robotSprite.y;
+  }
+
+  getPosition() {
+    return this.robotSprite
+      ? { x: this.robotSprite.x, y: this.robotSprite.y }
+      : this.position;
+  }
+
+  createHealthBar() {
+    this.healthBar = this.scene.add.graphics(); // Create the graphics object, but don't draw anything yet
+
+    // Draw the initial health bar
+    this.updateHealthBar();
+  }
+
+  updateHealthBar() {
+    // Calculate the position of the health bar above the player
+    const barX = this.robotSprite.x - 70;
+    const barY = this.robotSprite.y - this.robotSprite.displayHeight / 2;
+
+    this.healthBar.clear();
+    this.healthBar.setPosition(barX, barY);
+
+    // Background of health bar (transparent part)
+    this.healthBar.fillStyle(0x000000, 0.5);
+    this.healthBar.fillRect(0, 0, 150, 10);
+
+    // Health portion
+    const healthPercentage = this.currentHealth / this.maxHealth;
+    const healthBarWidth = healthPercentage * 150;
+    // fill style dark green
+    this.healthBar.fillStyle(0x00ff00, 1);
+    this.healthBar.fillRect(0, 0, healthBarWidth, 10);
+  }
+
+  takeDamage(damage: any, source: any): void {
+    if (this.isDead) {
+      return;
+    }
+
+    if (this.isImmuneToStorms && source === "catastrophe") {
+      return;
+    }
+
+    // hield only blocks directional damage, not catastrophe
+    if (this.abilities.shouldBlockDamage(source)) {
+      this.createShieldBlockedText();
+      return;
+    }
+
+    const wasAtFullHealth = this.currentHealth === this.maxHealth;
+
+    this.currentHealth -= damage;
+
+    this.currentHealth = Math.max(this.currentHealth, 0);
+
+    const color = source === "catastrophe" ? "#ff0" : "#000";
+
+    this.createDamageText(damage, color);
+
+    if (wasAtFullHealth) {
+      this.resetHealTimer();
+    }
+
+    if (this.currentHealth <= 0 && !this.isDead) {
+      this.die();
+    }
+
+    this.updateHealthBar();
+  }
+
+  createShieldBlockedText(): void {
+    const blockedText = this.scene.add.text(
+      this.robotSprite.x,
+      this.robotSprite.y - 90,
+      "BLOCKED",
+      {
+        font: "bold 24px Orbitron",
+        color: "#66d9ff",
+        stroke: "#000000",
+        strokeThickness: 4,
+      },
+    );
+
+    blockedText.setOrigin(0.5).setDepth(5);
+
+    this.scene.tweens.add({
+      targets: blockedText,
+
+      y: blockedText.y - 28,
+      alpha: 0,
+
+      duration: 700,
+      ease: "Power2",
+
+      onComplete: () => {
+        blockedText.destroy();
+      },
+    });
+  }
+
+  createDamageText(damage: any, color: any) {
+    const damageText = this.scene.add.text(
+      this.robotSprite.x,
+      this.robotSprite.y - 100,
+      `-${damage}`,
+      { font: "36px Orbitron", fill: color },
+    );
+    damageText.setOrigin(0.5, 0.5);
+    damageText.setDepth(1);
+    // Animation for damage text (move up and fade out)
+    this.scene.tweens.add({
+      targets: damageText,
+      y: damageText.y - 30, // Move up
+      alpha: 0, // Fade out
+      duration: 800,
+      ease: "Power2",
+      onComplete: () => {
+        damageText.destroy(); // Remove the text object
+      },
+    });
+  }
+
+  die(): void {
+    if (this.isDead) return;
+
+    this.isDead = true;
+
+    console.log("Player died");
+
+    if (this.currentTween) {
+      this.currentTween.stop();
+    }
+
+    if (this.moveTween) {
+      this.moveTween.stop();
+    }
+
+    this.isMoving = false;
+    this.isAttacking = false;
+    this.abilities.onPlayerDeath();
+    this.continueAttacking = false;
+
+    this.robotSprite.stop();
+
+    this.robotSprite.play("death", true);
+
+    if (this.attacker && !this.attacker.isDead) {
+      this.attacker.stopAttackingPlayer();
+    }
+
+    if (this.healthBar) {
+      this.healthBar.destroy();
+    }
+
+    this.robotSprite.once(
+      Phaser.Animations.Events.ANIMATION_COMPLETE,
+      (animation: Phaser.Animations.Animation) => {
+        if (animation.key !== "death") {
+          return;
         }
-        const direction = this.determineDirectionToEnemy(targetEnemy);
-        const attackAnimationKey = `attack${direction}`;
-        if (this.isAttacking && !this.attackAnimationComplete && this.targetedEnemy === targetEnemy) {
-            return;
+
+        this.scene.scene.get("BattleUI").createGameOverScreen();
+      },
+    );
+  }
+
+  update(time: number, delta: number): void {
+    this.abilities.update();
+
+    this.updateAttackIndicator();
+    this.updateShieldIndicator();
+    const isTweenMoving = this.currentTween && this.currentTween.isPlaying();
+
+    const isMoving = Boolean(isTweenMoving || this.isJoystickMoving);
+
+    const currentAnimation = this.robotSprite.anims.currentAnim;
+
+    const isAttacking =
+      this.robotSprite.anims.isPlaying &&
+      currentAnimation &&
+      currentAnimation.key.startsWith("attack");
+
+    const isSlashAnimation =
+      this.robotSprite.anims.isPlaying &&
+      currentAnimation &&
+      currentAnimation.key.startsWith("slash");
+
+    const isDashSlashAnimation =
+      this.robotSprite.anims.isPlaying &&
+      currentAnimation &&
+      currentAnimation.key.startsWith("dashslash");
+
+    if (
+      !isMoving &&
+      !isAttacking &&
+      !isSlashAnimation &&
+      !isDashSlashAnimation &&
+      !this.isDead
+    ) {
+      const direction = this.lastDirection || "south";
+
+      const idleKey = this.abilities.isShieldRaised
+        ? `shieldidle${direction}`
+        : `idle${direction}`;
+
+      if (this.robotSprite.anims.currentAnim?.key !== idleKey) {
+        this.robotSprite.play(idleKey, true);
+      }
+    } else {
+      this.lastActionTime = time;
+    }
+
+    if (!currentAnimation || !currentAnimation.key.startsWith("attack")) {
+      this.isAttacking = false;
+    }
+
+    this.updateHealthBar();
+  }
+
+  getDirectionVector(direction: string): {
+    x: number;
+    y: number;
+  } {
+    const diagonal = Math.SQRT1_2;
+
+    switch (direction) {
+      case "north":
+        return {
+          x: 0,
+          y: -1,
+        };
+
+      case "northeast":
+        return {
+          x: diagonal,
+          y: -diagonal,
+        };
+
+      case "east":
+        return {
+          x: 1,
+          y: 0,
+        };
+
+      case "southeast":
+        return {
+          x: diagonal,
+          y: diagonal,
+        };
+
+      case "south":
+        return {
+          x: 0,
+          y: 1,
+        };
+
+      case "southwest":
+        return {
+          x: -diagonal,
+          y: diagonal,
+        };
+
+      case "west":
+        return {
+          x: -1,
+          y: 0,
+        };
+
+      case "northwest":
+        return {
+          x: -diagonal,
+          y: -diagonal,
+        };
+
+      default:
+        return {
+          x: 0,
+          y: 1,
+        };
+    }
+  }
+
+  playAttackAnimation(targetEnemy: any) {
+    if (this.abilities.isShieldRaised) {
+      return;
+    }
+    const direction = this.determineDirectionToEnemy(targetEnemy);
+    const attackAnimationKey = `attack${direction}`;
+    if (
+      this.isAttacking &&
+      !this.attackAnimationComplete &&
+      this.targetedEnemy === targetEnemy
+    ) {
+      return;
+    }
+    this.isAttacking = true;
+    this.attackAnimationComplete = false;
+    this.attackingWho = targetEnemy;
+    const frameRateRatio = this.attackSpeed / this.originalAttackSpeed;
+
+    this.robotSprite.anims.play(attackAnimationKey);
+    this.robotSprite.anims.msPerFrame =
+      this.robotSprite.anims.msPerFrame / frameRateRatio;
+
+    this.robotSprite.off("animationupdate");
+    this.robotSprite.off("animationcomplete");
+
+    let damageFrames = [];
+    if (!this.projectile) {
+      damageFrames.push(18);
+    }
+
+    this.robotSprite.on("animationupdate", (anim: any, frame: any) => {
+      if (anim.key === attackAnimationKey) {
+        if (this.projectile && this.projectile !== "" && frame.index === 4) {
+          this.launchProjectile(this.targetedEnemy);
+        } else if (!this.projectile && damageFrames.includes(frame.index)) {
+          // if (this.attacker) {
+          //     this.attacker.takeDamage(this.damage, this);
+          // }
+          if (this.targetedEnemy) {
+            this.targetedEnemy.takeDamage(this.damage, this);
+          }
         }
-        this.isAttacking = true;
-        this.attackAnimationComplete = false;
-        this.attackingWho = targetEnemy;
-        const frameRateRatio = this.attackSpeed / this.originalAttackSpeed;
+      }
+    });
 
-        this.robotSprite.anims.play(attackAnimationKey);
-        this.robotSprite.anims.msPerFrame = this.robotSprite.anims.msPerFrame / frameRateRatio;
-
-        this.robotSprite.off('animationupdate');
-        this.robotSprite.off('animationcomplete');
-
-        let damageFrames = [];
+    this.robotSprite.once("animationcomplete", (anim: any) => {
+      if (anim.key === attackAnimationKey) {
+        this.attackAnimationComplete = true;
         if (!this.projectile) {
-            damageFrames.push(18);
+          this.robotSprite.play(attackAnimationKey);
         }
+      }
+    });
+  }
 
-        this.robotSprite.on('animationupdate', (anim: any, frame: any) => {
-            if (anim.key === attackAnimationKey) {
-                if (this.projectile && this.projectile !== '' && frame.index === 4) {
-                    this.launchProjectile(this.targetedEnemy);
-                } else if (!this.projectile && damageFrames.includes(frame.index)) {
-                    // if (this.attacker) {
-                    //     this.attacker.takeDamage(this.damage, this);
-                    // }
-                    if (this.targetedEnemy) {
-                        this.targetedEnemy.takeDamage(this.damage, this);
-                    }
-                }
-            }
-        });
-
-        this.robotSprite.once('animationcomplete', (anim: any) => {
-            if (anim.key === attackAnimationKey) {
-                this.attackAnimationComplete = true;
-                if (!this.projectile) {
-                    this.robotSprite.play(attackAnimationKey);
-                }
-            }
-        });
+  createAttackIndicator(): void {
+    if (this.attackIndicator) {
+      this.attackIndicator.destroy();
     }
 
-    createAttackIndicator(): void {
-        if (this.attackIndicator) {
-            this.attackIndicator.destroy();
-        }
+    this.attackIndicator = this.scene.add.graphics();
 
-        this.attackIndicator =
-            this.scene.add.graphics();
+    this.attackIndicator?.setDepth(0);
 
-        this.attackIndicator?.setDepth(0);
+    this.updateAttackIndicator();
+  }
 
-        this.updateAttackIndicator();
+  updateAttackIndicator(): void {
+    if (!this.attackIndicator || !this.robotSprite) {
+      return;
     }
 
-    updateAttackIndicator(): void {
-        if (
-            !this.attackIndicator ||
-            !this.robotSprite
-        ) {
-            return;
-        }
+    const shouldHide =
+      this.isDead ||
+      this.abilities?.isShieldRaised === true ||
+      this.isActionLocked;
 
-        const shouldHide =
-            this.isDead ||
-            this.abilities?.isShieldRaised === true ||
-            this.isActionLocked;
+    if (shouldHide) {
+      this.attackIndicator.clear().setVisible(false);
 
-        if (shouldHide) {
-            this.attackIndicator
-                .clear()
-                .setVisible(false);
-
-            return;
-        }
-
-        this.attackIndicator.setVisible(true);
-
-        const direction =
-            this.lastDirection ||
-            'south';
-
-        const vector =
-            this.getDirectionVector(
-                direction
-            );
-
-        const facingAngle =
-            Math.atan2(
-                vector.y,
-                vector.x
-            );
-
-        const halfArc =
-            Phaser.Math.DegToRad(40); // 80 deg total
-
-        const startAngle =
-            facingAngle - halfArc;
-
-        const endAngle =
-            facingAngle + halfArc;
-
-        const originX =
-            this.robotSprite.x +
-            vector.x *
-            this.attackIndicatorOffset;
-
-        const originY =
-            this.robotSprite.y +
-            vector.y *
-            this.attackIndicatorOffset;
-
-        this.attackIndicator.clear();
-
-        this.attackIndicator.fillStyle(
-            0xff3b30,
-            0.08
-        );
-
-        this.attackIndicator.lineStyle(
-            2,
-            0xff6b61,
-            0.38
-        );
-
-        this.attackIndicator.beginPath();
-
-        this.attackIndicator.moveTo(
-            originX,
-            originY
-        );
-
-        this.attackIndicator.arc(
-            originX,
-            originY,
-            this.range,
-            startAngle,
-            endAngle,
-            false
-        );
-
-        this.attackIndicator.closePath();
-
-        this.attackIndicator.fillPath();
-        this.attackIndicator.strokePath();
-
-        this.attackIndicator.setPosition(
-            0,
-            0
-        );
-
-        this.attackIndicator.setRotation(
-            0
-        );
+      return;
     }
 
-    attackOnce(): void {
-        if (
-            this.isDead ||
-            this.isActionLocked ||
-            this.abilities.isShieldRaised
-        ) {
-            return;
-        }
+    this.attackIndicator.setVisible(true);
 
-        const direction =
-            this.lastDirection ||
-            'south';
+    const direction = this.lastDirection || "south";
 
-        this.lastDirection = direction;
+    const vector = this.getDirectionVector(direction);
 
-        const attackAnimationKey =
-            `attack${direction}`;
+    const facingAngle = Math.atan2(vector.y, vector.x);
 
-        if (
-            !this.scene.anims.exists(
-                attackAnimationKey
-            )
-        ) {
-            console.error(
-                '[Player] Missing attack animation:',
-                attackAnimationKey
-            );
+    const halfArc = Phaser.Math.DegToRad(40); // 80 deg total
 
-            return;
-        }
+    const startAngle = facingAngle - halfArc;
 
-        if (this.currentTween) {
-            this.currentTween.stop();
-            this.currentTween = null;
-        }
+    const endAngle = facingAngle + halfArc;
 
-        if (this.moveTween) {
-            this.moveTween.stop();
-            this.moveTween = null;
-        }
+    const originX = this.robotSprite.x + vector.x * this.attackIndicatorOffset;
 
-        this.updatePosition();
+    const originY = this.robotSprite.y + vector.y * this.attackIndicatorOffset;
 
-        this.targetedEnemy = null;
-        this.isMovingTowardsEnemy = false;
-        this.continueAttacking = false;
-        this.isAttacking = true;
+    this.attackIndicator.clear();
 
-        this.isActionLocked = true;
-        this.attackAnimationComplete = false;
-        this.hasAppliedAttackDamage = false;
+    this.attackIndicator.fillStyle(0xff3b30, 0.08);
 
-        this.robotSprite.play(
-            attackAnimationKey,
-            true
-        );
+    this.attackIndicator.lineStyle(2, 0xff6b61, 0.38);
 
-        const damageFrame = 20;
+    this.attackIndicator.beginPath();
 
-        const onAnimationUpdate = (
-            animation:
-                Phaser.Animations.Animation,
-            frame:
-                Phaser.Animations.AnimationFrame
-        ) => {
-            if (
-                animation.key !==
-                attackAnimationKey
-            ) {
-                return;
-            }
+    this.attackIndicator.moveTo(originX, originY);
 
-            if (
-                !this.hasAppliedAttackDamage &&
-                frame.index >= damageFrame
-            ) {
-                this.hasAppliedAttackDamage = true;
+    this.attackIndicator.arc(
+      originX,
+      originY,
+      this.range,
+      startAngle,
+      endAngle,
+      false,
+    );
 
-                this.applyDirectionalAttackDamage();
-            }
-        };
+    this.attackIndicator.closePath();
 
-        const onAnimationComplete = (
-            animation:
-                Phaser.Animations.Animation
-        ) => {
-            if (
-                animation.key !==
-                attackAnimationKey
-            ) {
-                return;
-            }
+    this.attackIndicator.fillPath();
+    this.attackIndicator.strokePath();
 
-            this.robotSprite.off(
-                Phaser.Animations.Events.ANIMATION_UPDATE,
-                onAnimationUpdate
-            );
+    this.attackIndicator.setPosition(0, 0);
 
-            this.isActionLocked = false;
-            this.isAttacking = false;
-            this.attackAnimationComplete = true;
-            this.hasAppliedAttackDamage = false;
+    this.attackIndicator.setRotation(0);
+  }
 
-            if (!this.isDead) {
-                this.robotSprite.play(
-                    `idle${this.lastDirection}`,
-                    true
-                );
-            }
-        };
-
-        this.robotSprite.on(
-            Phaser.Animations.Events.ANIMATION_UPDATE,
-            onAnimationUpdate
-        );
-
-        this.robotSprite.once(
-            Phaser.Animations.Events.ANIMATION_COMPLETE,
-            onAnimationComplete
-        );
+  attackOnce(): void {
+    if (this.isDead || this.isActionLocked || this.abilities.isShieldRaised) {
+      return;
     }
 
-    isTargetInsideAttackArea(
-        targetX: number,
-        targetY: number,
-        targetRadius: number = 0
-    ): boolean {
-        const direction =
-            this.lastDirection ||
-            'south';
+    const direction = this.lastDirection || "south";
 
-        const forwardVector =
-            this.getDirectionVector(
-                direction
-            );
+    this.lastDirection = direction;
 
-        const sideVector = {
-            x: -forwardVector.y,
-            y: forwardVector.x
-        };
+    const attackAnimationKey = `attack${direction}`;
 
-        const differenceX =
-            targetX -
-            this.robotSprite.x;
+    if (!this.scene.anims.exists(attackAnimationKey)) {
+      console.error("[Player] Missing attack animation:", attackAnimationKey);
 
-        const differenceY =
-            targetY -
-            this.robotSprite.y;
-
-        const forwardDistance =
-            differenceX *
-            forwardVector.x +
-            differenceY *
-            forwardVector.y;
-
-        const sideDistance =
-            differenceX *
-            sideVector.x +
-            differenceY *
-            sideVector.y;
-
-        const minimumForwardDistance =
-            this.attackIndicatorOffset -
-            targetRadius;
-
-        const maximumForwardDistance =
-            this.attackIndicatorOffset +
-            this.range +
-            targetRadius;
-
-        const maximumSideDistance =
-            this.attackIndicatorWidth / 2 +
-            targetRadius;
-
-        return (
-            forwardDistance >=
-            minimumForwardDistance &&
-            forwardDistance <=
-            maximumForwardDistance &&
-            Math.abs(sideDistance) <=
-            maximumSideDistance
-        );
+      return;
     }
 
-    applyDirectionalAttackDamage(): void {
-        this.scene.enemies.forEach(
-            (enemy: any) => {
-                if (
-                    !enemy ||
-                    enemy.isDead ||
-                    !enemy.sprite ||
-                    !enemy.sprite.active
-                ) {
-                    return;
-                }
-
-                // of requiring its exact center to enter the rectangle. the higher the multiplier, the more forgiving the hit area will be.
-                const enemyRadius =
-                    Math.min(
-                        enemy.sprite.displayWidth,
-                        enemy.sprite.displayHeight
-                    ) * 0.2;
-
-                const isHit =
-                    this.isTargetInsideAttackArea(
-                        enemy.sprite.x,
-                        enemy.sprite.y,
-                        enemyRadius
-                    );
-
-                if (isHit) {
-                    enemy.takeDamage(
-                        this.damage,
-                        this
-                    );
-                }
-            }
-        );
-
-        const base =
-            this.scene.base;
-
-        if (
-            base &&
-            !base.isDestroyed &&
-            base.sprite &&
-            base.sprite.active &&
-            base.sprite.visible
-        ) {
-            const baseRadius =
-                Math.min(
-                    base.sprite.displayWidth,
-                    base.sprite.displayHeight
-                ) * 0.35;
-
-            const baseIsHit =
-                this.isTargetInsideAttackArea(
-                    base.sprite.x,
-                    base.sprite.y,
-                    baseRadius
-                );
-
-            if (baseIsHit) {
-                base.takeDamage(
-                    this.damage,
-                    this
-                );
-            }
-        }
+    if (this.currentTween) {
+      this.currentTween.stop();
+      this.currentTween = null;
     }
 
-    moveWithJoystick(
-        inputX: number,
-        inputY: number,
-        delta: number,
-        worldWidth: number,
-        worldHeight: number,
-        minimumY: number
-    ): void {
-        if (
-            this.isDead ||
-            this.isActionLocked ||
-            !this.robotSprite
-        ) {
-            this.stopJoystickMovement();
-            return;
-        }
-
-        const inputLength =
-            Math.sqrt(
-                inputX * inputX +
-                inputY * inputY
-            );
-
-        if (inputLength < 0.01) {
-            this.stopJoystickMovement();
-            return;
-        }
-
-        if (this.currentTween) {
-            this.currentTween.stop();
-            this.currentTween = null;
-        }
-
-        const normalizedX =
-            inputX / inputLength;
-
-        const normalizedY =
-            inputY / inputLength;
-
-        const strength =
-            Phaser.Math.Clamp(
-                inputLength,
-                0,
-                1
-            );
-
-        const movementDistance =
-            this.speed *
-            strength *
-            (delta / 1000);
-
-        const spritePadding = 35;
-
-        const nextX =
-            Phaser.Math.Clamp(
-                this.robotSprite.x +
-                normalizedX *
-                movementDistance,
-
-                spritePadding,
-                worldWidth -
-                spritePadding
-            );
-
-        const nextY =
-            Phaser.Math.Clamp(
-                this.robotSprite.y +
-                normalizedY *
-                movementDistance,
-
-                minimumY,
-                worldHeight -
-                spritePadding
-            );
-
-        const direction =
-            this.determineDirectionFromVector(
-                normalizedX,
-                normalizedY
-            );
-
-        if (!direction) {
-            this.stopJoystickMovement();
-            return;
-        }
-
-        this.isJoystickMoving = true;
-        this.lastDirection = direction;
-
-        const movementAnimationKey =
-            this.abilities.isShieldRaised
-                ? `shieldmove${direction}`
-                : `move${direction}`;
-
-        const currentAnimationKey =
-            this.robotSprite
-                .anims
-                .currentAnim
-                ?.key;
-
-        if (
-            currentAnimationKey !==
-            movementAnimationKey
-        ) {
-            this.robotSprite.play(
-                movementAnimationKey,
-                true
-            );
-        }
-
-        this.robotSprite.setPosition(
-            nextX,
-            nextY
-        );
-
-        this.updatePosition();
-        this.updateAttackIndicator();
-        this.updateShieldIndicator();
-
-        this.lastActionTime =
-            this.scene.activeGameTime;
+    if (this.moveTween) {
+      this.moveTween.stop();
+      this.moveTween = null;
     }
 
-    stopJoystickMovement(): void {
-        if (!this.isJoystickMoving) {
-            return;
-        }
+    this.updatePosition();
 
-        this.isJoystickMoving = false;
+    this.targetedEnemy = null;
+    this.isMovingTowardsEnemy = false;
+    this.continueAttacking = false;
+    this.isAttacking = true;
 
-        if (
-            this.isDead ||
-            this.isActionLocked
-        ) {
-            return;
-        }
+    this.isActionLocked = true;
+    this.attackAnimationComplete = false;
+    this.hasAppliedAttackDamage = false;
 
-        const direction =
-            this.lastDirection ||
-            'south';
+    this.robotSprite.play(attackAnimationKey, true);
 
-        const idleAnimationKey =
-            this.abilities.isShieldRaised
-                ? `shieldidle${direction}`
-                : `idle${direction}`;
+    const damageFrame = 20;
 
-        if (
-            this.robotSprite
-                .anims
-                .currentAnim
-                ?.key !==
-            idleAnimationKey
-        ) {
-            this.robotSprite.play(
-                idleAnimationKey,
-                true
-            );
-        }
+    const onAnimationUpdate = (
+      animation: Phaser.Animations.Animation,
+      frame: Phaser.Animations.AnimationFrame,
+    ) => {
+      if (animation.key !== attackAnimationKey) {
+        return;
+      }
 
-        this.updateAttackIndicator();
-        this.updateShieldIndicator();
+      if (!this.hasAppliedAttackDamage && frame.index >= damageFrame) {
+        this.hasAppliedAttackDamage = true;
+
+        this.applyDirectionalAttackDamage();
+      }
+    };
+
+    const onAnimationComplete = (animation: Phaser.Animations.Animation) => {
+      if (animation.key !== attackAnimationKey) {
+        return;
+      }
+
+      this.robotSprite.off(
+        Phaser.Animations.Events.ANIMATION_UPDATE,
+        onAnimationUpdate,
+      );
+
+      this.isActionLocked = false;
+      this.isAttacking = false;
+      this.attackAnimationComplete = true;
+      this.hasAppliedAttackDamage = false;
+
+      if (!this.isDead) {
+        this.robotSprite.play(`idle${this.lastDirection}`, true);
+      }
+    };
+
+    this.robotSprite.on(
+      Phaser.Animations.Events.ANIMATION_UPDATE,
+      onAnimationUpdate,
+    );
+
+    this.robotSprite.once(
+      Phaser.Animations.Events.ANIMATION_COMPLETE,
+      onAnimationComplete,
+    );
+  }
+
+  isTargetInsideAttackArea(
+    targetX: number,
+    targetY: number,
+    targetRadius: number = 0,
+  ): boolean {
+    const direction = this.lastDirection || "south";
+
+    const forwardVector = this.getDirectionVector(direction);
+
+    const sideVector = {
+      x: -forwardVector.y,
+      y: forwardVector.x,
+    };
+
+    const differenceX = targetX - this.robotSprite.x;
+
+    const differenceY = targetY - this.robotSprite.y;
+
+    const forwardDistance =
+      differenceX * forwardVector.x + differenceY * forwardVector.y;
+
+    const sideDistance =
+      differenceX * sideVector.x + differenceY * sideVector.y;
+
+    const minimumForwardDistance = this.attackIndicatorOffset - targetRadius;
+
+    const maximumForwardDistance =
+      this.attackIndicatorOffset + this.range + targetRadius;
+
+    const maximumSideDistance = this.attackIndicatorWidth / 2 + targetRadius;
+
+    return (
+      forwardDistance >= minimumForwardDistance &&
+      forwardDistance <= maximumForwardDistance &&
+      Math.abs(sideDistance) <= maximumSideDistance
+    );
+  }
+
+  applyDirectionalAttackDamage(): void {
+    this.scene.enemies.forEach((enemy: any) => {
+      if (!enemy || enemy.isDead || !enemy.sprite || !enemy.sprite.active) {
+        return;
+      }
+
+      // of requiring its exact center to enter the rectangle. the higher the multiplier, the more forgiving the hit area will be.
+      const enemyRadius =
+        Math.min(enemy.sprite.displayWidth, enemy.sprite.displayHeight) * 0.2;
+
+      const isHit = this.isTargetInsideAttackArea(
+        enemy.sprite.x,
+        enemy.sprite.y,
+        enemyRadius,
+      );
+
+      if (isHit) {
+        enemy.takeDamage(this.damage, this);
+      }
+    });
+
+    const base = this.scene.base;
+
+    if (
+      base &&
+      !base.isDestroyed &&
+      base.sprite &&
+      base.sprite.active &&
+      base.sprite.visible
+    ) {
+      const baseRadius =
+        Math.min(base.sprite.displayWidth, base.sprite.displayHeight) * 0.35;
+
+      const baseIsHit = this.isTargetInsideAttackArea(
+        base.sprite.x,
+        base.sprite.y,
+        baseRadius,
+      );
+
+      if (baseIsHit) {
+        base.takeDamage(this.damage, this);
+      }
+    }
+  }
+
+  moveWithJoystick(
+    inputX: number,
+    inputY: number,
+    delta: number,
+    worldWidth: number,
+    worldHeight: number,
+    minimumY: number,
+  ): void {
+    if (this.isDead || this.isActionLocked || !this.robotSprite) {
+      this.stopJoystickMovement();
+      return;
     }
 
-    determineDirectionFromVector(
-        directionX: number,
-        directionY: number
-    ): string {
-        const angle =
-            Math.atan2(
-                directionY,
-                directionX
-            ) *
-            180 /
-            Math.PI;
+    const inputLength = Math.sqrt(inputX * inputX + inputY * inputY);
 
-        if (
-            angle >= -22.5 &&
-            angle < 22.5
-        ) {
-            return 'east';
-        }
-
-        if (
-            angle >= 22.5 &&
-            angle < 67.5
-        ) {
-            return 'southeast';
-        }
-
-        if (
-            angle >= 67.5 &&
-            angle < 112.5
-        ) {
-            return 'south';
-        }
-
-        if (
-            angle >= 112.5 &&
-            angle < 157.5
-        ) {
-            return 'southwest';
-        }
-
-        if (
-            angle >= 157.5 ||
-            angle < -157.5
-        ) {
-            return 'west';
-        }
-
-        if (
-            angle >= -157.5 &&
-            angle < -112.5
-        ) {
-            return 'northwest';
-        }
-
-        if (
-            angle >= -112.5 &&
-            angle < -67.5
-        ) {
-            return 'north';
-        }
-
-        return 'northeast';
+    if (inputLength < 0.01) {
+      this.stopJoystickMovement();
+      return;
     }
 
-    createShieldIndicator(): void {
-        if (this.shieldIndicator) {
-            this.shieldIndicator.destroy();
-        }
-
-        this.shieldIndicator =
-            this.scene.add.graphics();
-
-        this.shieldIndicator?.setDepth(9);
-
-        this.updateShieldIndicator();
+    if (this.currentTween) {
+      this.currentTween.stop();
+      this.currentTween = null;
     }
 
-    updateShieldIndicator(): void {
-        if (
-            !this.shieldIndicator ||
-            !this.robotSprite
-        ) {
-            return;
-        }
+    const normalizedX = inputX / inputLength;
 
-        const shouldShow =
-            !this.isDead &&
-            this.abilities?.isShieldRaised === true;
+    const normalizedY = inputY / inputLength;
 
-        if (!shouldShow) {
-            this.shieldIndicator
-                .clear()
-                .setVisible(false);
+    const strength = Phaser.Math.Clamp(inputLength, 0, 1);
 
-            return;
-        }
+    const movementDistance = this.speed * strength * (delta / 1000);
 
-        this.shieldIndicator.setVisible(true);
+    const spritePadding = 35;
 
-        const direction =
-            this.lastDirection ||
-            'south';
+    const nextX = Phaser.Math.Clamp(
+      this.robotSprite.x + normalizedX * movementDistance,
 
-        const vector =
-            this.getDirectionVector(
-                direction
-            );
+      spritePadding,
+      worldWidth - spritePadding,
+    );
 
-        const facingAngle =
-            Math.atan2(
-                vector.y,
-                vector.x
-            );
+    const nextY = Phaser.Math.Clamp(
+      this.robotSprite.y + normalizedY * movementDistance,
 
-        const startAngle =
-            facingAngle -
-            this.shieldIndicatorHalfAngle;
+      minimumY,
+      worldHeight - spritePadding,
+    );
 
-        const endAngle =
-            facingAngle +
-            this.shieldIndicatorHalfAngle;
+    const direction = this.determineDirectionFromVector(
+      normalizedX,
+      normalizedY,
+    );
 
-        const originX =
-            this.robotSprite.x +
-            vector.x *
-            this.shieldIndicatorOffset;
-
-        const originY =
-            this.robotSprite.y +
-            vector.y *
-            this.shieldIndicatorOffset;
-
-        this.shieldIndicator.clear();
-
-        // cyan
-        this.shieldIndicator.fillStyle(
-            0x50c8ff,
-            0.12
-        );
-
-        this.shieldIndicator.beginPath();
-
-        this.shieldIndicator.moveTo(
-            originX,
-            originY
-        );
-
-        this.shieldIndicator.arc(
-            originX,
-            originY,
-            this.shieldIndicatorRadius,
-            startAngle,
-            endAngle,
-            false
-        );
-
-        this.shieldIndicator.closePath();
-        this.shieldIndicator.fillPath();
-
-        this.shieldIndicator.lineStyle(
-            5,
-            0x50c8ff,
-            0.85
-        );
-
-        this.shieldIndicator.beginPath();
-
-        this.shieldIndicator.arc(
-            originX,
-            originY,
-            this.shieldIndicatorRadius,
-            startAngle,
-            endAngle,
-            false
-        );
-
-        this.shieldIndicator.strokePath();
-
-        this.shieldIndicator.lineStyle(
-            2,
-            0xbceeff,
-            0.35
-        );
-
-        this.shieldIndicator.beginPath();
-
-        this.shieldIndicator.moveTo(
-            originX,
-            originY
-        );
-
-        this.shieldIndicator.lineTo(
-            originX +
-            Math.cos(startAngle) *
-            this.shieldIndicatorRadius,
-
-            originY +
-            Math.sin(startAngle) *
-            this.shieldIndicatorRadius
-        );
-
-        this.shieldIndicator.strokePath();
-
-        this.shieldIndicator.beginPath();
-
-        this.shieldIndicator.moveTo(
-            originX,
-            originY
-        );
-
-        this.shieldIndicator.lineTo(
-            originX +
-            Math.cos(endAngle) *
-            this.shieldIndicatorRadius,
-
-            originY +
-            Math.sin(endAngle) *
-            this.shieldIndicatorRadius
-        );
-
-        this.shieldIndicator.strokePath();
-
-        this.shieldIndicator.setPosition(
-            0,
-            0
-        );
-
-        this.shieldIndicator.setRotation(
-            0
-        );
+    if (!direction) {
+      this.stopJoystickMovement();
+      return;
     }
 
-    slashOnce(): void {
-        this.abilities.slashOnce();
+    this.isJoystickMoving = true;
+    this.lastDirection = direction;
+
+    const movementAnimationKey = this.abilities.isShieldRaised
+      ? `shieldmove${direction}`
+      : `move${direction}`;
+
+    const currentAnimationKey = this.robotSprite.anims.currentAnim?.key;
+
+    if (currentAnimationKey !== movementAnimationKey) {
+      this.robotSprite.play(movementAnimationKey, true);
     }
 
-    dashOnce(): void {
-        this.abilities.dashOnce();
+    this.robotSprite.setPosition(nextX, nextY);
+
+    this.updatePosition();
+    this.updateAttackIndicator();
+    this.updateShieldIndicator();
+
+    this.lastActionTime = this.scene.activeGameTime;
+  }
+
+  stopJoystickMovement(): void {
+    if (!this.isJoystickMoving) {
+      return;
     }
 
-    getSlashCooldownRemaining(): number {
-        return this.abilities
-            .getSlashCooldownRemaining();
+    this.isJoystickMoving = false;
+
+    if (this.isDead || this.isActionLocked) {
+      return;
     }
 
-    getSlashCooldownProgress(): number {
-        return this.abilities
-            .getSlashCooldownProgress();
+    const direction = this.lastDirection || "south";
+
+    const idleAnimationKey = this.abilities.isShieldRaised
+      ? `shieldidle${direction}`
+      : `idle${direction}`;
+
+    if (this.robotSprite.anims.currentAnim?.key !== idleAnimationKey) {
+      this.robotSprite.play(idleAnimationKey, true);
     }
 
-    isSlashReady(): boolean {
-        return this.abilities.isSlashReady();
+    this.updateAttackIndicator();
+    this.updateShieldIndicator();
+  }
+
+  determineDirectionFromVector(directionX: number, directionY: number): string {
+    const angle = (Math.atan2(directionY, directionX) * 180) / Math.PI;
+
+    if (angle >= -22.5 && angle < 22.5) {
+      return "east";
     }
 
-    getDashCooldownRemaining(): number {
-        return this.abilities
-            .getDashCooldownRemaining();
+    if (angle >= 22.5 && angle < 67.5) {
+      return "southeast";
     }
 
-    getDashCooldownProgress(): number {
-        return this.abilities
-            .getDashCooldownProgress();
+    if (angle >= 67.5 && angle < 112.5) {
+      return "south";
     }
 
-    isDashReady(): boolean {
-        return this.abilities.isDashReady();
+    if (angle >= 112.5 && angle < 157.5) {
+      return "southwest";
     }
 
-    toggleShield(): void {
-        this.abilities.toggleShield();
+    if (angle >= 157.5 || angle < -157.5) {
+      return "west";
     }
 
-    isShieldRaised(): boolean {
-        return this.abilities.isShieldRaised;
+    if (angle >= -157.5 && angle < -112.5) {
+      return "northwest";
     }
 
+    if (angle >= -112.5 && angle < -67.5) {
+      return "north";
+    }
+
+    return "northeast";
+  }
+
+  createShieldIndicator(): void {
+    if (this.shieldIndicator) {
+      this.shieldIndicator.destroy();
+    }
+
+    this.shieldIndicator = this.scene.add.graphics();
+
+    this.shieldIndicator?.setDepth(9);
+
+    this.updateShieldIndicator();
+  }
+
+  updateShieldIndicator(): void {
+    if (!this.shieldIndicator || !this.robotSprite) {
+      return;
+    }
+
+    const shouldShow = !this.isDead && this.abilities?.isShieldRaised === true;
+
+    if (!shouldShow) {
+      this.shieldIndicator.clear().setVisible(false);
+
+      return;
+    }
+
+    this.shieldIndicator.setVisible(true);
+
+    const direction = this.lastDirection || "south";
+
+    const vector = this.getDirectionVector(direction);
+
+    const facingAngle = Math.atan2(vector.y, vector.x);
+
+    const startAngle = facingAngle - this.shieldIndicatorHalfAngle;
+
+    const endAngle = facingAngle + this.shieldIndicatorHalfAngle;
+
+    const originX = this.robotSprite.x + vector.x * this.shieldIndicatorOffset;
+
+    const originY = this.robotSprite.y + vector.y * this.shieldIndicatorOffset;
+
+    this.shieldIndicator.clear();
+
+    // cyan
+    this.shieldIndicator.fillStyle(0x50c8ff, 0.12);
+
+    this.shieldIndicator.beginPath();
+
+    this.shieldIndicator.moveTo(originX, originY);
+
+    this.shieldIndicator.arc(
+      originX,
+      originY,
+      this.shieldIndicatorRadius,
+      startAngle,
+      endAngle,
+      false,
+    );
+
+    this.shieldIndicator.closePath();
+    this.shieldIndicator.fillPath();
+
+    this.shieldIndicator.lineStyle(5, 0x50c8ff, 0.85);
+
+    this.shieldIndicator.beginPath();
+
+    this.shieldIndicator.arc(
+      originX,
+      originY,
+      this.shieldIndicatorRadius,
+      startAngle,
+      endAngle,
+      false,
+    );
+
+    this.shieldIndicator.strokePath();
+
+    this.shieldIndicator.lineStyle(2, 0xbceeff, 0.35);
+
+    this.shieldIndicator.beginPath();
+
+    this.shieldIndicator.moveTo(originX, originY);
+
+    this.shieldIndicator.lineTo(
+      originX + Math.cos(startAngle) * this.shieldIndicatorRadius,
+
+      originY + Math.sin(startAngle) * this.shieldIndicatorRadius,
+    );
+
+    this.shieldIndicator.strokePath();
+
+    this.shieldIndicator.beginPath();
+
+    this.shieldIndicator.moveTo(originX, originY);
+
+    this.shieldIndicator.lineTo(
+      originX + Math.cos(endAngle) * this.shieldIndicatorRadius,
+
+      originY + Math.sin(endAngle) * this.shieldIndicatorRadius,
+    );
+
+    this.shieldIndicator.strokePath();
+
+    this.shieldIndicator.setPosition(0, 0);
+
+    this.shieldIndicator.setRotation(0);
+  }
+
+  slashOnce(): void {
+    this.abilities.slashOnce();
+  }
+
+  dashOnce(): void {
+    this.abilities.dashOnce();
+  }
+
+  getSlashCooldownRemaining(): number {
+    return this.abilities.getSlashCooldownRemaining();
+  }
+
+  getSlashCooldownProgress(): number {
+    return this.abilities.getSlashCooldownProgress();
+  }
+
+  isSlashReady(): boolean {
+    return this.abilities.isSlashReady();
+  }
+
+  getDashCooldownRemaining(): number {
+    return this.abilities.getDashCooldownRemaining();
+  }
+
+  getDashCooldownProgress(): number {
+    return this.abilities.getDashCooldownProgress();
+  }
+
+  isDashReady(): boolean {
+    return this.abilities.isDashReady();
+  }
+
+  toggleShield(): void {
+    this.abilities.toggleShield();
+  }
+
+  isShieldRaised(): boolean {
+    return this.abilities.isShieldRaised;
+  }
 }
 
-
 export default Player;
-

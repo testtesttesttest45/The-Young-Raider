@@ -1,5 +1,6 @@
 export type CharacterType = "raider" | "enemy";
 export type EnemyAnimationName = "idle" | "move" | "attack";
+
 export type EnemyDirectionalAnimation = {
   spritesheetKey: string;
   framesPerDirection: number;
@@ -22,11 +23,13 @@ export type EnemyAnimationConfig = {
   scale: number;
   healthBarOffsetY: number;
 };
-export type CharacterDefinition = {
-  type: CharacterType;
+export type RaiderDefinition = {
+  type: "raider";
+
   name: string;
   cost: number;
   tier: string;
+
   range: number;
   speed: number;
   damage: number;
@@ -34,48 +37,56 @@ export type CharacterDefinition = {
   attackSpeed: number;
   attackCount: number;
   projectile: string;
+
   icon: string;
   idle: string;
   description: string;
-  // raider only
-  spritesheetKey?: string;
-  movingSpritesheetKey?: string;
-  attackSpritesheetKey?: string;
-  deathSpritesheetKey?: string;
-  slashSpritesheetKey?: string;
-  dashSlashSpritesheetKey?: string;
-  shieldSpritesheetKey?: string;
-  shieldMoveSpritesheetKey?: string;
-  // enemy only
-  enemyAnimations?: EnemyAnimationConfig;
+
+  spritesheetKey: string;
+  movingSpritesheetKey: string;
+  attackSpritesheetKey: string;
+  deathSpritesheetKey: string;
+  slashSpritesheetKey: string;
+  dashSlashSpritesheetKey: string;
+  shieldSpritesheetKey: string;
+  shieldMoveSpritesheetKey: string;
 };
+
+export type EnemyDefinition = {
+  type: "enemy";
+
+  name: string;
+  cost: number;
+  tier: string;
+
+  range: number;
+  speed: number;
+  damage: number;
+  health: number;
+  attackSpeed: number;
+  attackCount: number;
+  projectile: string;
+
+  icon: string;
+  idle: string;
+  description: string;
+
+  enemyAnimations: EnemyAnimationConfig;
+};
+
+export type CharacterDefinition = RaiderDefinition | EnemyDefinition;
+
+export const RAIDER_STATS = {
+  range: 110,
+  speed: 220,
+  damage: 99,
+  health: 573,
+  attackSpeed: 1.4,
+  attackCount: 1,
+  projectile: "",
+} as const;
 const characterMap: Record<number, CharacterDefinition> = {
   1: {
-    type: "raider",
-    spritesheetKey: "test_idle",
-    movingSpritesheetKey: "test_moving",
-    attackSpritesheetKey: "test_attack",
-    deathSpritesheetKey: "test_death",
-    slashSpritesheetKey: "test_slash",
-    dashSlashSpritesheetKey: "test_dash",
-    shieldSpritesheetKey: "test_shield",
-    shieldMoveSpritesheetKey: "test_shield_move",
-    name: "The Boy",
-    cost: 100,
-    tier: "hard",
-    range: 110,
-    speed: 220,
-    damage: 99,
-    health: 573,
-    attackSpeed: 1.4,
-    attackCount: 1,
-    projectile: "",
-    icon: "darkEtherMessiah",
-    idle: "testIdle",
-    description:
-      "Young and determined, the Boy will stop at nothing to save his village from the evil that has taken over.",
-  },
-  2: {
     type: "enemy",
     name: "Orc",
     cost: 55,
@@ -88,30 +99,30 @@ const characterMap: Record<number, CharacterDefinition> = {
     attackCount: 1,
     projectile: "",
     icon: "orc",
-    idle: "character2Idle",
+    idle: "enemy1Idle",
     description: "A basic enemy with moderate health and damage.",
     enemyAnimations: {
       idle: {
-        spritesheetKey: "character2_idle",
+        spritesheetKey: "enemy1_idle",
         framesPerDirection: 41,
         frameRate: 24,
         repeat: -1,
       },
       move: {
-        spritesheetKey: "character2_move",
+        spritesheetKey: "enemy1_move",
         framesPerDirection: 31,
         frameRate: 24,
         repeat: -1,
       },
       attack: {
-        spritesheetKey: "character2_attack",
+        spritesheetKey: "enemy1_attack",
         framesPerDirection: 25,
         frameRate: 24,
         repeat: 0,
         damageFrames: [15],
       },
       death: {
-        spritesheetKey: "character2_die",
+        spritesheetKey: "enemy1_die",
         frameCount: 28,
         frameRate: 24,
         repeat: 0,
@@ -120,7 +131,7 @@ const characterMap: Record<number, CharacterDefinition> = {
       healthBarOffsetY: -48,
     },
   },
-  3: {
+  2: {
     type: "enemy",
     name: "Assassin Rat",
     cost: 75,
@@ -133,31 +144,31 @@ const characterMap: Record<number, CharacterDefinition> = {
     attackCount: 1,
     projectile: "",
     icon: "assassinRat",
-    idle: "character3Idle",
+    idle: "enemy2Idle",
     description:
       "A fast assassin that closes distance quickly and strikes with precision.",
     enemyAnimations: {
       idle: {
-        spritesheetKey: "character3_idle",
+        spritesheetKey: "enemy2_idle",
         framesPerDirection: 25,
         frameRate: 18,
         repeat: -1,
       },
       move: {
-        spritesheetKey: "character3_move",
+        spritesheetKey: "enemy2_move",
         framesPerDirection: 17,
         frameRate: 22,
         repeat: -1,
       },
       attack: {
-        spritesheetKey: "character3_attack",
+        spritesheetKey: "enemy2_attack",
         framesPerDirection: 24,
         frameRate: 24,
         repeat: 0,
         damageFrames: [14],
       },
       death: {
-        spritesheetKey: "character3_die",
+        spritesheetKey: "enemy2_die",
         frameCount: 32,
         frameRate: 20,
         repeat: 0,
@@ -166,7 +177,7 @@ const characterMap: Record<number, CharacterDefinition> = {
       healthBarOffsetY: -46,
     },
   },
-  4: {
+  3: {
     type: "enemy",
     name: "Flying Demon",
     cost: 100,
@@ -179,30 +190,30 @@ const characterMap: Record<number, CharacterDefinition> = {
     attackCount: 1,
     projectile: "bluePlasmaBall",
     icon: "flyingDemon",
-    idle: "character4Idle",
+    idle: "enemy3Idle",
     description: "A durable airborne demon with powerful close-range attacks.",
     enemyAnimations: {
       idle: {
-        spritesheetKey: "character4_idle",
+        spritesheetKey: "enemy3_idle",
         framesPerDirection: 41,
         frameRate: 24,
         repeat: -1,
       },
       move: {
-        spritesheetKey: "character4_move",
+        spritesheetKey: "enemy3_move",
         framesPerDirection: 17,
         frameRate: 20,
         repeat: -1,
       },
       attack: {
-        spritesheetKey: "character4_attack",
+        spritesheetKey: "enemy3_attack",
         framesPerDirection: 29,
         frameRate: 24,
         repeat: 0,
         damageFrames: [],
       },
       death: {
-        spritesheetKey: "character4_die",
+        spritesheetKey: "enemy3_die",
         frameCount: 24,
         frameRate: 18,
         repeat: 0,
@@ -211,7 +222,7 @@ const characterMap: Record<number, CharacterDefinition> = {
       healthBarOffsetY: -52,
     },
   },
-  5: {
+  4: {
     type: "enemy",
     name: "Black Knight",
     cost: 100,
@@ -224,30 +235,30 @@ const characterMap: Record<number, CharacterDefinition> = {
     attackCount: 1,
     projectile: "",
     icon: "blackKnight",
-    idle: "character5Idle",
+    idle: "enemy4Idle",
     description: "A heavily armored knight with strong melee attacks.",
     enemyAnimations: {
       idle: {
-        spritesheetKey: "character5_idle",
+        spritesheetKey: "enemy4_idle",
         framesPerDirection: 101,
         frameRate: 60,
         repeat: -1,
       },
       move: {
-        spritesheetKey: "character5_move",
+        spritesheetKey: "enemy4_move",
         framesPerDirection: 29,
         frameRate: 25,
         repeat: -1,
       },
       attack: {
-        spritesheetKey: "character5_attack",
+        spritesheetKey: "enemy4_attack",
         framesPerDirection: 46,
         frameRate: 24,
         repeat: 0,
         damageFrames: [32],
       },
       death: {
-        spritesheetKey: "character5_die",
+        spritesheetKey: "enemy4_die",
         frameCount: 31,
         frameRate: 18,
         repeat: 0,
@@ -256,7 +267,7 @@ const characterMap: Record<number, CharacterDefinition> = {
       healthBarOffsetY: -52,
     },
   },
-  6: {
+  5: {
     type: "enemy",
     name: "Werewolf",
     cost: 100,
@@ -269,30 +280,30 @@ const characterMap: Record<number, CharacterDefinition> = {
     attackCount: 4,
     projectile: "",
     icon: "werewolf",
-    idle: "character6Idle",
+    idle: "enemy5Idle",
     description: "A fierce werewolf with devastating fast melee attacks.",
     enemyAnimations: {
       idle: {
-        spritesheetKey: "character6_idle",
+        spritesheetKey: "enemy5_idle",
         framesPerDirection: 111,
         frameRate: 60,
         repeat: -1,
       },
       move: {
-        spritesheetKey: "character6_move",
+        spritesheetKey: "enemy5_move",
         framesPerDirection: 17,
         frameRate: 20,
         repeat: -1,
       },
       attack: {
-        spritesheetKey: "character6_attack",
+        spritesheetKey: "enemy5_attack",
         framesPerDirection: 17,
         frameRate: 20,
         repeat: 0,
         damageFrames: [],
       },
       death: {
-        spritesheetKey: "character6_die",
+        spritesheetKey: "enemy5_die",
         frameCount: 28,
         frameRate: 20,
         repeat: 0,
@@ -301,7 +312,7 @@ const characterMap: Record<number, CharacterDefinition> = {
       healthBarOffsetY: -52,
     },
   },
-  7: {
+  6: {
     type: "enemy",
     name: "Battle Bee",
     cost: 100,
@@ -314,31 +325,31 @@ const characterMap: Record<number, CharacterDefinition> = {
     attackCount: 1,
     projectile: "",
     icon: "battleBee",
-    idle: "character7Idle",
+    idle: "enemy6Idle",
     description:
       "The Battle Bee is a fast and agile enemy that has a powerful sting.",
     enemyAnimations: {
       idle: {
-        spritesheetKey: "character7_idle",
+        spritesheetKey: "enemy6_idle",
         framesPerDirection: 41,
         frameRate: 60,
         repeat: -1,
       },
       move: {
-        spritesheetKey: "character7_move",
+        spritesheetKey: "enemy6_move",
         framesPerDirection: 31,
         frameRate: 25,
         repeat: -1,
       },
       attack: {
-        spritesheetKey: "character7_attack",
+        spritesheetKey: "enemy6_attack",
         framesPerDirection: 23,
         frameRate: 20,
         repeat: 0,
         damageFrames: [12],
       },
       death: {
-        spritesheetKey: "character7_die",
+        spritesheetKey: "enemy6_die",
         frameCount: 23,
         frameRate: 20,
         repeat: 0,
@@ -347,7 +358,7 @@ const characterMap: Record<number, CharacterDefinition> = {
       healthBarOffsetY: -52,
     },
   },
-  8: {
+  7: {
     type: "enemy",
     name: "Salamnder",
     cost: 100,
@@ -360,31 +371,31 @@ const characterMap: Record<number, CharacterDefinition> = {
     attackCount: 1,
     projectile: "",
     icon: "salamander",
-    idle: "character8Idle",
+    idle: "enemy7Idle",
     description:
       "Looks cute, but don't be fooled. The Salamander is a dangerous enemy with a fiery bite.",
     enemyAnimations: {
       idle: {
-        spritesheetKey: "character8_idle",
+        spritesheetKey: "enemy7_idle",
         framesPerDirection: 41,
         frameRate: 60,
         repeat: -1,
       },
       move: {
-        spritesheetKey: "character8_move",
+        spritesheetKey: "enemy7_move",
         framesPerDirection: 16,
         frameRate: 25,
         repeat: -1,
       },
       attack: {
-        spritesheetKey: "character8_attack",
+        spritesheetKey: "enemy7_attack",
         framesPerDirection: 26,
         frameRate: 20,
         repeat: 0,
         damageFrames: [15],
       },
       death: {
-        spritesheetKey: "character8_die",
+        spritesheetKey: "enemy7_die",
         frameCount: 23,
         frameRate: 20,
         repeat: 0,
@@ -393,7 +404,7 @@ const characterMap: Record<number, CharacterDefinition> = {
       healthBarOffsetY: -52,
     },
   },
-  9: {
+  8: {
     type: "enemy",
     name: "Mushroom",
     cost: 100,
@@ -406,31 +417,31 @@ const characterMap: Record<number, CharacterDefinition> = {
     attackCount: 1,
     projectile: "",
     icon: "mushroom",
-    idle: "character9Idle",
+    idle: "enemy8Idle",
     description:
       "The Mushroom is a slow but sturdy enemy that can regenerate its health.",
     enemyAnimations: {
       idle: {
-        spritesheetKey: "character9_idle",
+        spritesheetKey: "enemy8_idle",
         framesPerDirection: 41,
         frameRate: 60,
         repeat: -1,
       },
       move: {
-        spritesheetKey: "character9_move",
+        spritesheetKey: "enemy8_move",
         framesPerDirection: 17,
         frameRate: 25,
         repeat: -1,
       },
       attack: {
-        spritesheetKey: "character9_attack",
+        spritesheetKey: "enemy8_attack",
         framesPerDirection: 26,
         frameRate: 20,
         repeat: 0,
         damageFrames: [16],
       },
       death: {
-        spritesheetKey: "character9_die",
+        spritesheetKey: "enemy8_die",
         frameCount: 26,
         frameRate: 20,
         repeat: 0,
@@ -439,7 +450,7 @@ const characterMap: Record<number, CharacterDefinition> = {
       healthBarOffsetY: -52,
     },
   },
-  10: {
+  9: {
     type: "enemy",
     name: "Fishman",
     cost: 100,
@@ -452,31 +463,31 @@ const characterMap: Record<number, CharacterDefinition> = {
     attackCount: 1,
     projectile: "",
     icon: "fishman",
-    idle: "character10Idle",
+    idle: "enemy9Idle",
     description:
       "The Fishman is a slow but sturdy enemy that can regenerate its health.",
     enemyAnimations: {
       idle: {
-        spritesheetKey: "character10_idle",
+        spritesheetKey: "enemy9_idle",
         framesPerDirection: 41,
         frameRate: 60,
         repeat: -1,
       },
       move: {
-        spritesheetKey: "character10_move",
+        spritesheetKey: "enemy9_move",
         framesPerDirection: 17,
         frameRate: 25,
         repeat: -1,
       },
       attack: {
-        spritesheetKey: "character10_attack",
+        spritesheetKey: "enemy9_attack",
         framesPerDirection: 21,
         frameRate: 20,
         repeat: 0,
         damageFrames: [11],
       },
       death: {
-        spritesheetKey: "character10_die",
+        spritesheetKey: "enemy9_die",
         frameCount: 28,
         frameRate: 20,
         repeat: 0,
@@ -485,7 +496,7 @@ const characterMap: Record<number, CharacterDefinition> = {
       healthBarOffsetY: -52,
     },
   },
-  11: {
+  10: {
     type: "enemy",
     name: "Bat",
     cost: 100,
@@ -498,30 +509,30 @@ const characterMap: Record<number, CharacterDefinition> = {
     attackCount: 1,
     projectile: "blueBullet",
     icon: "bat",
-    idle: "character11Idle",
+    idle: "enemy10Idle",
     description: "A durable airborne demon with powerful close-range attacks.",
     enemyAnimations: {
       idle: {
-        spritesheetKey: "character11_idle",
+        spritesheetKey: "enemy10_idle",
         framesPerDirection: 25,
         frameRate: 24,
         repeat: -1,
       },
       move: {
-        spritesheetKey: "character11_move",
+        spritesheetKey: "enemy10_move",
         framesPerDirection: 13,
         frameRate: 20,
         repeat: -1,
       },
       attack: {
-        spritesheetKey: "character11_attack",
+        spritesheetKey: "enemy10_attack",
         framesPerDirection: 33,
         frameRate: 24,
         repeat: 0,
         damageFrames: [],
       },
       death: {
-        spritesheetKey: "character11_die",
+        spritesheetKey: "enemy10_die",
         frameCount: 23,
         frameRate: 18,
         repeat: 0,
@@ -530,7 +541,7 @@ const characterMap: Record<number, CharacterDefinition> = {
       healthBarOffsetY: -52,
     },
   },
-  12: {
+  11: {
     type: "enemy",
     name: "Demon King",
     cost: 100,
@@ -543,30 +554,30 @@ const characterMap: Record<number, CharacterDefinition> = {
     attackCount: 1,
     projectile: "",
     icon: "demonKing",
-    idle: "character12Idle",
+    idle: "enemy11Idle",
     description: "The powerful Demon King with devastating attacks.",
     enemyAnimations: {
       idle: {
-        spritesheetKey: "character12_idle",
+        spritesheetKey: "enemy11_idle",
         framesPerDirection: 41,
         frameRate: 20,
         repeat: -1,
       },
       move: {
-        spritesheetKey: "character12_move",
+        spritesheetKey: "enemy11_move",
         framesPerDirection: 19,
         frameRate: 25,
         repeat: -1,
       },
       attack: {
-        spritesheetKey: "character12_attack",
+        spritesheetKey: "enemy11_attack",
         framesPerDirection: 31,
         frameRate: 24,
         repeat: 0,
         damageFrames: [20],
       },
       death: {
-        spritesheetKey: "character12_die",
+        spritesheetKey: "enemy11_die",
         frameCount: 43,
         frameRate: 20,
         repeat: 0,
@@ -575,7 +586,7 @@ const characterMap: Record<number, CharacterDefinition> = {
       healthBarOffsetY: -52,
     },
   },
-  13: {
+  12: {
     type: "enemy",
     name: "Bishop Knight",
     cost: 100,
@@ -588,30 +599,30 @@ const characterMap: Record<number, CharacterDefinition> = {
     attackCount: 1,
     projectile: "",
     icon: "bishopKnight",
-    idle: "character13Idle",
+    idle: "enemy12Idle",
     description: "A fierce Bishop Knight with powerful attacks.",
     enemyAnimations: {
       idle: {
-        spritesheetKey: "character13_idle",
+        spritesheetKey: "enemy12_idle",
         framesPerDirection: 41,
         frameRate: 20,
         repeat: -1,
       },
       move: {
-        spritesheetKey: "character13_move",
+        spritesheetKey: "enemy12_move",
         framesPerDirection: 18,
         frameRate: 20,
         repeat: -1,
       },
       attack: {
-        spritesheetKey: "character13_attack",
+        spritesheetKey: "enemy12_attack",
         framesPerDirection: 26,
         frameRate: 20,
         repeat: 0,
         damageFrames: [16],
       },
       death: {
-        spritesheetKey: "character13_die",
+        spritesheetKey: "enemy12_die",
         frameCount: 30,
         frameRate: 20,
         repeat: 0,
@@ -620,7 +631,7 @@ const characterMap: Record<number, CharacterDefinition> = {
       healthBarOffsetY: -52,
     },
   },
-  14: {
+  13: {
     type: "enemy",
     name: "Golem",
     cost: 100,
@@ -633,30 +644,30 @@ const characterMap: Record<number, CharacterDefinition> = {
     attackCount: 1,
     projectile: "",
     icon: "golem",
-    idle: "character14Idle",
+    idle: "enemy13Idle",
     description: "A fierce Golem with powerful attacks.",
     enemyAnimations: {
       idle: {
-        spritesheetKey: "character14_idle",
+        spritesheetKey: "enemy13_idle",
         framesPerDirection: 51,
         frameRate: 20,
         repeat: -1,
       },
       move: {
-        spritesheetKey: "character14_move",
+        spritesheetKey: "enemy13_move",
         framesPerDirection: 21,
         frameRate: 20,
         repeat: -1,
       },
       attack: {
-        spritesheetKey: "character14_attack",
+        spritesheetKey: "enemy13_attack",
         framesPerDirection: 39,
         frameRate: 20,
         repeat: 0,
         damageFrames: [29],
       },
       death: {
-        spritesheetKey: "character14_die",
+        spritesheetKey: "enemy13_die",
         frameCount: 31,
         frameRate: 20,
         repeat: 0,
@@ -665,7 +676,7 @@ const characterMap: Record<number, CharacterDefinition> = {
       healthBarOffsetY: -52,
     },
   },
-  15: {
+  14: {
     type: "enemy",
     name: "Skeleton",
     cost: 100,
@@ -678,30 +689,30 @@ const characterMap: Record<number, CharacterDefinition> = {
     attackCount: 1,
     projectile: "",
     icon: "skeleton",
-    idle: "character15Idle",
+    idle: "enemy14Idle",
     description: "A fierce Skeleton with powerful attacks.",
     enemyAnimations: {
       idle: {
-        spritesheetKey: "character15_idle",
+        spritesheetKey: "enemy14_idle",
         framesPerDirection: 81,
         frameRate: 20,
         repeat: -1,
       },
       move: {
-        spritesheetKey: "character15_move",
+        spritesheetKey: "enemy14_move",
         framesPerDirection: 21,
         frameRate: 20,
         repeat: -1,
       },
       attack: {
-        spritesheetKey: "character15_attack",
+        spritesheetKey: "enemy14_attack",
         framesPerDirection: 21,
         frameRate: 20,
         repeat: 0,
         damageFrames: [11],
       },
       death: {
-        spritesheetKey: "character15_die",
+        spritesheetKey: "enemy14_die",
         frameCount: 43,
         frameRate: 20,
         repeat: 0,
@@ -710,7 +721,7 @@ const characterMap: Record<number, CharacterDefinition> = {
       healthBarOffsetY: -52,
     },
   },
-  16: {
+  15: {
     type: "enemy",
     name: "Lizard Warrior",
     cost: 100,
@@ -723,30 +734,30 @@ const characterMap: Record<number, CharacterDefinition> = {
     attackCount: 1,
     projectile: "",
     icon: "lizard_warrior",
-    idle: "character16Idle",
+    idle: "enemy15Idle",
     description: "A fierce lizard warrior with powerful attacks.",
     enemyAnimations: {
       idle: {
-        spritesheetKey: "character16_idle",
+        spritesheetKey: "enemy15_idle",
         framesPerDirection: 81,
         frameRate: 20,
         repeat: -1,
       },
       move: {
-        spritesheetKey: "character16_move",
+        spritesheetKey: "enemy15_move",
         framesPerDirection: 17,
         frameRate: 20,
         repeat: -1,
       },
       attack: {
-        spritesheetKey: "character16_attack",
+        spritesheetKey: "enemy15_attack",
         framesPerDirection: 33,
         frameRate: 20,
         repeat: 0,
         damageFrames: [23],
       },
       death: {
-        spritesheetKey: "character16_die",
+        spritesheetKey: "enemy15_die",
         frameCount: 25,
         frameRate: 20,
         repeat: 0,
@@ -754,6 +765,79 @@ const characterMap: Record<number, CharacterDefinition> = {
       scale: 0.8,
       healthBarOffsetY: -52,
     },
+  },
+  16: {
+    type: "raider",
+    ...RAIDER_STATS,
+    spritesheetKey: "raider1_idle",
+    movingSpritesheetKey: "raider1_move",
+    attackSpritesheetKey: "raider1_attack",
+    deathSpritesheetKey: "raider1_die",
+    slashSpritesheetKey: "raider1_slash",
+    dashSlashSpritesheetKey: "raider1_dash",
+    shieldSpritesheetKey: "raider1_shield",
+    shieldMoveSpritesheetKey: "raider1_shield_move",
+    name: "The Boy",
+    cost: 100,
+    tier: "hard",
+    icon: "raider1Icon",
+    idle: "raider1Idle",
+    description:
+      "Young and determined, the Boy will stop at nothing to save his village from the evil that has taken over.",
+  },
+  17: {
+    type: "raider",
+    ...RAIDER_STATS,
+    spritesheetKey: "raider2_idle",
+    movingSpritesheetKey: "raider2_move",
+    attackSpritesheetKey: "raider2_attack",
+    deathSpritesheetKey: "raider2_die",
+    slashSpritesheetKey: "raider2_slash",
+    dashSlashSpritesheetKey: "raider2_dash",
+    shieldSpritesheetKey: "raider2_shield",
+    shieldMoveSpritesheetKey: "raider2_shield_move",
+    name: "Castle Raider",
+    cost: 100,
+    tier: "hard",
+    icon: "raider2Icon",
+    idle: "raider2Idle",
+    description: "A heavily armoured Raider trained to defend the castle.",
+  },
+  18: {
+    type: "raider",
+    ...RAIDER_STATS,
+    spritesheetKey: "raider3_idle",
+    movingSpritesheetKey: "raider3_move",
+    attackSpritesheetKey: "raider3_attack",
+    deathSpritesheetKey: "raider3_die",
+    slashSpritesheetKey: "raider3_slash",
+    dashSlashSpritesheetKey: "raider3_dash",
+    shieldSpritesheetKey: "raider3_shield",
+    shieldMoveSpritesheetKey: "raider3_shield_move",
+    name: "Glorious Raider",
+    cost: 100,
+    tier: "hard",
+    icon: "raider3Icon",
+    idle: "raider3Idle",
+    description: "Shiny armour and a big sword, this Raider is ready to take on any enemy.",
+  },
+  19: {
+    type: "raider",
+    ...RAIDER_STATS,
+    spritesheetKey: "raider4_idle",
+    movingSpritesheetKey: "raider4_move",
+    attackSpritesheetKey: "raider4_attack",
+    deathSpritesheetKey: "raider4_die",
+    slashSpritesheetKey: "raider4_slash",
+    dashSlashSpritesheetKey: "raider4_dash",
+    shieldSpritesheetKey: "raider4_shield",
+    shieldMoveSpritesheetKey: "raider4_shield_move",
+    name: "Chicken Raider",
+    cost: 100,
+    tier: "hard",
+    icon: "raider4Icon",
+    idle: "raider4Idle",
+    description: "Not your average Raider, this one has a chicken on his head and is ready to fight.",
   },
 };
 export default characterMap;

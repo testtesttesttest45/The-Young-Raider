@@ -46,8 +46,7 @@ export default class PlayerAbilities {
         this.player = player;
 
         this.slashSpritesheetKey =
-            character.slashSpritesheetKey ??
-            'test_slash';
+            character.slashSpritesheetKey;
 
         this.slashCooldown = 8000;
         this.slashLastUsedTime = -Infinity;
@@ -66,8 +65,7 @@ export default class PlayerAbilities {
         this.isDashing = false;
 
         this.dashSlashSpritesheetKey =
-            character.dashSlashSpritesheetKey ??
-            'test_dash';
+            character.dashSlashSpritesheetKey;
 
         this.dashSlashIndicator = null;
 
@@ -81,12 +79,10 @@ export default class PlayerAbilities {
         this.isShieldRaised = false;
 
         this.shieldSpritesheetKey =
-            character.shieldSpritesheetKey ??
-            'test_shield';
+            character.shieldSpritesheetKey;
 
         this.shieldMoveSpritesheetKey =
-            character.shieldMoveSpritesheetKey ??
-            'test_shield_move';
+            character.shieldMoveSpritesheetKey;
 
         // Blocks attacks within 40 degrees on either side of the player facing direction
         this.shieldBlockAngle =
@@ -739,7 +735,7 @@ export default class PlayerAbilities {
                         enemy.sprite.y
                     );
 
-                if (distance <= this.player.range) {
+                if (distance <= this.player.range +30) {
                     enemy.takeDamage(
                         this.player.damage,
                         this.player

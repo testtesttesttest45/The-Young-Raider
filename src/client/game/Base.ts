@@ -71,13 +71,13 @@ class Base {
             'treasure_monster_idle';
 
         this.deathSpritesheetKey =
-            'treasure_monster_death';
+            'treasure_monster_die';
 
         this.idleAnimationKey =
             'treasureMonsterIdle';
 
         this.deathAnimationKey =
-            'treasureMonsterDeath';
+            'treasureMonsterDie';
     }
 
     create(): void {
