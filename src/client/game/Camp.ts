@@ -13,7 +13,7 @@ export default class Camp {
         scene: Phaser.Scene,
         x: number,
         y: number,
-        radius: number = 150
+        radius: number = 100
     ) {
         this.scene = scene;
         this.x = x;

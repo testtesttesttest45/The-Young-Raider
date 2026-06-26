@@ -28,7 +28,7 @@ class Catastrophe {
 
     constructor(scene: any, baseLevel: number) {
         this.stormInterval = 12000;
-        this.baseDamage = 1;
+        this.baseDamage = 220;
         this.baseLevel = baseLevel;
         this.scene = scene;
         this.minX = 100;

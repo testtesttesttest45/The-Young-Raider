@@ -109,7 +109,7 @@ export default class BattleUI extends Scene {
     constructor() {
         super({ key: 'BattleUI', active: false });
         this.shop = new BattleShop(this);
-        this.gold = 200000;
+        this.gold = 2000;
         this.score = 0;
         this.scoreText = null;
         this.multiplier = 5;
@@ -133,7 +133,7 @@ export default class BattleUI extends Scene {
     resetState(): void {
         console.log('State reset');
 
-        this.gold = 200000;
+        this.gold = 2000;
         this.score = 0;
         this.scoreText = null;
         this.multiplier = 5;
