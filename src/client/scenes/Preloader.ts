@@ -376,11 +376,8 @@ export class Preloader extends Scene {
 
     this.load.image("land", "images/land2.png");
 
-    this.load.image("mouse_cursor", "images/mouse_cursor.png");
-    this.load.image("mouse_cursor_attack", "images/mouse_cursor_attack.png");
     this.load.image("blueBullet", "projectiles/blue_bullet.png");
     this.load.image("fireball", "projectiles/fireball.png");
-    this.load.image("flame", "projectiles/flame.png");
     this.load.image("bluePlasmaBall", "projectiles/blue_plasma_ball.png");
     this.load.image("redPlasmaBall", "projectiles/red_plasma_ball.png");
 

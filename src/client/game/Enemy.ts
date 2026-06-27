@@ -121,6 +121,8 @@ class Enemy {
 
   nextIdleTurnTime: number;
   idleTurnInterval: number;
+  private tutorialEnrageEffectActive = false;
+  private tutorialPursuitBarActive = false;
 
   constructor(
     scene: any,
@@ -756,7 +758,8 @@ class Enemy {
         this.isMoving = false;
         this.isAttacking = false;
 
-        if (this.patrolling) { // patrollers go to patrol
+        if (this.patrolling) {
+          // patrollers go to patrol
           this.returningToCamp = false;
           this.isMoving = false;
 
@@ -764,7 +767,8 @@ class Enemy {
             this.scene.time.now + Phaser.Math.Between(300, 900);
 
           this.playEnemyAnimation("Idle", this.lastDirection || "south", true);
-        } else { // normal enemies return to camp
+        } else {
+          // normal enemies return to camp
           this.returnToCamp();
         }
       }
@@ -1762,6 +1766,206 @@ class Enemy {
         Phaser.Math.Between(0, availableDirections.length - 1)
       ] ?? "south"
     );
+  }
+
+  public getTutorialBounds(): Phaser.Geom.Rectangle | null {
+    if (!this.sprite || !this.sprite.active || this.isDead) {
+      return null;
+    }
+
+    const spriteBounds = this.sprite.getBounds();
+
+    return new Phaser.Geom.Rectangle(
+      spriteBounds.x - 18,
+      spriteBounds.y - 40,
+      spriteBounds.width + 36,
+      spriteBounds.height + 48,
+    );
+  }
+
+  public getBaseLevelTutorialBounds(): Phaser.Geom.Rectangle | null {
+    if (
+      !this.customSquareContainer ||
+      !this.customSquareContainer.active ||
+      this.isDead
+    ) {
+      return null;
+    }
+
+    const bounds = this.customSquareContainer.getBounds();
+
+    return new Phaser.Geom.Rectangle(
+      bounds.x - 7,
+      bounds.y - 7,
+      bounds.width + 14,
+      bounds.height + 14,
+    );
+  }
+
+  public getStrengthLevelTutorialBounds(): Phaser.Geom.Rectangle | null {
+    if (
+      !this.strengthenedSquareContainer ||
+      !this.strengthenedSquareContainer.active ||
+      this.isDead
+    ) {
+      return null;
+    }
+
+    const bounds = this.strengthenedSquareContainer.getBounds();
+
+    return new Phaser.Geom.Rectangle(
+      bounds.x - 7,
+      bounds.y - 7,
+      bounds.width + 14,
+      bounds.height + 14,
+    );
+  }
+
+  public getHealthAreaTutorialBounds(): Phaser.Geom.Rectangle | null {
+    if (!this.sprite || !this.sprite.active || this.isDead) {
+      return null;
+    }
+
+    const healthBarY = this.sprite.y - this.sprite.height / 2;
+
+    return new Phaser.Geom.Rectangle(
+      this.sprite.x - 52,
+      healthBarY - 24,
+      104,
+      46,
+    );
+  }
+
+  public showTutorialAttackIndicator(): void {
+    if (this.isDead || !this.sprite || !this.sprite.active) {
+      return;
+    }
+
+    const playerPosition = this.player?.getPosition?.();
+
+    if (!playerPosition) {
+      return;
+    }
+
+    const angleToPlayer = Phaser.Math.Angle.Between(
+      this.sprite.x,
+      this.sprite.y,
+      playerPosition.x,
+      playerPosition.y,
+    );
+
+    // show the yellow cone indicator
+    this.createAttackRangeArc(angleToPlayer);
+
+    this.attackRangeArc?.setDepth(2);
+  }
+
+  public hideTutorialAttackIndicator(): void {
+    if (!this.attackRangeArc) {
+      return;
+    }
+
+    this.attackRangeArc.destroy();
+    this.attackRangeArc = null;
+  }
+  public showTutorialEnrageEffect(): void {
+    if (
+      this.isDead ||
+      !this.sprite?.active ||
+      !this.customSquareContainer ||
+      this.isEnraged ||
+      this.tutorialEnrageEffectActive
+    ) {
+      return;
+    }
+
+    this.tutorialEnrageEffectActive = true;
+    // remove only normal blue square, do not change Damage, Speed or actual enemy behaviour
+    if (this.customSquare && this.customSquare.active) {
+      this.customSquareContainer.remove(this.customSquare, false);
+
+      this.customSquare.setVisible(false);
+    }
+
+    this.fireGraphics = this.fireEffect();
+
+    if (this.fireGraphics) {
+      this.fireGraphics.setPosition(-10, -10);
+
+      if (!this.customSquareContainer.exists(this.fireGraphics)) {
+        this.customSquareContainer.addAt(this.fireGraphics, 0);
+      }
+
+      this.customSquareContainer.bringToTop(this.customSquareText);
+    }
+  }
+  public hideTutorialEnrageEffect(): void {
+    if (!this.tutorialEnrageEffectActive) {
+      return;
+    }
+
+    this.tutorialEnrageEffectActive = false;
+
+    if (this.fireTimerEvent) {
+      this.fireTimerEvent.destroy();
+
+      this.fireTimerEvent = null;
+    }
+
+    if (this.fireGraphics) {
+      this.customSquareContainer?.remove(this.fireGraphics, true);
+
+      this.fireGraphics = null;
+    }
+
+    if (this.customSquare && this.customSquare.active) {
+      this.customSquare.setVisible(true);
+
+      if (!this.customSquareContainer?.exists(this.customSquare)) {
+        this.customSquareContainer?.addAt(this.customSquare, 0);
+      }
+    }
+
+    if (this.customSquareText && this.customSquareContainer) {
+      this.customSquareContainer.bringToTop(this.customSquareText);
+    }
+  }
+  public showTutorialPursuitBar(): void {
+    if (this.isDead || !this.sprite?.active || !this.detectionBar) {
+      return;
+    }
+
+    this.tutorialPursuitBarActive = true;
+
+    const barX = this.sprite.x - 30;
+
+    const barY = this.sprite.y - this.sprite.height / 2 + 8;
+
+    this.detectionBar.clear();
+
+    this.detectionBar.setPosition(barX, barY);
+
+    const percentage = 0.68;
+
+    this.detectionBar.fillStyle(0xffffff, 1);
+
+    this.detectionBar.fillRect(0, 0, 60 * percentage, 5);
+
+    this.detectionBar.fillStyle(0xffffff, 0.4);
+
+    this.detectionBar.fillRect(60 * percentage, 0, 60 * (1 - percentage), 5);
+  }
+  public hideTutorialPursuitBar(): void {
+    if (!this.tutorialPursuitBarActive) {
+      return;
+    }
+
+    this.tutorialPursuitBarActive = false;
+
+    this.detectionBar?.clear();
+    if (this.hasPlayerBeenDetected) {
+      this.updateDetectionBar(1);
+    }
   }
 }
 

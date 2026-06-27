@@ -9,6 +9,7 @@ import GameControls from "../game/GameControls";
 import type {
   ApiErrorResponse,
   GetSelectedRaiderResponse,
+  TutorialStatusResponse,
 } from "../../shared/api";
 import characterMap, { type RaiderDefinition } from "../game/CharacterMap";
 
@@ -48,6 +49,8 @@ export class Game extends Scene {
   hasHandledPlayerDeath = false;
   private initializationVersion = 0;
   private gameInitialized = false;
+  shouldShowTutorial = false;
+  private tutorialStatusLoaded = false;
   private loadingOverlay: Phaser.GameObjects.Container | null = null;
 
   constructor() {
@@ -56,11 +59,10 @@ export class Game extends Scene {
 
   create(): void {
     this.initializationVersion += 1;
-
     const currentInitialization = this.initializationVersion;
-
     this.gameInitialized = false;
-
+    this.shouldShowTutorial = false;
+    this.tutorialStatusLoaded = false;
     this.player = null;
     this.controls = undefined as any;
     this.base = null;
@@ -144,7 +146,16 @@ export class Game extends Scene {
   }
 
   private async initializeGame(initializationVersion: number): Promise<void> {
-    this.characterInUse = await this.loadSelectedRaider();
+    const [selectedRaider, tutorialCompleted] = await Promise.all([
+      this.loadSelectedRaider(),
+      this.loadTutorialStatus(),
+    ]);
+
+    this.characterInUse = selectedRaider;
+
+    this.shouldShowTutorial = !tutorialCompleted;
+
+    this.tutorialStatusLoaded = true;
 
     if (!this.sys.isActive()) {
       return;
@@ -218,10 +229,23 @@ export class Game extends Scene {
     this.scene.launch("BattleUI");
 
     this.scale.on("resize", this.handleResize, this);
+
     this.loadingOverlay?.destroy(true);
     this.loadingOverlay = null;
+
     this.gameInitialized = true;
-    this.allowInput = true;
+
+    if (this.shouldShowTutorial) {
+      this.isGamePaused = true;
+      this.allowInput = false;
+
+      console.log("[Game] First-time player. Tutorial required.");
+    } else {
+      this.isGamePaused = false;
+      this.allowInput = true;
+
+      console.log("[Game] Returning player. Starting normally.");
+    }
   }
 
   private async loadSelectedRaider(): Promise<number> {
@@ -260,6 +284,42 @@ export class Game extends Scene {
 
       // Runtime fallback only. Nothing is saved locally.
       return 16;
+    }
+  }
+
+  private async loadTutorialStatus(): Promise<boolean> {
+    try {
+      const response = await fetch("/api/tutorial-status", {
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      const responseData = (await response.json()) as unknown;
+
+      if (!response.ok) {
+        const errorData = responseData as ApiErrorResponse;
+
+        throw new Error(errorData.message ?? "Unable to load tutorial status.");
+      }
+
+      const data = responseData as TutorialStatusResponse;
+
+      if (
+        data.type !== "tutorial-status" ||
+        typeof data.completed !== "boolean"
+      ) {
+        throw new Error("Unexpected tutorial-status response.");
+      }
+
+      console.log("[Game] Tutorial completed:", data.completed);
+
+      return data.completed;
+    } catch (error) {
+      console.error("[Game] Failed to load tutorial status:", error);
+
+      // Runtime fallback only. Nothing is saved locally.
+      return false;
     }
   }
 
@@ -307,7 +367,9 @@ export class Game extends Scene {
 
     const gameplayEnded = this.isGameOver || playerDead;
 
-    if (!gameplayEnded) {
+    const gameplayRunning = !gameplayEnded && !this.isGamePaused;
+
+    if (gameplayRunning) {
       this.enemies.forEach((enemy) => {
         enemy.update?.(time, delta);
       });
@@ -317,7 +379,7 @@ export class Game extends Scene {
       this.catastrophe?.update?.(time, delta);
     }
 
-    if (battleUI && !gameplayEnded) {
+    if (battleUI && gameplayRunning) {
       battleUI.updateTimer(this.catastrophe.getTimeUntilNextStorm());
 
       const aliveEnemies = this.enemies.filter((enemy) => !enemy.isDead);
@@ -640,12 +702,6 @@ export class Game extends Scene {
       return;
     }
 
-    console.log(
-      "[Game] Loading Raider assets:",
-      characterCode,
-      missingAssets.map((asset) => asset.key),
-    );
-
     await new Promise<void>((resolve, reject) => {
       const handleLoadError = (file: Phaser.Loader.File): void => {
         cleanup();
@@ -676,6 +732,125 @@ export class Game extends Scene {
       });
 
       this.load.start();
+    });
+  }
+
+  public getTutorialEnemy(): any | null {
+    return (
+      this.enemies.find(
+        (enemy) => !enemy.isDead && !enemy.patrolling && enemy.sprite?.active,
+      ) ??
+      this.enemies.find((enemy) => !enemy.isDead && enemy.sprite?.active) ??
+      null
+    );
+  }
+
+  public getBaseTutorialBounds(): Phaser.Geom.Rectangle | null {
+    return this.base?.getTutorialBounds?.() ?? null;
+  }
+
+  public getEnemyTutorialBounds(): Phaser.Geom.Rectangle | null {
+    return this.getTutorialEnemy()?.getTutorialBounds?.() ?? null;
+  }
+
+  public getEnemyBaseLevelTutorialBounds(): Phaser.Geom.Rectangle | null {
+    return this.getTutorialEnemy()?.getBaseLevelTutorialBounds?.() ?? null;
+  }
+
+  public getEnemyStrengthLevelTutorialBounds(): Phaser.Geom.Rectangle | null {
+    return this.getTutorialEnemy()?.getStrengthLevelTutorialBounds?.() ?? null;
+  }
+
+  public getEnemyHealthAreaTutorialBounds(): Phaser.Geom.Rectangle | null {
+    return this.getTutorialEnemy()?.getHealthAreaTutorialBounds?.() ?? null;
+  }
+
+  public getEnemyCampTutorialBounds(): Phaser.Geom.Rectangle | null {
+    const enemy = this.getTutorialEnemy();
+
+    return enemy?.originalCamp?.getTutorialBounds?.() ?? null;
+  }
+
+  public worldBoundsToScreenBounds(
+    worldBounds: Phaser.Geom.Rectangle,
+  ): Phaser.Geom.Rectangle {
+    const camera = this.cameras.main;
+
+    const zoom = camera.zoom;
+
+    return new Phaser.Geom.Rectangle(
+      (worldBounds.x - camera.worldView.x) * zoom,
+
+      (worldBounds.y - camera.worldView.y) * zoom,
+
+      worldBounds.width * zoom,
+      worldBounds.height * zoom,
+    );
+  }
+
+  public getBaseTutorialScreenBounds(): Phaser.Geom.Rectangle | null {
+    const bounds = this.getBaseTutorialBounds();
+
+    return bounds ? this.worldBoundsToScreenBounds(bounds) : null;
+  }
+
+  public getEnemyTutorialScreenBounds(): Phaser.Geom.Rectangle | null {
+    const bounds = this.getEnemyTutorialBounds();
+
+    return bounds ? this.worldBoundsToScreenBounds(bounds) : null;
+  }
+
+  public getEnemyBaseLevelTutorialScreenBounds(): Phaser.Geom.Rectangle | null {
+    const bounds = this.getEnemyBaseLevelTutorialBounds();
+
+    return bounds ? this.worldBoundsToScreenBounds(bounds) : null;
+  }
+
+  public getEnemyStrengthLevelTutorialScreenBounds(): Phaser.Geom.Rectangle | null {
+    const bounds = this.getEnemyStrengthLevelTutorialBounds();
+
+    return bounds ? this.worldBoundsToScreenBounds(bounds) : null;
+  }
+
+  public getEnemyHealthAreaTutorialScreenBounds(): Phaser.Geom.Rectangle | null {
+    const bounds = this.getEnemyHealthAreaTutorialBounds();
+
+    return bounds ? this.worldBoundsToScreenBounds(bounds) : null;
+  }
+
+  public getEnemyCampTutorialScreenBounds(): Phaser.Geom.Rectangle | null {
+    const bounds = this.getEnemyCampTutorialBounds();
+
+    return bounds ? this.worldBoundsToScreenBounds(bounds) : null;
+  }
+
+  public showTutorialAttackIndicator(): void {
+    this.getTutorialEnemy()?.showTutorialAttackIndicator?.();
+  }
+
+  public hideTutorialAttackIndicator(): void {
+    this.enemies.forEach((enemy) => {
+      enemy?.hideTutorialAttackIndicator?.();
+    });
+  }
+
+  public showTutorialEnrageEffect(): void {
+    this.getTutorialEnemy()?.showTutorialEnrageEffect?.();
+  }
+
+  public hideTutorialEnrageEffect(): void {
+    this.enemies.forEach((enemy) => {
+      enemy?.hideTutorialEnrageEffect?.();
+    });
+  }
+
+  public showTutorialPursuitBar(): void {
+    this.getTutorialEnemy()?.showTutorialPursuitBar?.();
+  }
+
+  public hideTutorialPursuitBar(): void {
+    this.enemies.forEach((enemy) => {
+      enemy?.hideTutorialPursuitBar?.();
     });
   }
 }

@@ -35,6 +35,8 @@ import type {
   RaiderCollectionResponse,
   UnlockRaiderRequest,
   UnlockRaiderResponse,
+  TutorialStatusResponse,
+  CompleteTutorialResponse,
 } from "../../shared/api";
 
 export const api = new Hono();
@@ -70,6 +72,8 @@ const DEFAULT_RAIDER_CODE = 16;
 const VALID_RAIDER_CODES = new Set([16, 17, 18, 19]);
 
 const PLAYER_OWNED_RAIDERS_KEY = "the-young-raider:players:owned-raiders";
+
+const PLAYER_TUTORIAL_KEY = "the-young-raider:players:tutorial-completed";
 
 function getOwnedRaiderField(username: string, characterCode: number): string {
   return `${username}:${characterCode}`;
@@ -1900,7 +1904,8 @@ api.get("/raider-collection", async (c) => {
       ? savedSelectedRaider
       : DEFAULT_RAIDER_CODE;
 
-    if (selectedRaider !== savedSelectedRaider) { // repair prev broken selection
+    if (selectedRaider !== savedSelectedRaider) {
+      // repair prev broken selection
       await redis.hSet(PLAYER_SELECTED_RAIDER_KEY, {
         [username]: String(DEFAULT_RAIDER_CODE),
       });
@@ -2180,6 +2185,83 @@ api.post("/unlock-raider", async (c) => {
         status: "error",
 
         message: `Unable to unlock Raider: ${message}`,
+      },
+      500,
+    );
+  }
+});
+
+api.get("/tutorial-status", async (c) => {
+  try {
+    const username = await reddit.getCurrentUsername();
+
+    if (!username) {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "You must be logged in to load your tutorial status.",
+        },
+        401,
+      );
+    }
+
+    const storedValue = await redis.hGet(PLAYER_TUTORIAL_KEY, username);
+
+    return c.json<TutorialStatusResponse>({
+      type: "tutorial-status",
+      completed: storedValue === "1",
+    });
+  } catch (error) {
+    console.error("[Tutorial] Failed to load tutorial status:", error);
+
+    const message =
+      error instanceof Error ? error.message : "Unknown tutorial-status error";
+
+    return c.json<ApiErrorResponse>(
+      {
+        status: "error",
+        message: `Unable to load tutorial status: ${message}`,
+      },
+      500,
+    );
+  }
+});
+
+api.post("/tutorial-complete", async (c) => {
+  try {
+    const username = await reddit.getCurrentUsername();
+
+    if (!username) {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "You must be logged in to complete the tutorial.",
+        },
+        401,
+      );
+    }
+
+    await redis.hSet(PLAYER_TUTORIAL_KEY, {
+      [username]: "1",
+    });
+
+    return c.json<CompleteTutorialResponse>({
+      type: "tutorial-complete",
+      status: "success",
+      message: "Tutorial completed.",
+    });
+  } catch (error) {
+    console.error("[Tutorial] Failed to save tutorial completion:", error);
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unknown tutorial-completion error";
+
+    return c.json<ApiErrorResponse>(
+      {
+        status: "error",
+        message: `Unable to save tutorial completion: ${message}`,
       },
       500,
     );

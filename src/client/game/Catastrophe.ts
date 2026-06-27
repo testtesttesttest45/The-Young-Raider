@@ -12,6 +12,7 @@ class Catastrophe {
     maxY: any;
 
     indicatorDuration: any;
+    impactRadius: number;
 
     fireballPositions: any[];
     minDistance: any;
@@ -43,6 +44,7 @@ class Catastrophe {
         this.damage = Math.round(this.baseDamage * Math.pow(1.2, this.baseLevel - 1));
         this.activeStormEffects = 0;
         this.timerStarted = false;
+        this.impactRadius = 100;
     }
 
     startStormTimer() {
@@ -68,7 +70,7 @@ class Catastrophe {
                 const { x, endY } = position;
 
                 let startY = endY - 700;
-                let indicatorRadius = 135;
+                const indicatorRadius = this.impactRadius;
                 let indicator = this.scene.add.circle(x, endY, indicatorRadius, 0xff0000, 0.3);
                 indicator.setDepth(1);
                 this.indicators.push({ indicator, x, y: endY, radius: indicatorRadius });

@@ -3,6 +3,7 @@ const HUD_HEIGHT = 110;
 import { Scene } from "phaser";
 import * as Phaser from "phaser";
 import BattleShop from "./BattleShop";
+import TutorialOverlay from "./TutorialOverlay";
 import type {
   ApiErrorResponse,
   SubmitHighScoreResponse,
@@ -74,6 +75,7 @@ export default class BattleUI extends Scene {
   currentTime: number;
 
   strengthenIcon: any;
+  strengthenLabelText: any;
   strengthenBarBackground: any;
   strengthenBarFill: any;
 
@@ -109,6 +111,8 @@ export default class BattleUI extends Scene {
   fireballTimer: number;
   cashIcon: any;
   shop: BattleShop;
+  tutorial: TutorialOverlay;
+
   constructor() {
     super({ key: "BattleUI", active: false });
     this.shop = new BattleShop(this);
@@ -131,6 +135,8 @@ export default class BattleUI extends Scene {
     this.gameDataSaved = false;
     this.gameOverScoreStatus = null;
     this.finalScore = 0;
+    this.strengthenLabelText = null;
+    this.tutorial = new TutorialOverlay(this);
   }
 
   resetState(): void {
@@ -150,7 +156,7 @@ export default class BattleUI extends Scene {
     this.baseRebuilding = false;
     this.isMultiplierPaused = false;
     this.cash = 0;
-
+    this.strengthenLabelText = null;
     this.playerHealthText = null;
     this.playerDamageText = null;
     this.playerAttackSpeedText = null;
@@ -172,7 +178,7 @@ export default class BattleUI extends Scene {
     this.gameOverResultTitle = null;
     this.gameOverResultRows = null;
     this.gameOverContainer = null;
-
+    this.tutorial.reset();
     this.shop.reset();
   }
 
@@ -457,7 +463,7 @@ export default class BattleUI extends Scene {
       .setScrollFactor(0)
       .setDepth(CONTENT_DEPTH);
 
-    this.add
+    this.strengthenLabelText = this.add
       .text(timerBarX, 62, "Enemy strengthens", {
         font: "12px Orbitron",
         color: "#ffffff",
@@ -670,6 +676,13 @@ export default class BattleUI extends Scene {
     this.createBaseRebuildTimer();
     this.startMultiplierTimer();
     this.displayPlayerStats();
+    this.time.delayedCall(0, () => {
+      const gameScene = this.scene.get("Game") as any;
+
+      if (gameScene.shouldShowTutorial) {
+        this.tutorial.start();
+      }
+    });
   }
 
   hasHealthBelowThreshold(currentHealth: number, maxHealth: number): boolean {

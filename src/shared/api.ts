@@ -242,3 +242,14 @@ export type UnlockRaiderResponse = {
 
   message: string;
 };
+
+export type TutorialStatusResponse = {
+  type: "tutorial-status";
+  completed: boolean;
+};
+
+export type CompleteTutorialResponse = {
+  type: "tutorial-complete";
+  status: "success";
+  message: string;
+};

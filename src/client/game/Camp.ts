@@ -1,48 +1,54 @@
-import * as Phaser from 'phaser';
+import * as Phaser from "phaser";
 
 export default class Camp {
-    scene: Phaser.Scene;
-    x: number;
-    y: number;
-    radius: number;
+  scene: Phaser.Scene;
+  x: number;
+  y: number;
+  radius: number;
 
-    sprite?: Phaser.GameObjects.Image;
-    campRadius?: Phaser.GameObjects.Arc;
+  sprite?: Phaser.GameObjects.Image;
+  campRadius?: Phaser.GameObjects.Arc;
 
-    constructor(
-        scene: Phaser.Scene,
-        x: number,
-        y: number,
-        radius: number = 100
-    ) {
-        this.scene = scene;
-        this.x = x;
-        this.y = y;
-        this.radius = radius;
+  constructor(scene: Phaser.Scene, x: number, y: number, radius: number = 100) {
+    this.scene = scene;
+    this.x = x;
+    this.y = y;
+    this.radius = radius;
+  }
+
+  create() {
+    this.sprite = this.scene.add.image(this.x, this.y, "enemy_camp");
+    this.sprite.setOrigin(0.5, 0.5);
+    // set scale 0.5
+    this.sprite.setScale(0.5);
+
+    this.campRadius = this.scene.add.circle(this.x, this.y, this.radius);
+
+    // this.campRadius.setStrokeStyle(4, 0xffff00, 0.5);
+  }
+
+  getRandomPositionInRadius() {
+    const angle = Phaser.Math.FloatBetween(0, 2 * Math.PI);
+    const distance = Phaser.Math.FloatBetween(0, this.radius - 35);
+
+    return {
+      x: this.x + distance * Math.cos(angle),
+      y: this.y + distance * Math.sin(angle),
+    };
+  }
+
+  public getTutorialBounds(): Phaser.Geom.Rectangle | null {
+    if (!this.sprite || !this.sprite.active) {
+      return null;
     }
 
-    create() {
-        this.sprite = this.scene.add.image(this.x, this.y, 'enemy_camp');
-        this.sprite.setOrigin(0.5, 0.5);
-        // set scale 0.5
-        this.sprite.setScale(0.5);
+    const bounds = this.sprite.getBounds();
 
-        this.campRadius = this.scene.add.circle(
-            this.x,
-            this.y,
-            this.radius
-        );
-
-        // this.campRadius.setStrokeStyle(4, 0xffff00, 0.5);
-    }
-
-    getRandomPositionInRadius() {
-        const angle = Phaser.Math.FloatBetween(0, 2 * Math.PI);
-        const distance = Phaser.Math.FloatBetween(0, this.radius - 35);
-
-        return {
-            x: this.x + distance * Math.cos(angle),
-            y: this.y + distance * Math.sin(angle),
-        };
-    }
+    return new Phaser.Geom.Rectangle(
+      bounds.x - 12,
+      bounds.y - 12,
+      bounds.width + 24,
+      bounds.height + 24,
+    );
+  }
 }
