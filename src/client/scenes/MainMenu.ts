@@ -1,6 +1,40 @@
-import { GameObjects, Input, Scene, Structs } from "phaser";
+import { GameObjects, Scene, Structs } from "phaser";
 import Phaser from "phaser";
 import type { ApiErrorResponse, PlayerProfileResponse } from "../../shared/api";
+
+import type { EnterKingBattleResponse } from "../../shared/raiderUnlocks";
+
+type MainMenuLayout = {
+  mobile: boolean;
+  compact: boolean;
+
+  centerX: number;
+
+  cardTop: number;
+  cardBottom: number;
+  cardWidth: number;
+  cardHeight: number;
+
+  contentWidth: number;
+
+  headerY: number;
+
+  profileY: number;
+  profileWidth: number;
+  profileHeight: number;
+
+  todayKingY: number;
+  todayKingWidth: number;
+
+  playY: number;
+  kingBattleY: number;
+
+  secondaryY: number;
+  secondaryWidth: number;
+  secondaryGap: number;
+
+  footerY: number;
+};
 
 type MenuButtonOptions = {
   x: number;
@@ -57,6 +91,8 @@ export class MainMenu extends Scene {
 
   private mainCard: GameObjects.Container | null = null;
 
+  private layout: MainMenuLayout | null = null;
+
   private lastWidth = 0;
 
   private lastHeight = 0;
@@ -76,7 +112,10 @@ export class MainMenu extends Scene {
   private dailyRewardNextResetAt = 0;
   private dailyRewardCanClaim = false;
   private dailyRewardCountdownEvent: Phaser.Time.TimerEvent | null = null;
+  private kingEntryInProgress = false;
 
+  private currentActionWidth = ACTION_WIDTH;
+  private currentActionHeight = ACTION_HEIGHT;
   constructor() {
     super("MainMenu");
   }
@@ -86,6 +125,7 @@ export class MainMenu extends Scene {
     this.profileStatusText = null;
     this.profileContent = null;
     this.mainCard = null;
+    this.layout = null;
     this.cashRequestStatusText = null;
     this.cashRequestButton = null;
     this.cashRequestButtonGfx = null;
@@ -100,41 +140,42 @@ export class MainMenu extends Scene {
     this.dailyRewardNextResetAt = 0;
     this.dailyRewardCanClaim = false;
     this.dailyRewardCountdownEvent = null;
+    this.kingEntryInProgress = false;
+    this.currentActionWidth = ACTION_WIDTH;
+    this.currentActionHeight = ACTION_HEIGHT;
   }
 
   create(): void {
     const width = this.scale.width;
-
     const height = this.scale.height;
 
     this.lastWidth = width;
-
     this.lastHeight = height;
 
-    const centerX = width / 2;
-
-    const centerY = height / 2;
+    this.layout = this.calculateLayout(width, height);
 
     this.createBackground(width, height);
 
     this.mainCard = this.add.container(0, 0);
 
-    this.createMainCard(centerX, centerY, width, height);
+    this.createMainCard(this.layout);
 
-    this.createHeader(centerX, height);
+    this.createHeader(this.layout);
 
-    this.createProfilePanel(centerX, height, width);
+    this.createProfilePanel(this.layout);
 
-    this.createMenuButtons(centerX, height, width);
+    this.createMenuButtons(this.layout);
 
-    this.createFooter(centerX, height);
+    this.createFooter(this.layout);
 
     this.scale.on("resize", this.handleResize, this);
 
     this.events.once("shutdown", () => {
       this.scale.off("resize", this.handleResize, this);
+
       this.cashRequestCountdownEvent?.remove();
       this.dailyRewardCountdownEvent?.remove();
+
       this.cashRequestCountdownEvent = null;
       this.dailyRewardCountdownEvent = null;
     });
@@ -277,15 +318,10 @@ export class MainMenu extends Scene {
     }
   }
 
-  private createMainCard(
-    centerX: number,
-    centerY: number,
-    width: number,
-    height: number,
-  ): void {
-    const cardWidth = Math.min(860, width - 34);
+  private createMainCard(layout: MainMenuLayout): void {
+    const { centerX, cardTop, cardWidth, cardHeight } = layout;
 
-    const cardHeight = Math.min(700, height - 22);
+    const centerY = cardTop + cardHeight / 2;
 
     const radius = 22;
 
@@ -326,7 +362,7 @@ export class MainMenu extends Scene {
 
     const topAccent = this.addRoundedRect(
       centerX,
-      centerY - cardHeight / 2 + 16,
+      cardTop + 16,
       cardWidth * 0.4,
       4,
       2,
@@ -337,53 +373,68 @@ export class MainMenu extends Scene {
     this.mainCard?.add([shadow, card, innerHairline, topAccent]);
   }
 
-  private createHeader(centerX: number, height: number): void {
+  private createHeader(layout: MainMenuLayout): void {
+    const { centerX, headerY, mobile, compact, contentWidth } = layout;
+
+    const glowWidth = Math.min(mobile ? contentWidth : 460, contentWidth);
+
     const titleGlow = this.add.ellipse(
       centerX,
-      height * 0.135,
-      460,
-      78,
+      headerY,
+      glowWidth,
+      compact ? 58 : 76,
       COLORS.accent,
       0.045,
     );
 
     const eyebrow = this.add
-      .text(centerX, height * 0.082, "SURVIVE  •  GROW  •  CONQUER", {
-        font: "bold 9px Orbitron",
+      .text(
+        centerX,
+        headerY - (compact ? 34 : 43),
+        "SURVIVE  •  GROW  •  CONQUER",
+        {
+          font: `bold ${mobile ? 8 : 9}px Orbitron`,
 
-        color: TEXT.accent,
+          color: TEXT.accent,
 
-        letterSpacing: 3,
-      })
+          letterSpacing: mobile ? 2 : 3,
+        },
+      )
       .setOrigin(0.5);
 
     const title = this.add
-      .text(centerX, height * 0.135, "THE YOUNG RAIDER", {
-        font: "bold 36px Orbitron",
+      .text(centerX, headerY, "THE YOUNG RAIDER", {
+        font: `bold ${compact ? 27 : mobile ? 31 : 36}px Orbitron`,
 
         color: TEXT.bright,
 
         stroke: "#03121b",
 
-        strokeThickness: 5,
+        strokeThickness: mobile ? 4 : 5,
 
         align: "center",
       })
       .setOrigin(0.5);
 
-    title.setShadow(0, 0, "#4fcfff", 10, true, true);
+    title.setShadow(0, 0, "#4fcfff", mobile ? 7 : 10, true, true);
 
     const description = this.add
       .text(
         centerX,
-        height * 0.19,
-        "Destroy bases, survive disasters and climb the global ranks.",
+        headerY + (compact ? 36 : 48),
+        mobile
+          ? "Survive, conquer and climb the ranks."
+          : "Destroy bases, survive disasters and climb the global ranks.",
         {
-          font: "12px Orbitron",
+          font: `${mobile ? 10 : 12}px Orbitron`,
 
           color: TEXT.muted,
 
           align: "center",
+
+          wordWrap: {
+            width: contentWidth - 20,
+          },
         },
       )
       .setOrigin(0.5);
@@ -391,33 +442,25 @@ export class MainMenu extends Scene {
     this.mainCard?.add([titleGlow, eyebrow, title, description]);
   }
 
-  private createProfilePanel(
-    centerX: number,
-    height: number,
-    width: number,
-  ): void {
-    const panelY = height * 0.385;
-
-    const panelWidth = Math.min(760, width - 66);
-
-    const panelHeight = 190;
+  private createProfilePanel(layout: MainMenuLayout): void {
+    const { centerX, profileY, profileWidth, profileHeight, mobile } = layout;
 
     const radius = 14;
 
     const shadow = this.addSoftShadow(
       centerX,
-      panelY,
-      panelWidth,
-      panelHeight,
+      profileY,
+      profileWidth,
+      profileHeight,
       radius,
       0.4,
     );
 
     const panel = this.addRoundedRect(
       centerX,
-      panelY,
-      panelWidth,
-      panelHeight,
+      profileY,
+      profileWidth,
+      profileHeight,
       radius,
       COLORS.panelFill,
       0.96,
@@ -426,25 +469,22 @@ export class MainMenu extends Scene {
       1.25,
     );
 
+    const headerY = profileY - profileHeight / 2 + 21;
+
     const headerLabel = this.add
-      .text(
-        centerX - panelWidth / 2 + 22,
-        panelY - panelHeight / 2 + 20,
-        "RAIDER PROFILE",
-        {
-          font: "bold 11px Orbitron",
+      .text(centerX - profileWidth / 2 + 18, headerY, "RAIDER PROFILE", {
+        font: `bold ${mobile ? 10 : 11}px Orbitron`,
 
-          color: TEXT.accent,
+        color: TEXT.accent,
 
-          letterSpacing: 2,
-        },
-      )
+        letterSpacing: mobile ? 1 : 2,
+      })
       .setOrigin(0, 0.5);
 
     const onlinePill = this.addRoundedRect(
-      centerX + panelWidth / 2 - 52,
-      headerLabel.y,
-      66,
+      centerX + profileWidth / 2 - 49,
+      headerY,
+      62,
       18,
       9,
       COLORS.green,
@@ -455,16 +495,16 @@ export class MainMenu extends Scene {
     );
 
     const onlineDot = this.add.circle(
-      centerX + panelWidth / 2 - 76,
-      headerLabel.y,
+      centerX + profileWidth / 2 - 70,
+      headerY,
       3.5,
       0x69ff9c,
       1,
     );
 
     const onlineText = this.add
-      .text(centerX + panelWidth / 2 - 24, headerLabel.y, "ONLINE", {
-        font: "bold 8px Orbitron",
+      .text(centerX + profileWidth / 2 - 21, headerY, "ONLINE", {
+        font: "bold 7px Orbitron",
 
         color: TEXT.green,
 
@@ -472,16 +512,14 @@ export class MainMenu extends Scene {
       })
       .setOrigin(1, 0.5);
 
-    const divider = this.add
-      .rectangle(
-        centerX,
-        panelY - panelHeight / 2 + 36,
-        panelWidth - 36,
-        1,
-        0xffffff,
-        0.07,
-      )
-      .setOrigin(0.5);
+    const divider = this.add.rectangle(
+      centerX,
+      headerY + 18,
+      profileWidth - 30,
+      1,
+      0xffffff,
+      0.07,
+    );
 
     this.tweens.add({
       targets: onlineDot,
@@ -497,8 +535,8 @@ export class MainMenu extends Scene {
     });
 
     this.profileStatusText = this.add
-      .text(centerX, panelY + 12, "Loading Raider profile...", {
-        font: "13px Orbitron",
+      .text(centerX, profileY + 10, "Loading Raider profile...", {
+        font: `${mobile ? 12 : 13}px Orbitron`,
 
         color: TEXT.primary,
       })
@@ -516,53 +554,113 @@ export class MainMenu extends Scene {
     ]);
   }
 
-  private createMenuButtons(
-    centerX: number,
-    height: number,
-    width: number,
-  ): void {
+  private createMenuButtons(layout: MainMenuLayout): void {
+    const {
+      centerX,
+      contentWidth,
+      todayKingY,
+      todayKingWidth,
+      playY,
+      kingBattleY,
+      secondaryY,
+      secondaryWidth,
+      secondaryGap,
+      compact,
+      mobile,
+    } = layout;
+
+    const primaryWidth = mobile ? contentWidth : Math.min(500, contentWidth);
+
+    const todayKingPanel = this.createTodayKingPanel(
+      centerX,
+      todayKingY,
+      todayKingWidth,
+    );
+
     const playButton = this.createMenuButton({
       x: centerX,
-      y: height * 0.67,
-      width: Math.min(390, width - 110),
-      height: 62,
+      y: playY,
+
+      width: primaryWidth,
+      height: compact ? 54 : 62,
+
       title: "PLAY NOW",
       subtitle: "BEGIN A NEW RUN",
+
       backgroundColor: 0x14633a,
       borderColor: COLORS.greenStroke,
+
       onClick: () => {
-        this.scene.start("Game");
+        this.scene.start("Game", {
+          mode: "normal",
+        });
       },
     });
-    const secondaryWidth = Math.min(280, (width - 110) / 2);
-    const buttonGap = secondaryWidth / 2 + 10;
+
+    const kingButton = this.createMenuButton({
+      x: centerX,
+      y: kingBattleY,
+
+      width: primaryWidth,
+      height: compact ? 50 : 58,
+
+      title: "KING BATTLE",
+      subtitle: "SATURDAY KING  •  ENTRY: 5 CASH",
+
+      backgroundColor: 0x6b3515,
+      borderColor: 0xffb45c,
+
+      onClick: () => {
+        void this.enterKingBattle();
+      },
+    });
+
     const collectionsButton = this.createMenuButton({
-      x: centerX - buttonGap,
-      y: height * 0.805,
+      x: centerX - secondaryGap,
+      y: secondaryY,
+
       width: secondaryWidth,
-      height: 52,
+      height: compact ? 46 : 52,
+
       title: "COLLECTIONS",
       subtitle: "YOUR RAIDERS",
+
       backgroundColor: 0x123f59,
       borderColor: 0x71d9ff,
+
       onClick: () => {
         this.scene.start("Collections");
       },
     });
+
     const leaderboardButton = this.createMenuButton({
-      x: centerX + buttonGap,
-      y: height * 0.805,
+      x: centerX + secondaryGap,
+      y: secondaryY,
+
       width: secondaryWidth,
-      height: 52,
-      title: "LEADERBOARD",
-      subtitle: "TOP 100 RAIDERS",
+      height: compact ? 46 : 52,
+
+      title: mobile ? "RANKINGS" : "LEADERBOARD",
+
+      subtitle: mobile ? "TOP RAIDERS" : "TOP 100 RAIDERS",
+
       backgroundColor: 0x3a2a5c,
       borderColor: 0xb995ef,
+
       onClick: () => {
-        this.scene.start("Leaderboard", { returnTo: "main-menu" });
+        this.scene.start("Leaderboard", {
+          returnTo: "main-menu",
+        });
       },
     });
-    this.mainCard?.add([playButton, collectionsButton, leaderboardButton]);
+
+    this.mainCard?.add([
+      todayKingPanel,
+      playButton,
+      kingButton,
+      collectionsButton,
+      leaderboardButton,
+    ]);
   }
 
   private createMenuButton(options: MenuButtonOptions): GameObjects.Container {
@@ -618,12 +716,12 @@ export class MainMenu extends Scene {
       0.05,
     );
 
+    const isPrimaryButton =
+      options.title === "PLAY NOW" || options.title === "KING BATTLE";
+
     const titleText = this.add
-      .text(0, options.title === "PLAY NOW" ? -7 : -6, options.title, {
-        font:
-          options.title === "PLAY NOW"
-            ? "bold 21px Orbitron"
-            : "bold 14px Orbitron",
+      .text(0, isPrimaryButton ? -7 : -6, options.title, {
+        font: isPrimaryButton ? "bold 19px Orbitron" : "bold 14px Orbitron",
         color: TEXT.bright,
         stroke: "#03121b",
         strokeThickness: 3,
@@ -632,7 +730,7 @@ export class MainMenu extends Scene {
       .setOrigin(0.5);
 
     const subtitleText = this.add
-      .text(0, options.title === "PLAY NOW" ? 17 : 14, options.subtitle, {
+      .text(0, isPrimaryButton ? 16 : 14, options.subtitle, {
         font: "bold 7px Orbitron",
         color: "#cfe6ef",
         letterSpacing: 1,
@@ -696,17 +794,30 @@ export class MainMenu extends Scene {
     return container;
   }
 
-  private createFooter(centerX: number, height: number): void {
+  private createFooter(layout: MainMenuLayout): void {
+    const { centerX, footerY, contentWidth, mobile } = layout;
+
     const line = this.add
-      .rectangle(centerX, height * 0.905, 420, 1, COLORS.accent, 0.1)
+      .rectangle(
+        centerX,
+        footerY - 14,
+        Math.min(contentWidth, mobile ? 300 : 420),
+        1,
+        COLORS.accent,
+        0.1,
+      )
       .setOrigin(0.5);
+
     const footer = this.add
-      .text(centerX, height * 0.93, "EVERY RUN IS ANOTHER CHANCE", {
-        font: "8px Orbitron",
+      .text(centerX, footerY + 5, "EVERY RUN IS ANOTHER CHANCE", {
+        font: `${mobile ? 7 : 8}px Orbitron`,
+
         color: TEXT.muted,
-        letterSpacing: 2,
+
+        letterSpacing: mobile ? 1 : 2,
       })
       .setOrigin(0.5);
+
     this.mainCard?.add([line, footer]);
   }
 
@@ -749,15 +860,36 @@ export class MainMenu extends Scene {
 
     this.profileContent = this.add.container(0, 0);
 
-    const centerX = this.scale.width / 2;
+    if (!this.layout) {
+      return;
+    }
 
-    const panelY = this.scale.height * 0.385;
+    const {
+      centerX,
+      profileY: panelY,
+      profileWidth: panelWidth,
+      mobile,
+    } = this.layout;
 
-    const panelWidth = Math.min(760, this.scale.width - 66);
+    const contentLeft = centerX - panelWidth / 2 + 16;
 
-    const contentLeft = centerX - panelWidth / 2 + 20;
+    const contentRight = centerX + panelWidth / 2 - 16;
 
-    const contentRight = centerX + panelWidth / 2 - 20;
+    if (mobile) {
+      this.renderMobilePlayerProfile(
+        profile,
+        centerX,
+        panelY,
+        panelWidth,
+        contentLeft,
+        contentRight,
+      );
+
+      return;
+    }
+
+    this.currentActionWidth = ACTION_WIDTH;
+    this.currentActionHeight = ACTION_HEIGHT;
 
     const topRowY = panelY - 29;
 
@@ -972,6 +1104,294 @@ export class MainMenu extends Scene {
       rankBlock,
     ]);
 
+    this.finishProfileSetup();
+  }
+
+  private renderMobilePlayerProfile(
+    profile: PlayerProfileResponse,
+    centerX: number,
+    panelY: number,
+    panelWidth: number,
+    contentLeft: number,
+    contentRight: number,
+  ): void {
+    const horizontalGap = 8;
+
+    const availableWidth = contentRight - contentLeft;
+
+    const halfWidth = (availableWidth - horizontalGap) / 2;
+
+    const firstRowY = panelY - 49;
+    const secondRowY = panelY + 4;
+    const statsY = panelY + 70;
+
+    // username
+    const usernameX = contentLeft + halfWidth / 2;
+
+    const usernameCard = this.addRoundedRect(
+      usernameX,
+      firstRowY,
+      halfWidth,
+      42,
+      9,
+      COLORS.slotFill,
+      0.92,
+      COLORS.slotStroke,
+      0.4,
+      1,
+    );
+
+    const usernameLabel = this.add
+      .text(contentLeft + 10, firstRowY - 9, "RAIDER", {
+        font: "bold 7px Orbitron",
+        color: TEXT.muted,
+        letterSpacing: 1,
+      })
+      .setOrigin(0, 0.5);
+
+    const usernameText = this.add
+      .text(contentLeft + 10, firstRowY + 8, `u/${profile.username}`, {
+        font: "bold 10px Orbitron",
+        color: TEXT.primary,
+      })
+      .setOrigin(0, 0.5);
+
+    usernameText.setCrop(0, 0, halfWidth - 20, usernameText.height);
+
+    // wallet
+    const walletX = contentRight - halfWidth / 2;
+
+    const walletCard = this.addRoundedRect(
+      walletX,
+      firstRowY,
+      halfWidth,
+      42,
+      9,
+      COLORS.greenFill,
+      0.55,
+      COLORS.green,
+      0.32,
+      1,
+    );
+
+    const cashIcon = this.add
+      .image(walletX - halfWidth / 2 + 24, firstRowY, "cash")
+      .setDisplaySize(22, 22);
+
+    const cashLabel = this.add
+      .text(walletX - halfWidth / 2 + 42, firstRowY - 9, "WALLET", {
+        font: "bold 7px Orbitron",
+        color: TEXT.muted,
+        letterSpacing: 1,
+      })
+      .setOrigin(0, 0.5);
+
+    const cashAmount = this.add
+      .text(
+        walletX - halfWidth / 2 + 42,
+        firstRowY + 8,
+        profile.cash.toLocaleString(),
+        {
+          font: "bold 11px Orbitron",
+          color: TEXT.green,
+        },
+      )
+      .setOrigin(0, 0.5);
+
+    // action buttons
+    this.dailyRewardCanClaim = profile.canClaimDailyReward;
+
+    this.dailyRewardNextResetAt = profile.dailyRewardNextResetAt;
+
+    this.cashRequestAvailableAt = profile.cashRequestAvailableAt;
+
+    const mobileActionWidth = halfWidth;
+    this.currentActionWidth = mobileActionWidth;
+    this.currentActionHeight = 42;
+
+    this.dailyRewardButton = this.add.container(
+      contentLeft + halfWidth / 2,
+      secondRowY,
+    );
+
+    this.dailyRewardButtonGfx = this.add.graphics();
+
+    this.drawActionButton(
+      this.dailyRewardButtonGfx,
+      COLORS.goldFill,
+      COLORS.goldStroke,
+      0.7,
+    );
+
+    this.dailyRewardButtonText = this.add
+      .text(0, 0, "DAILY REWARD\nCLAIM +5 CASH", {
+        font: "bold 8px Orbitron",
+        color: TEXT.bright,
+        align: "center",
+        lineSpacing: 3,
+      })
+      .setOrigin(0.5);
+
+    this.dailyRewardButtonHit = this.add
+      .rectangle(
+        0,
+        0,
+        this.currentActionWidth,
+        this.currentActionHeight,
+        0xffffff,
+        0,
+      )
+      .setOrigin(0.5);
+
+    this.dailyRewardButton.add([
+      this.dailyRewardButtonGfx,
+      this.dailyRewardButtonText,
+      this.dailyRewardButtonHit,
+    ]);
+
+    this.cashRequestButton = this.add.container(
+      contentRight - halfWidth / 2,
+      secondRowY,
+    );
+
+    this.cashRequestButtonGfx = this.add.graphics();
+
+    this.drawActionButton(
+      this.cashRequestButtonGfx,
+      COLORS.greenFill,
+      COLORS.greenStroke,
+      0.65,
+    );
+
+    this.cashRequestButtonText = this.add
+      .text(0, 0, "REQUEST CASH\nCREATE POST", {
+        font: "bold 8px Orbitron",
+        color: TEXT.bright,
+        align: "center",
+        lineSpacing: 3,
+      })
+      .setOrigin(0.5);
+
+    this.cashRequestButtonHit = this.add
+      .rectangle(
+        0,
+        0,
+        this.currentActionWidth,
+        this.currentActionHeight,
+        0xffffff,
+        0,
+      )
+      .setOrigin(0.5);
+
+    this.cashRequestButton.add([
+      this.cashRequestButtonGfx,
+      this.cashRequestButtonText,
+      this.cashRequestButtonHit,
+    ]);
+
+    // stats
+    const statGap = 6;
+
+    const statWidth = (availableWidth - statGap * 2) / 3;
+
+    const allTimeBlock = this.createResponsiveStatisticBlock(
+      contentLeft + statWidth / 2,
+      statsY,
+      statWidth,
+      "ALL-TIME",
+      profile.allTimeHighScore.toLocaleString(),
+      TEXT.gold,
+      0x2a230f,
+    );
+
+    const dailyBlock = this.createResponsiveStatisticBlock(
+      contentLeft + statWidth + statGap + statWidth / 2,
+      statsY,
+      statWidth,
+      "TODAY",
+      profile.todayHighScore.toLocaleString(),
+      TEXT.accent,
+      0x0e2a36,
+    );
+
+    const rankBlock = this.createResponsiveStatisticBlock(
+      contentLeft + (statWidth + statGap) * 2 + statWidth / 2,
+      statsY,
+      statWidth,
+      "RANK",
+      profile.globalRank !== null ? `#${profile.globalRank}` : "—",
+      "#cdb4f0",
+      0x231a33,
+    );
+
+    this.profileContent?.add([
+      usernameCard,
+      usernameLabel,
+      usernameText,
+
+      walletCard,
+      cashIcon,
+      cashLabel,
+      cashAmount,
+
+      this.dailyRewardButton,
+      this.cashRequestButton,
+
+      allTimeBlock,
+      dailyBlock,
+      rankBlock,
+    ]);
+
+    this.finishProfileSetup();
+  }
+
+  private createResponsiveStatisticBlock(
+    x: number,
+    y: number,
+    width: number,
+    label: string,
+    value: string,
+    valueColor: string,
+    panelColor: number,
+  ): GameObjects.Container {
+    const container = this.add.container(x, y);
+
+    const panel = this.addRoundedRect(
+      0,
+      0,
+      width,
+      48,
+      8,
+      panelColor,
+      0.85,
+      0xffffff,
+      0.08,
+      1,
+    );
+
+    const labelText = this.add
+      .text(0, -11, label, {
+        font: "bold 6px Orbitron",
+        color: TEXT.muted,
+        letterSpacing: 1,
+      })
+      .setOrigin(0.5);
+
+    const valueText = this.add
+      .text(0, 9, value, {
+        font: "bold 12px Orbitron",
+        color: valueColor,
+        stroke: "#03121b",
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5);
+
+    container.add([panel, labelText, valueText]);
+
+    return container;
+  }
+
+  private finishProfileSetup(): void {
     this.configureCashRequestButton();
     this.configureDailyRewardButton();
 
@@ -980,9 +1400,7 @@ export class MainMenu extends Scene {
     this.dailyRewardCountdownEvent = this.time.addEvent({
       delay: 1000,
       loop: true,
-
       callback: this.updateDailyRewardButton,
-
       callbackScope: this,
     });
 
@@ -991,24 +1409,21 @@ export class MainMenu extends Scene {
     this.cashRequestCountdownEvent = this.time.addEvent({
       delay: 1000,
       loop: true,
-
       callback: this.updateCashRequestButton,
-
       callbackScope: this,
     });
 
-    this.profileContent.setAlpha(0).setY(5);
+    this.profileContent?.setAlpha(0).setY(5);
 
-    this.tweens.add({
-      targets: this.profileContent,
-
-      alpha: 1,
-      y: 0,
-
-      duration: 220,
-
-      ease: "Quad.easeOut",
-    });
+    if (this.profileContent) {
+      this.tweens.add({
+        targets: this.profileContent,
+        alpha: 1,
+        y: 0,
+        duration: 220,
+        ease: "Quad.easeOut",
+      });
+    }
   }
 
   private drawActionButton(
@@ -1017,23 +1432,18 @@ export class MainMenu extends Scene {
     stroke: number,
     strokeAlpha: number,
   ): void {
+    const width = this.currentActionWidth;
+    const height = this.currentActionHeight;
+
     graphics.clear();
+
     graphics.fillStyle(fill, 1);
-    graphics.fillRoundedRect(
-      -ACTION_WIDTH / 2,
-      -ACTION_HEIGHT / 2,
-      ACTION_WIDTH,
-      ACTION_HEIGHT,
-      10,
-    );
+
+    graphics.fillRoundedRect(-width / 2, -height / 2, width, height, 10);
+
     graphics.lineStyle(1.25, stroke, strokeAlpha);
-    graphics.strokeRoundedRect(
-      -ACTION_WIDTH / 2,
-      -ACTION_HEIGHT / 2,
-      ACTION_WIDTH,
-      ACTION_HEIGHT,
-      10,
-    );
+
+    graphics.strokeRoundedRect(-width / 2, -height / 2, width, height, 10);
   }
 
   private createStatisticBlock(
@@ -1491,5 +1901,380 @@ export class MainMenu extends Scene {
       await this.loadPlayerProfile();
       return false;
     }
+  }
+
+  private async enterKingBattle(): Promise<void> {
+    if (this.kingEntryInProgress) {
+      return;
+    }
+
+    this.kingEntryInProgress = true;
+
+    this.showCashRequestStatus("Preparing Saturday King Battle...", true);
+
+    try {
+      const response = await fetch("/api/king-entry", {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+
+        body: JSON.stringify({
+          expectedDay: "saturday",
+        }),
+      });
+
+      const rawResponse = await response.text();
+
+      let responseData: EnterKingBattleResponse | ApiErrorResponse;
+
+      try {
+        responseData = rawResponse
+          ? JSON.parse(rawResponse)
+          : {
+              status: "error",
+              message: "The server returned no data.",
+            };
+      } catch {
+        throw new Error("The server returned invalid King Battle data.");
+      }
+
+      if (
+        !response.ok ||
+        !("type" in responseData) ||
+        responseData.type !== "enter-king-battle"
+      ) {
+        const message =
+          "message" in responseData
+            ? responseData.message
+            : "Unable to enter King Battle.";
+
+        throw new Error(message);
+      }
+
+      this.scene.start("Game", {
+        mode: "king",
+
+        kingDay: responseData.serverDay,
+
+        kingCharacterCode: responseData.kingCharacterCode,
+
+        unlockCharacterCode: responseData.unlockCharacterCode,
+
+        battleToken: responseData.battleToken,
+      });
+    } catch (error) {
+      console.error("[MainMenu] Failed to enter King Battle:", error);
+
+      this.showCashRequestStatus(
+        error instanceof Error ? error.message : "Unable to enter King Battle.",
+        false,
+      );
+
+      this.kingEntryInProgress = false;
+
+      void this.loadPlayerProfile();
+    }
+  }
+  private async resetRaider4ForTesting(): Promise<void> {
+    try {
+      const response = await fetch("/api/dev-lock-raider4", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      const rawResponse = await response.text();
+
+      let data: {
+        status?: string;
+        message?: string;
+      } = {};
+
+      try {
+        data = rawResponse ? JSON.parse(rawResponse) : {};
+      } catch {
+        throw new Error(
+          `Server returned non-JSON data. Status: ${response.status}`,
+        );
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ?? `Reset failed with status ${response.status}.`,
+        );
+      }
+
+      console.log("[DEV RESET]", data);
+
+      await this.loadPlayerProfile();
+    } catch (error) {
+      console.error("[DEV RESET] Failed:", error);
+    }
+  }
+  private createTodayKingPanel(
+    centerX: number,
+    y: number,
+    width: number,
+  ): GameObjects.Container {
+    const mobile = width < 500;
+
+    const panelHeight = this.layout?.compact ? 72 : 82;
+
+    const iconRadius = mobile ? 27 : 31;
+
+    const iconX = -width / 2 + (mobile ? 42 : 53);
+
+    const textX = -width / 2 + (mobile ? 78 : 98);
+
+    const container = this.add.container(centerX, y);
+
+    const shadow = this.add.rectangle(4, 6, width, panelHeight, 0x000000, 0.48);
+
+    const background = this.add
+      .rectangle(0, 0, width, panelHeight, 0x291b12, 0.96)
+      .setStrokeStyle(2, 0xffb45c, 0.88);
+
+    const iconBackground = this.add
+      .circle(iconX, 0, iconRadius, 0x422515, 1)
+      .setStrokeStyle(2, 0xffd37a, 0.9);
+
+    const circularKingTexture = this.createCircularIconTexture(
+      "raider4Icon",
+      "raider4Icon_today_king_circular",
+      1.3,
+    );
+
+    const kingIcon = this.add
+      .image(iconX, 0, circularKingTexture)
+      .setDisplaySize(iconRadius * 1.68, iconRadius * 1.68);
+    const titleText = this.add
+      .text(textX, -22, "TODAY'S KING", {
+        font: `bold ${mobile ? 8 : 10}px Orbitron`,
+
+        color: "#ffd37a",
+
+        stroke: "#000000",
+
+        strokeThickness: 3,
+
+        letterSpacing: 2,
+      })
+      .setOrigin(0, 0.5);
+
+    const kingNameText = this.add
+      .text(textX, 1, "SATURDAY KING", {
+        font: `bold ${mobile ? 14 : 17}px Orbitron`,
+
+        color: "#ffffff",
+
+        stroke: "#000000",
+
+        strokeThickness: 4,
+      })
+      .setOrigin(0, 0.5);
+
+    const rewardText = this.add
+      .text(textX, 25, "DEFEAT TO UNLOCK CHICKEN RAIDER", {
+        font: `bold ${mobile ? 6 : 8}px Orbitron`,
+
+        color: "#ffcf86",
+
+        stroke: "#000000",
+
+        strokeThickness: 2,
+        wordWrap: {
+          width: width - (mobile ? 96 : 125),
+        },
+      })
+      .setOrigin(0, 0.5);
+
+    container.add([
+      shadow,
+      background,
+      iconBackground,
+      kingIcon,
+      titleText,
+      kingNameText,
+      rewardText,
+    ]);
+
+    this.tweens.add({
+      targets: iconBackground,
+
+      alpha: {
+        from: 0.72,
+        to: 1,
+      },
+
+      scaleX: {
+        from: 0.95,
+        to: 1.05,
+      },
+
+      scaleY: {
+        from: 0.95,
+        to: 1.05,
+      },
+
+      duration: 1500,
+
+      yoyo: true,
+
+      repeat: -1,
+
+      ease: "Sine.easeInOut",
+    });
+
+    return container;
+  }
+
+  private createCircularIconTexture(
+    sourceTextureKey: string,
+    outputTextureKey: string,
+    zoom = 1.25,
+  ): string {
+    if (this.textures.exists(outputTextureKey)) {
+      return outputTextureKey;
+    }
+
+    const textureSize = 256;
+
+    const canvasTexture = this.textures.createCanvas(
+      outputTextureKey,
+      textureSize,
+      textureSize,
+    );
+
+    if (!canvasTexture) {
+      return sourceTextureKey;
+    }
+
+    const context = canvasTexture.getContext();
+
+    const sourceImage = this.textures
+      .get(sourceTextureKey)
+      .getSourceImage() as CanvasImageSource;
+
+    context.clearRect(0, 0, textureSize, textureSize);
+
+    context.save();
+
+    context.beginPath();
+
+    context.arc(
+      textureSize / 2,
+      textureSize / 2,
+      textureSize / 2,
+      0,
+      Math.PI * 2,
+    );
+
+    context.closePath();
+    context.clip();
+
+    const drawnSize = textureSize * zoom;
+
+    const drawX = (textureSize - drawnSize) / 2;
+
+    const drawY = (textureSize - drawnSize) / 2;
+
+    context.drawImage(sourceImage, drawX, drawY, drawnSize, drawnSize);
+
+    context.restore();
+
+    canvasTexture.refresh();
+
+    return outputTextureKey;
+  }
+
+  private calculateLayout(width: number, height: number): MainMenuLayout {
+    const mobile = width < 680;
+    const compact = height < 720;
+
+    const outerMargin = mobile ? 10 : 17;
+
+    const cardWidth = Math.min(
+      mobile ? width - outerMargin * 2 : 860,
+      width - outerMargin * 2,
+    );
+
+    const cardHeight = height - outerMargin * 2;
+
+    const cardTop = outerMargin;
+    const cardBottom = cardTop + cardHeight;
+
+    const centerX = width / 2;
+
+    const horizontalPadding = mobile ? 18 : 40;
+
+    const contentWidth = cardWidth - horizontalPadding * 2;
+
+    const headerY = cardTop + (compact ? 48 : mobile ? 58 : 70);
+
+    const profileHeight = mobile ? (compact ? 205 : 225) : 190;
+
+    const profileY = cardTop + (compact ? 145 : mobile ? 165 : 205);
+
+    const profileWidth = contentWidth;
+
+    const profileBottom = profileY + profileHeight / 2;
+
+    const todayKingHeight = compact ? 72 : 82;
+
+    const todayKingY = profileBottom + 14 + todayKingHeight / 2;
+
+    const todayKingWidth = mobile ? contentWidth : Math.min(500, contentWidth);
+
+    const playHeight = compact ? 54 : 62;
+
+    const playY = todayKingY + todayKingHeight / 2 + 14 + playHeight / 2;
+
+    const kingBattleY = playY + playHeight / 2 + 12 + (compact ? 27 : 30);
+
+    const secondaryWidth = mobile
+      ? Math.max(135, (contentWidth - 12) / 2)
+      : Math.min(280, (contentWidth - 20) / 2);
+
+    const secondaryGap = secondaryWidth / 2 + 6;
+
+    const secondaryY = kingBattleY + (compact ? 61 : 70);
+
+    const footerY = Math.min(cardBottom - 23, secondaryY + (compact ? 48 : 57));
+
+    return {
+      mobile,
+      compact,
+
+      centerX,
+
+      cardTop,
+      cardBottom,
+      cardWidth,
+      cardHeight,
+
+      contentWidth,
+
+      headerY,
+
+      profileY,
+      profileWidth,
+      profileHeight,
+
+      todayKingY,
+      todayKingWidth,
+
+      playY,
+      kingBattleY,
+
+      secondaryY,
+      secondaryWidth,
+      secondaryGap,
+
+      footerY,
+    };
   }
 }

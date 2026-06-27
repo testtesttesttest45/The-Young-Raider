@@ -124,6 +124,8 @@ class Enemy {
   private tutorialEnrageEffectActive = false;
   private tutorialPursuitBarActive = false;
 
+  isKing: boolean;
+  strengtheningEnabled: boolean;
   constructor(
     scene: any,
     x: number,
@@ -135,6 +137,8 @@ class Enemy {
     base: any,
     isWinterFrostActive: boolean = false,
     isTreasureHunterActive: boolean = false,
+    isKing: boolean = false,
+    strengtheningEnabled: boolean = true,
   ) {
     this.scene = scene;
     this.x = x;
@@ -238,17 +242,29 @@ class Enemy {
     this.isWinterFrosted = isWinterFrostActive;
     this.goldValue = 100;
     this.isTreasureHunted = isTreasureHunterActive;
+    this.isKing = isKing;
+    this.strengtheningEnabled = strengtheningEnabled;
   }
 
-  startTimer() {
+  startTimer(): void {
+    if (!this.strengtheningEnabled) {
+      this.timerStarted = false;
+      return;
+    }
+
     if (!this.timerStarted) {
       this.strengthenTimer =
         this.scene.activeGameTime + this.enemyStrengthenInterval;
+
       this.timerStarted = true;
     }
   }
 
-  getTimeUntilNextStrengthen() {
+  getTimeUntilNextStrengthen(): number {
+    if (!this.strengtheningEnabled || !this.timerStarted) {
+      return 0;
+    }
+
     return Math.max(0, this.strengthenTimer - this.scene.activeGameTime);
   }
 
@@ -1167,16 +1183,22 @@ class Enemy {
       this.scene.player.targetedEnemy = null;
     }
     this.isDead = true;
-    const scoreAward = causedByBaseDestruction ? 50 : 100;
-    this.scene.scene.get("BattleUI").updateScore(scoreAward);
+
+    if (!this.isKing) {
+      const scoreAward = causedByBaseDestruction ? 50 : 100;
+
+      this.scene.scene.get("BattleUI").updateScore(scoreAward);
+
+      this.dropGold(causedByBaseDestruction);
+      this.dropCash();
+    }
     // Stop any ongoing movement
     if (this.moveTween) {
       this.moveTween.stop();
     }
     this.isMoving = false;
 
-    this.dropGold(causedByBaseDestruction);
-    this.dropCash();
+    const scoreAward = causedByBaseDestruction ? 50 : 100;
 
     this.isAttacking = false;
 
@@ -1187,6 +1209,11 @@ class Enemy {
     this.sprite.stop();
 
     this.sprite.play(`character${this.characterCode}Death`, true);
+    if (this.isKing) {
+      this.sprite.once("animationcomplete", () => {
+        this.scene.handleKingDefeated?.(this);
+      });
+    }
 
     this.sprite.removeInteractive();
     this.sprite.removeInteractive();
@@ -1738,7 +1765,11 @@ class Enemy {
       this.disenrage();
     }
 
-    if (this.scene.activeGameTime > this.strengthenTimer) {
+    if (
+      this.strengtheningEnabled &&
+      this.timerStarted &&
+      this.scene.activeGameTime > this.strengthenTimer
+    ) {
       this.strengthenEnemies();
     }
   }

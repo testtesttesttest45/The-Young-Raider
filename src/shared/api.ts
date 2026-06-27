@@ -204,7 +204,7 @@ export type SaveSelectedRaiderResponse = {
   message: string;
 };
 
-export type RaiderUnlockType = "free" | "highscore" | "cash";
+export type RaiderUnlockType = "free" | "highscore" | "cash" | "king";
 
 export type RaiderCollectionItem = {
   characterCode: number;
@@ -252,4 +252,28 @@ export type CompleteTutorialResponse = {
   type: "tutorial-complete";
   status: "success";
   message: string;
+};
+
+export type ShareKingSlayerLeaderboardResponse = {
+  type: "share-king-slayer-leaderboard";
+  status: "success";
+  message: string;
+};
+
+export type SharedKingSlayerPostData = {
+  postType: "shared-king-slayer";
+
+  username: string;
+
+  score: number;
+
+  kills: number;
+
+  globalRank: number | null;
+};
+
+export type SharedKingSlayerPostResponse = {
+  type: "shared-king-slayer-post";
+
+  data: SharedKingSlayerPostData;
 };

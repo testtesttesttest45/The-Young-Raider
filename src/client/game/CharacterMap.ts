@@ -819,7 +819,8 @@ const characterMap: Record<number, CharacterDefinition> = {
     tier: "hard",
     icon: "raider3Icon",
     idle: "raider3Idle",
-    description: "Shiny armour and a big sword, this Raider is ready to take on any enemy.",
+    description:
+      "Shiny armour and a big sword, this Raider is ready to take on any enemy.",
   },
   19: {
     type: "raider",
@@ -837,7 +838,85 @@ const characterMap: Record<number, CharacterDefinition> = {
     tier: "hard",
     icon: "raider4Icon",
     idle: "raider4Idle",
-    description: "Not your average Raider, this one has a chicken on his head and is ready to fight.",
+    description:
+      "Not your average Raider, this one has a chicken on his head and is ready to fight.",
+  },
+  20: {
+    type: "enemy",
+
+    name: "Saturday King",
+
+    cost: 0,
+
+    tier: "king",
+
+    health: RAIDER_STATS.health * 3,
+
+    damage: RAIDER_STATS.damage * 3,
+
+    range: RAIDER_STATS.range,
+
+    speed: RAIDER_STATS.speed,
+
+    attackSpeed: RAIDER_STATS.attackSpeed,
+
+    attackCount: RAIDER_STATS.attackCount,
+
+    projectile: "",
+
+    icon: "raider4Icon",
+
+    idle: "raider4Idle",
+
+    description: "The Saturday King. Defeat him to unlock Chicken Raider.",
+
+    enemyAnimations: {
+      idle: {
+        spritesheetKey: "raider4_idle",
+
+        framesPerDirection: 41,
+
+        frameRate: 24,
+
+        repeat: -1,
+      },
+
+      move: {
+        spritesheetKey: "raider4_move",
+
+        framesPerDirection: 21,
+
+        frameRate: 24,
+
+        repeat: -1,
+      },
+
+      attack: {
+        spritesheetKey: "raider4_attack",
+
+        framesPerDirection: 30,
+
+        frameRate: 24,
+
+        repeat: 0,
+
+        damageFrames: [20],
+      },
+
+      death: {
+        spritesheetKey: "raider4_die",
+
+        frameCount: 69,
+
+        frameRate: 24,
+
+        repeat: 0,
+      },
+
+      scale: 0.75,
+
+      healthBarOffsetY: -48,
+    },
   },
 };
 export default characterMap;

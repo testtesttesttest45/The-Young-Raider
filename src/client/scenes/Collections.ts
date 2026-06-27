@@ -1080,6 +1080,13 @@ export class Collections extends Scene {
       return;
     }
 
+    if (state?.unlockType === "king") {
+      this.selectedLabel
+        .setText("DEFEAT THE SATURDAY KING")
+        .setColor("#9ba8ae");
+
+      return;
+    }
     this.selectedLabel.setText("LOCKED").setColor("#9ba8ae");
   }
 
@@ -1235,16 +1242,15 @@ export class Collections extends Scene {
       bottomColour = 0x157c3d;
       borderColour = 0xa3ffc1;
     } else if (state?.requirementMet) {
-      if (state.unlockType === "cash") {
-        label = "UNLOCK RAIDER";
+      label = "UNLOCK RAIDER";
 
+      if (state.unlockType === "cash") {
         subtitle = `${state.requirementAmount.toLocaleString()} CASH REQUIRED`;
       } else if (state.unlockType === "highscore") {
-        label = "UNLOCK RAIDER";
-
         subtitle = `${state.requirementAmount.toLocaleString()} HIGH SCORE REQUIRED`;
+      } else if (state.unlockType === "king") {
+        subtitle = "SATURDAY KING DEFEATED";
       } else {
-        label = "UNLOCK RAIDER";
         subtitle = "FREE RAIDER";
       }
 
@@ -1252,6 +1258,7 @@ export class Collections extends Scene {
 
       topColour = 0xd19a31;
       bottomColour = 0x805412;
+      borderColour = 0xffc65c;
     } else if (state?.unlockType === "highscore") {
       label = "LOCKED";
       subtitle = `HIGH SCORE ${this.allTimeHighScore.toLocaleString()} / ${state.requirementAmount.toLocaleString()}`;
@@ -1260,8 +1267,12 @@ export class Collections extends Scene {
         0,
         state.requirementAmount - this.playerCash,
       );
+
       label = "LOCKED";
       subtitle = `NEED ${missingCash.toLocaleString()} MORE CASH`;
+    } else if (state?.unlockType === "king") {
+      label = "LOCKED";
+      subtitle = "DEFEAT SATURDAY KING";
     }
 
     this.actionButton.label.setText(label);

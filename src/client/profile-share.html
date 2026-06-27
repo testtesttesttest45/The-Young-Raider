@@ -8,7 +8,7 @@
             content="width=device-width, initial-scale=1.0"
         />
 
-        <title>Raider Profile</title>
+        <title id="page-title">Raider Profile</title>
 
         <link
             rel="stylesheet"
@@ -25,7 +25,9 @@
             >
                 <div class="loading-spinner"></div>
 
-                <p>LOADING RAIDER PROFILE...</p>
+                <p id="loading-text">
+                    LOADING RAIDER PROFILE...
+                </p>
             </div>
 
             <div
@@ -39,34 +41,47 @@
 
                 <h1 id="player-name"></h1>
 
-                <p class="achievement">
+                <p
+                    id="profile-title"
+                    class="achievement"
+                >
                     RAIDER RECORD
                 </p>
 
-                <div
-                    id="highest-score"
-                    class="score-value"
-                ></div>
+                <div class="score-section">
+                    <p
+                        id="score-label"
+                        class="score-label"
+                    >
+                        HIGHEST SCORE
+                    </p>
+
+                    <div
+                        id="highest-score"
+                        class="score-value"
+                    ></div>
+                </div>
 
                 <div class="base-value">
-                    HIGHEST BASE:
-                    <strong
-                        id="highest-base"
-                    ></strong>
+                    <span id="base-label">
+                        HIGHEST BASE
+                    </span>:
+                    <strong id="highest-base"></strong>
                 </div>
 
                 <div class="base-value">
                     GLOBAL RANK:
-                    <strong
-                        id="global-rank"
-                    ></strong>
+                    <strong id="global-rank"></strong>
                 </div>
 
                 <button id="play-button">
                     PLAY THE YOUNG RAIDER
                 </button>
 
-                <p class="status">
+                <p
+                    id="challenge-text"
+                    class="status"
+                >
                     CAN YOU BEAT THIS RAIDER?
                 </p>
             </div>

@@ -182,6 +182,12 @@ export default class BattleUI extends Scene {
     this.shop.reset();
   }
 
+  private isKingMode(): boolean {
+    const gameScene = this.scene.get("Game") as any;
+
+    return gameScene?.gameMode === "king";
+  }
+
   startMultiplierTimer() {
     if (!this.timerStarted) {
       this.timerStarted = true;
@@ -512,6 +518,14 @@ export default class BattleUI extends Scene {
 
     this.strengthenedSquareContainer.add(this.strengthenedSquareText);
 
+    if (this.isKingMode()) {
+      this.strengthenIcon.setVisible(false);
+      this.strengthenLabelText.setVisible(false);
+      this.strengthenBarBackground.setVisible(false);
+      this.strengthenBarFill.setVisible(false);
+      this.strengthenedSquareContainer.setVisible(false);
+    }
+
     // Multiplier title
     this.add
       .text(multiplierX, 14, "SCORE MULTIPLIER", {
@@ -565,7 +579,7 @@ export default class BattleUI extends Scene {
     const rightSectionCenterX = rightSectionX + rightSectionWidth / 2;
 
     this.scoreText = this.add
-      .text(rightContentX, 16, "Score: 0", {
+      .text(rightContentX, 16, this.isKingMode() ? "KING BATTLE" : "Score: 0", {
         font: "bold 15px Orbitron",
         color: "#ffffff",
       })
@@ -636,9 +650,21 @@ export default class BattleUI extends Scene {
         event: Phaser.Types.Input.EventData,
       ) => {
         event.stopPropagation();
+
+        if (this.isKingMode()) {
+          return;
+        }
+
         this.shop.open();
       },
     );
+
+    if (this.isKingMode()) {
+      this.shopButtonContainer.disableInteractive();
+      this.shopButtonContainer.setAlpha(0.45);
+
+      this.shopText.setText("SHOP (Disabled)");
+    }
 
     const pauseButton = this.add
       .text(rightSectionX + rightSectionWidth - 30, 84, "Ⅱ", {
@@ -828,9 +854,15 @@ export default class BattleUI extends Scene {
     }
   }
 
-  updateScore(amount: number) {
-    if ((this.scene.get("Game") as any).player.isDead) return;
+  updateScore(amount: number): void {
+    const gameScene = this.scene.get("Game") as any;
+
+    if (this.isKingMode() || gameScene.player?.isDead) {
+      return;
+    }
+
     this.score += amount * this.multiplier;
+
     this.scoreText.setText(`Score: ${this.score}`);
   }
 
@@ -878,20 +910,28 @@ export default class BattleUI extends Scene {
     this.baseRebuildGraphics.clear();
   }
 
-  override update() {
-    if (!this.timerStarted) return;
-    this.updateMultiplierFill();
+  override update(): void {
     this.displayPlayerStats();
-    this.shop.update();
-    if (this.strengthenedSquareText) {
-      const enemies = (this.scene.get("Game") as any).enemies;
 
-      if (enemies.length > 0) {
-        const highestStrengthLevel = Math.max(
-          ...enemies.map((e: any) => e.strengthenLevel ?? 1),
-        );
+    if (!this.timerStarted) {
+      return;
+    }
 
-        this.strengthenedSquareText.setText(`${highestStrengthLevel}`);
+    this.updateMultiplierFill();
+
+    if (!this.isKingMode()) {
+      this.shop.update();
+
+      if (this.strengthenedSquareText) {
+        const enemies = (this.scene.get("Game") as any).enemies;
+
+        if (enemies.length > 0) {
+          const highestStrengthLevel = Math.max(
+            ...enemies.map((enemy: any) => enemy.strengthenLevel ?? 1),
+          );
+
+          this.strengthenedSquareText.setText(`${highestStrengthLevel}`);
+        }
       }
     }
   }
@@ -973,6 +1013,11 @@ export default class BattleUI extends Scene {
   }
 
   createGameOverScreen(): void {
+    if (this.isKingMode()) {
+      this.createKingDefeatScreen();
+
+      return;
+    }
     if (this.gameOverContainer && this.gameOverContainer.active) {
       return;
     }
@@ -1613,6 +1658,12 @@ export default class BattleUI extends Scene {
   restartGameScene(): void {
     const gameScene = this.scene.get("Game") as any;
 
+    if (this.isKingMode()) {
+      this.goToMainMenu();
+
+      return;
+    }
+
     if (this.scene.isPaused("Game")) {
       this.scene.resume("Game");
     }
@@ -1626,7 +1677,10 @@ export default class BattleUI extends Scene {
     this.scene.stop("BattleUI");
 
     this.scene.stop("Game");
-    this.scene.start("Game");
+
+    this.scene.start("Game", {
+      mode: "normal",
+    });
   }
 
   goToMainMenu() {
@@ -1927,5 +1981,365 @@ export default class BattleUI extends Scene {
         this.gameOverResultRows?.add(icon);
       }
     });
+  }
+
+  createKingVictoryScreen(result: {
+    success: boolean;
+
+    message: string;
+
+    unlockedCharacterCode?: number;
+
+    alreadyUnlocked?: boolean;
+  }): void {
+    if (result.success) {
+      this.createKingResultScreen({
+        victory: true,
+
+        title: "KING DEFEATED",
+
+        subtitle:
+          result.alreadyUnlocked === true
+            ? "SATURDAY KING CONQUERED"
+            : "CHICKEN RAIDER UNLOCKED",
+
+        message: result.message,
+      });
+
+      return;
+    }
+
+    this.createKingResultScreen({
+      victory: false,
+
+      title: "VICTORY NOT SAVED",
+
+      subtitle: "KING BATTLE ERROR",
+
+      message: result.message,
+    });
+  }
+
+  private createKingDefeatScreen(): void {
+    const gameScene = this.scene.get("Game") as any;
+
+    gameScene.isGameOver = true;
+    gameScene.isGamePaused = true;
+    gameScene.allowInput = false;
+
+    this.createKingResultScreen({
+      victory: false,
+
+      title: "KING BATTLE LOST",
+
+      subtitle: "THE SATURDAY KING SURVIVED",
+
+      message:
+        "Return to the Main Menu to challenge the King again for 5 cash.",
+    });
+  }
+
+  private createKingResultScreen(options: {
+    victory: boolean;
+
+    title: string;
+
+    subtitle: string;
+
+    message: string;
+  }): void {
+    if (this.gameOverContainer && this.gameOverContainer.active) {
+      return;
+    }
+
+    const width = this.scale.width;
+
+    const height = this.scale.height;
+
+    this.pauseMultiplier();
+
+    this.gameOverContainer = this.add.container(0, 0).setDepth(5000);
+
+    const overlay = this.add
+      .rectangle(0, 0, width, height, 0x02070c, 0.88)
+      .setOrigin(0, 0)
+      .setInteractive();
+
+    overlay.on(
+      "pointerdown",
+      (
+        _pointer: Phaser.Input.Pointer,
+        _localX: number,
+        _localY: number,
+        event: Phaser.Types.Input.EventData,
+      ) => {
+        event.stopPropagation();
+      },
+    );
+
+    const panelWidth = Math.min(650, width - 40);
+
+    const panelHeight = Math.min(470, height - 40);
+
+    const panelX = width / 2;
+
+    const panelY = height / 2;
+
+    const panelLeft = panelX - panelWidth / 2;
+
+    const panelTop = panelY - panelHeight / 2;
+
+    const accentColour = options.victory ? 0xffd84a : 0xff626b;
+
+    const panelGraphics = this.add.graphics();
+
+    panelGraphics.fillStyle(0x000000, 0.5);
+
+    panelGraphics.fillRoundedRect(
+      panelLeft + 9,
+      panelTop + 11,
+      panelWidth,
+      panelHeight,
+      24,
+    );
+
+    panelGraphics.fillStyle(0x0b1721, 0.99);
+
+    panelGraphics.fillRoundedRect(
+      panelLeft,
+      panelTop,
+      panelWidth,
+      panelHeight,
+      24,
+    );
+
+    panelGraphics.lineStyle(3, accentColour, 0.95);
+
+    panelGraphics.strokeRoundedRect(
+      panelLeft,
+      panelTop,
+      panelWidth,
+      panelHeight,
+      24,
+    );
+
+    panelGraphics.lineStyle(1, 0xffffff, 0.12);
+
+    panelGraphics.strokeRoundedRect(
+      panelLeft + 8,
+      panelTop + 8,
+      panelWidth - 16,
+      panelHeight - 16,
+      18,
+    );
+
+    panelGraphics.fillStyle(accentColour, 0.95);
+
+    panelGraphics.fillRoundedRect(panelX - 100, panelTop + 18, 200, 5, 3);
+
+    const modeLabel = this.add
+      .text(panelX, panelTop + 47, "SATURDAY KING BATTLE", {
+        font: "bold 11px Orbitron",
+
+        color: options.victory ? "#ffe790" : "#ff9ca2",
+
+        letterSpacing: 4,
+      })
+      .setOrigin(0.5);
+
+    const title = this.add
+      .text(panelX, panelTop + 112, options.title, {
+        font: "bold 40px Orbitron",
+
+        color: "#ffffff",
+
+        stroke: "#000000",
+
+        strokeThickness: 7,
+
+        align: "center",
+      })
+      .setOrigin(0.5);
+
+    title.setShadow(
+      0,
+      0,
+      options.victory ? "#ffd84a" : "#ff4e59",
+      12,
+      true,
+      true,
+    );
+
+    const subtitle = this.add
+      .text(panelX, panelTop + 165, options.subtitle, {
+        font: "bold 15px Orbitron",
+
+        color: options.victory ? "#ffd84a" : "#ff8c94",
+
+        align: "center",
+
+        letterSpacing: 2,
+      })
+      .setOrigin(0.5);
+
+    const messagePanel = this.add.graphics();
+
+    messagePanel.fillStyle(0x071119, 0.92);
+
+    messagePanel.fillRoundedRect(
+      panelLeft + 45,
+      panelTop + 205,
+      panelWidth - 90,
+      105,
+      14,
+    );
+
+    messagePanel.lineStyle(1, accentColour, 0.35);
+
+    messagePanel.strokeRoundedRect(
+      panelLeft + 45,
+      panelTop + 205,
+      panelWidth - 90,
+      105,
+      14,
+    );
+
+    const message = this.add
+      .text(panelX, panelTop + 257, options.message, {
+        font: "13px Orbitron",
+
+        color: "#d2e8f1",
+
+        align: "center",
+
+        lineSpacing: 6,
+
+        wordWrap: {
+          width: panelWidth - 130,
+        },
+      })
+      .setOrigin(0.5);
+
+    const createResultButton = (
+      x: number,
+      label: string,
+      backgroundColour: number,
+      borderColour: number,
+      callback: () => void,
+    ): Phaser.GameObjects.Container => {
+      const container = this.add.container(x, panelTop + panelHeight - 70);
+
+      const buttonWidth = 220;
+
+      const buttonHeight = 48;
+
+      const shadow = this.add.rectangle(
+        3,
+        5,
+        buttonWidth,
+        buttonHeight,
+        0x000000,
+        0.5,
+      );
+
+      const background = this.add
+        .rectangle(0, 0, buttonWidth, buttonHeight, backgroundColour, 1)
+        .setStrokeStyle(2, borderColour, 0.9)
+        .setInteractive({
+          useHandCursor: true,
+        });
+
+      const labelText = this.add
+        .text(0, 0, label, {
+          font: "bold 14px Orbitron",
+
+          color: "#ffffff",
+
+          stroke: "#000000",
+
+          strokeThickness: 3,
+        })
+        .setOrigin(0.5);
+
+      container.add([shadow, background, labelText]);
+
+      let pressed = false;
+
+      background.on("pointerover", () => {
+        container.setScale(1.03);
+      });
+
+      background.on("pointerout", () => {
+        pressed = false;
+
+        container.setScale(1);
+      });
+
+      background.on(
+        "pointerdown",
+        (
+          _pointer: Phaser.Input.Pointer,
+          _localX: number,
+          _localY: number,
+          event: Phaser.Types.Input.EventData,
+        ) => {
+          event.stopPropagation();
+
+          pressed = true;
+
+          container.setScale(0.97);
+        },
+      );
+
+      background.on("pointerup", () => {
+        container.setScale(1);
+
+        if (!pressed) {
+          return;
+        }
+
+        pressed = false;
+
+        callback();
+      });
+
+      return container;
+    };
+
+    const collectionsButton = createResultButton(
+      panelX - 120,
+      "COLLECTIONS",
+      0x17658c,
+      0x63d5ff,
+      () => {
+        this.scene.stop("BattleUI");
+
+        this.scene.stop("Game");
+
+        this.scene.start("Collections");
+      },
+    );
+
+    const mainMenuButton = createResultButton(
+      panelX + 120,
+      "MAIN MENU",
+      0x712b32,
+      0xff747d,
+      () => {
+        this.goToMainMenu();
+      },
+    );
+
+    this.gameOverContainer.add([
+      overlay,
+      panelGraphics,
+      messagePanel,
+      modeLabel,
+      title,
+      subtitle,
+      message,
+      collectionsButton,
+      mainMenuButton,
+    ]);
   }
 }

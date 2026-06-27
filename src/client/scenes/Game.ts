@@ -11,11 +11,30 @@ import type {
   GetSelectedRaiderResponse,
   TutorialStatusResponse,
 } from "../../shared/api";
+import type {
+  CompleteKingBattleResponse,
+  KingDay,
+} from "../../shared/raiderUnlocks";
+
 import characterMap, { type RaiderDefinition } from "../game/CharacterMap";
 
 const WORLD_W = 1280;
 const WORLD_H = 720;
 const WORLD_TOP_PADDING = 130;
+
+type GameMode = "normal" | "king";
+
+type GameStartData = {
+  mode?: GameMode;
+
+  kingDay?: KingDay;
+
+  kingCharacterCode?: number;
+
+  unlockCharacterCode?: number;
+
+  battleToken?: string;
+};
 
 export class Game extends Scene {
   camp1: any;
@@ -53,8 +72,41 @@ export class Game extends Scene {
   private tutorialStatusLoaded = false;
   private loadingOverlay: Phaser.GameObjects.Container | null = null;
 
+  gameMode: GameMode = "normal";
+
+  kingDay: KingDay | null = null;
+
+  kingCharacterCode: number | null = null;
+
+  kingUnlockCharacterCode: number | null = null;
+
+  kingBattleToken: string | null = null;
+
+  kingVictoryHandled = false;
+
   constructor() {
     super("Game");
+  }
+
+  init(data: GameStartData): void {
+    this.gameMode = data.mode === "king" ? "king" : "normal";
+
+    this.kingDay = data.kingDay ?? null;
+
+    this.kingCharacterCode = Number.isInteger(data.kingCharacterCode)
+      ? Number(data.kingCharacterCode)
+      : null;
+
+    this.kingUnlockCharacterCode = Number.isInteger(data.unlockCharacterCode)
+      ? Number(data.unlockCharacterCode)
+      : null;
+
+    this.kingBattleToken =
+      typeof data.battleToken === "string" && data.battleToken.length > 0
+        ? data.battleToken
+        : null;
+
+    this.kingVictoryHandled = false;
   }
 
   create(): void {
@@ -73,7 +125,7 @@ export class Game extends Scene {
     this.isGameOver = false;
     this.allowInput = false;
     this.hasHandledPlayerDeath = false;
-
+    this.kingVictoryHandled = false;
     this.activeGameTime = 0;
     this.gold = 0;
 
@@ -146,14 +198,21 @@ export class Game extends Scene {
   }
 
   private async initializeGame(initializationVersion: number): Promise<void> {
+    const selectedRaiderPromise = this.loadSelectedRaider();
+
+    const tutorialStatusPromise =
+      this.gameMode === "king"
+        ? Promise.resolve(true)
+        : this.loadTutorialStatus();
+
     const [selectedRaider, tutorialCompleted] = await Promise.all([
-      this.loadSelectedRaider(),
-      this.loadTutorialStatus(),
+      selectedRaiderPromise,
+      tutorialStatusPromise,
     ]);
 
     this.characterInUse = selectedRaider;
 
-    this.shouldShowTutorial = !tutorialCompleted;
+    this.shouldShowTutorial = this.gameMode === "normal" && !tutorialCompleted;
 
     this.tutorialStatusLoaded = true;
 
@@ -164,6 +223,13 @@ export class Game extends Scene {
     this.characterInUse = this.characterInUse ?? 16;
 
     await this.loadSelectedRaiderAssets(this.characterInUse);
+    if (this.gameMode === "king") {
+      if (this.kingCharacterCode === null || this.kingBattleToken === null) {
+        throw new Error("[Game] King Battle data is missing.");
+      }
+
+      await this.loadKingEnemyAssets(this.kingCharacterCode);
+    }
 
     if (!this.sys.isActive()) {
       return;
@@ -173,20 +239,28 @@ export class Game extends Scene {
 
     const playerStartY = WORLD_H - 90;
 
-    const campPositions = [
-      {
-        x: 210,
-        y: 235,
-      },
-      {
-        x: WORLD_W / 2,
-        y: 205,
-      },
-      {
-        x: WORLD_W - 210,
-        y: 235,
-      },
-    ];
+    const campPositions =
+      this.gameMode === "king"
+        ? [
+            {
+              x: WORLD_W / 2,
+              y: 225,
+            },
+          ]
+        : [
+            {
+              x: 210,
+              y: 235,
+            },
+            {
+              x: WORLD_W / 2,
+              y: 205,
+            },
+            {
+              x: WORLD_W - 210,
+              y: 235,
+            },
+          ];
 
     this.camps = campPositions.map((position) => {
       const camp = new Camp(this, position.x, position.y);
@@ -212,11 +286,17 @@ export class Game extends Scene {
 
     this.controls.create();
 
-    this.base = new Base(this, this.player, this.camps);
+    if (this.gameMode === "king") {
+      this.base = null;
 
-    this.base.create();
+      this.createKingEnemy();
+    } else {
+      this.base = new Base(this, this.player, this.camps);
 
-    this.createLevelEnemies(1);
+      this.base.create();
+
+      this.createLevelEnemies(1);
+    }
 
     this.catastrophe = new Catastrophe(this, 1);
 
@@ -331,7 +411,6 @@ export class Game extends Scene {
       !this.player.robotSprite.active ||
       !this.player.robotSprite.anims ||
       !this.controls ||
-      !this.base ||
       !this.catastrophe
     ) {
       return;
@@ -374,7 +453,9 @@ export class Game extends Scene {
         enemy.update?.(time, delta);
       });
 
-      this.base?.update?.(time, delta);
+      if (this.gameMode === "normal") {
+        this.base?.update?.(time, delta);
+      }
 
       this.catastrophe?.update?.(time, delta);
     }
@@ -382,19 +463,21 @@ export class Game extends Scene {
     if (battleUI && gameplayRunning) {
       battleUI.updateTimer(this.catastrophe.getTimeUntilNextStorm());
 
-      const aliveEnemies = this.enemies.filter((enemy) => !enemy.isDead);
+      if (this.gameMode === "normal") {
+        const aliveEnemies = this.enemies.filter((enemy) => !enemy.isDead);
 
-      if (aliveEnemies.length > 0) {
-        const highestLevelEnemy = aliveEnemies.reduce(
-          (firstEnemy, secondEnemy) =>
-            firstEnemy.strengthenLevel > secondEnemy.strengthenLevel
-              ? firstEnemy
-              : secondEnemy,
-        );
+        if (aliveEnemies.length > 0) {
+          const highestLevelEnemy = aliveEnemies.reduce(
+            (firstEnemy, secondEnemy) =>
+              firstEnemy.strengthenLevel > secondEnemy.strengthenLevel
+                ? firstEnemy
+                : secondEnemy,
+          );
 
-        battleUI.updateStrengthenTimer(
-          highestLevelEnemy.getTimeUntilNextStrengthen(),
-        );
+          battleUI.updateStrengthenTimer(
+            highestLevelEnemy.getTimeUntilNextStrengthen(),
+          );
+        }
       }
     }
   }
@@ -472,6 +555,50 @@ export class Game extends Scene {
 
       this.spawnEnemy(spawnPosition.x, spawnPosition.y, null, baseLevel, true);
     }
+  }
+  private createKingEnemy(): void {
+    if (this.kingCharacterCode === null) {
+      throw new Error("[Game] King character code is missing.");
+    }
+
+    const kingCamp = this.camps[0];
+
+    if (!kingCamp) {
+      throw new Error("[Game] King camp is missing.");
+    }
+
+    const spawnPosition = this.getCampSpawnPosition(kingCamp);
+
+    const king = new Enemy(
+      this,
+
+      spawnPosition.x,
+      spawnPosition.y,
+
+      this.kingCharacterCode,
+
+      kingCamp,
+
+      this.player,
+
+      1,
+
+      null,
+
+      false,
+
+      false,
+
+      true,
+
+      false,
+    );
+
+    king.patrolling = false;
+
+    king.create();
+
+    this.enemies.push(king);
   }
 
   private spawnEnemy(
@@ -586,6 +713,9 @@ export class Game extends Scene {
   }
 
   createEnemy(baseLevel: number): void {
+    if (this.gameMode === "king") {
+      return;
+    }
     // remove dead enemies from array before creating new ones to avoid memory leaks and performance issues
     this.enemies = this.enemies.filter((enemy) => !enemy.isDead);
 
@@ -733,6 +863,190 @@ export class Game extends Scene {
 
       this.load.start();
     });
+  }
+
+  private async loadKingEnemyAssets(characterCode: number): Promise<void> {
+    const character = characterMap[characterCode];
+
+    if (!character || character.type !== "enemy") {
+      throw new Error(`[Game] Invalid King enemy code: ${characterCode}`);
+    }
+
+    const config = character.enemyAnimations;
+
+    const assets = [
+      {
+        key: config.idle.spritesheetKey,
+
+        path: `characters/raider/${config.idle.spritesheetKey}.png`,
+      },
+      {
+        key: config.move.spritesheetKey,
+
+        path: `characters/raider/${config.move.spritesheetKey}.png`,
+      },
+      {
+        key: config.attack.spritesheetKey,
+
+        path: `characters/raider/${config.attack.spritesheetKey}.png`,
+      },
+      {
+        key: config.death.spritesheetKey,
+
+        path: `characters/raider/${config.death.spritesheetKey}.png`,
+      },
+    ];
+
+    const missingAssets = assets.filter(
+      (asset) => !this.textures.exists(asset.key),
+    );
+
+    if (missingAssets.length === 0) {
+      console.log("[Game] King assets already loaded:", characterCode);
+
+      return;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const handleLoadError = (file: Phaser.Loader.File): void => {
+        cleanup();
+
+        reject(new Error(`[Game] Failed to load King asset ${file.key}`));
+      };
+
+      const handleComplete = (): void => {
+        cleanup();
+
+        resolve();
+      };
+
+      const cleanup = (): void => {
+        this.load.off("loaderror", handleLoadError);
+
+        this.load.off("complete", handleComplete);
+      };
+
+      this.load.once("loaderror", handleLoadError);
+
+      this.load.once("complete", handleComplete);
+
+      missingAssets.forEach((asset) => {
+        this.load.spritesheet(
+          asset.key,
+
+          `../assets/${asset.path}`,
+
+          {
+            frameWidth: 128,
+            frameHeight: 128,
+          },
+        );
+      });
+
+      this.load.start();
+    });
+  }
+
+  public async handleKingDefeated(king: Enemy): Promise<void> {
+    if (this.gameMode !== "king" || this.kingVictoryHandled) {
+      return;
+    }
+
+    this.kingVictoryHandled = true;
+
+    this.isGameOver = true;
+
+    this.isGamePaused = true;
+
+    this.allowInput = false;
+
+    this.controls?.onPlayerDeath?.();
+
+    if (this.player?.currentTween) {
+      this.player.currentTween.stop();
+
+      this.player.currentTween = null;
+    }
+
+    const battleUI = this.scene.get("BattleUI") as any;
+
+    battleUI?.pauseMultiplier?.();
+
+    if (!this.kingBattleToken || this.kingCharacterCode === null) {
+      battleUI?.createKingVictoryScreen?.({
+        success: false,
+
+        message: "King Battle data is missing.",
+      });
+
+      return;
+    }
+
+    const currentMultiplier = Number(battleUI?.multiplier ?? 0.5);
+
+    const kingSlayerScore = Phaser.Math.Clamp(
+      Math.round(currentMultiplier * 100),
+      50,
+      500,
+    );
+
+    try {
+      const response = await fetch("/api/king-victory", {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+
+          Accept: "application/json",
+        },
+
+        body: JSON.stringify({
+          battleToken: this.kingBattleToken,
+          kingCharacterCode: this.kingCharacterCode,
+          score: kingSlayerScore,
+        }),
+      });
+
+      const responseData = (await response.json()) as
+        | CompleteKingBattleResponse
+        | ApiErrorResponse;
+
+      if (
+        !response.ok ||
+        !("type" in responseData) ||
+        responseData.type !== "complete-king-battle"
+      ) {
+        const message =
+          "message" in responseData
+            ? responseData.message
+            : "Unable to complete King Battle.";
+
+        throw new Error(message);
+      }
+
+      this.kingBattleToken = null;
+
+      battleUI?.createKingVictoryScreen?.({
+        success: true,
+
+        message: responseData.message,
+
+        unlockedCharacterCode: responseData.unlockedCharacterCode,
+
+        alreadyUnlocked: responseData.alreadyUnlocked,
+      });
+    } catch (error) {
+      console.error("[Game] King victory submission failed:", error);
+
+      battleUI?.createKingVictoryScreen?.({
+        success: false,
+
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to save King victory.",
+      });
+    }
   }
 
   public getTutorialEnemy(): any | null {
