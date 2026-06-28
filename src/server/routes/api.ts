@@ -47,6 +47,8 @@ import type {
   CompleteTutorialResponse,
   ShareKingSlayerLeaderboardResponse,
   SharedKingSlayerPostResponse,
+  ShareKingVictoryResponse,
+  SharedKingVictoryPostResponse,
 } from "../../shared/api";
 
 export const api = new Hono();
@@ -79,21 +81,22 @@ const PLAYER_SELECTED_RAIDER_KEY = "the-young-raider:players:selected-raider";
 
 const DEFAULT_RAIDER_CODE = 16;
 
-const VALID_RAIDER_CODES = new Set([16, 17, 18, 19]);
+const VALID_RAIDER_CODES = new Set([16, 17, 18, 19, 21, 23, 25, 27, 29, 31]);
 
 const PLAYER_OWNED_RAIDERS_KEY = "the-young-raider:players:owned-raiders";
 
 const PLAYER_TUTORIAL_KEY = "the-young-raider:players:tutorial-completed";
 
-const KING_ENTRY_COST = 5;
+const BASE_KING_ENTRY_COST = 5;
+
+const KING_LEVEL_GROWTH = 1.05;
+
+const PLAYER_DAILY_KING_DEFEATS_KEY =
+  "the-young-raider:players:daily-king-defeats";
 
 const KING_BATTLE_TOKEN_DURATION_MS = 30 * 60 * 1000;
 
 const KING_BATTLE_TOKEN_PREFIX = "the-young-raider:king-battle-token:";
-
-const SATURDAY_KING_ENEMY_CODE = 20;
-
-const SATURDAY_KING_UNLOCK_CODE = 19;
 
 const PLAYER_DEFEATED_KINGS_KEY = "the-young-raider:players:defeated-kings";
 
@@ -101,33 +104,142 @@ const KING_SLAYER_LEADERBOARD_KEY = "the-young-raider:leaderboard:king-slayer";
 
 const KING_SLAYER_KILLS_KEY = "the-young-raider:players:king-kills";
 
+const PLAYER_LATEST_KING_VICTORY_KEY =
+  "the-young-raider:players:latest-king-victory";
+
 const KING_SLAYER_LEADERBOARD_SIZE = 100;
 
 const MAXIMUM_KING_SCORE_PER_CLEAR = 500;
+
+type StoredLatestKingVictory = {
+  dateKey: string;
+
+  serverDay: KingDay;
+
+  kingCharacterCode: number;
+
+  kingLevel: number;
+
+  scoreAwarded: number;
+
+  totalKills: number;
+
+  completedAt: number;
+};
 
 function getDefeatedKingField(username: string, day: KingDay): string {
   return `${username}:${day}`;
 }
 
+function getDailyKingDefeatsField(username: string, dateKey: string): string {
+  return `${username}:${dateKey}`;
+}
+
+function parseKingDefeatCount(rawValue: string | undefined | null): number {
+  if (!rawValue) {
+    return 0;
+  }
+
+  const parsedValue = Number.parseInt(rawValue, 10);
+
+  if (!Number.isFinite(parsedValue)) {
+    return 0;
+  }
+
+  return Math.max(0, parsedValue);
+}
+
+function getKingLevelFromDefeats(defeatsToday: number): number {
+  return Math.max(1, Math.floor(defeatsToday) + 1);
+}
+
+function getKingEntryCost(kingLevel: number): number {
+  const safeLevel = Math.max(1, Math.floor(kingLevel));
+
+  return Math.ceil(
+    BASE_KING_ENTRY_COST * Math.pow(KING_LEVEL_GROWTH, safeLevel - 1),
+  );
+}
+
 type KingConfiguration = {
   day: KingDay;
 
-  enemyCharacterCode: number;
-
+  kingCharacterCode: number;
   unlockCharacterCode: number;
 
-  entryCost: number;
+  kingName: string;
+  rewardName: string;
+
+  iconKey: string;
 };
 
-const KING_CONFIGURATIONS: Partial<Record<KingDay, KingConfiguration>> = {
+const TEMPORARY_KING_CHARACTER_CODE = 20;
+const TEMPORARY_UNLOCK_CHARACTER_CODE = 19;
+const TEMPORARY_REWARD_NAME = "CHICKEN RAIDER";
+const TEMPORARY_ICON_KEY = "raider4Icon";
+
+const KING_CONFIGURATIONS: Record<KingDay, KingConfiguration> = {
+  monday: {
+    day: "monday",
+    kingCharacterCode: 24,
+    unlockCharacterCode: 23,
+    kingName: "MONDAY KING",
+    rewardName: "CHEM RAIDER",
+    iconKey: "raider6Icon",
+  },
+
+  tuesday: {
+    day: "tuesday",
+    kingCharacterCode: 26,
+    unlockCharacterCode: 25,
+    kingName: "TUESDAY KING",
+    rewardName: "SPACE RAIDER",
+    iconKey: "raider7Icon",
+  },
+
+  wednesday: {
+    day: "wednesday",
+    kingCharacterCode: 28,
+    unlockCharacterCode: 27,
+    kingName: "WEDNESDAY KING",
+    rewardName: "MECHA RAIDER",
+    iconKey: "raider8Icon",
+  },
+
+  thursday: {
+    day: "thursday",
+    kingCharacterCode: 30,
+    unlockCharacterCode: 29,
+    kingName: "THURSDAY KING",
+    rewardName: "FULLMETAL RAIDER",
+    iconKey: "raider9Icon",
+  },
+
+  friday: {
+    day: "friday",
+    kingCharacterCode: 32,
+    unlockCharacterCode: 31,
+    kingName: "FRIDAY KING",
+    rewardName: "ALIEN RAIDER",
+    iconKey: "raider10Icon",
+  },
+
   saturday: {
     day: "saturday",
+    kingCharacterCode: 20,
+    unlockCharacterCode: 19,
+    kingName: "SATURDAY KING",
+    rewardName: "CHICKEN RAIDER",
+    iconKey: "raider4Icon",
+  },
 
-    enemyCharacterCode: SATURDAY_KING_ENEMY_CODE,
-
-    unlockCharacterCode: SATURDAY_KING_UNLOCK_CODE,
-
-    entryCost: KING_ENTRY_COST,
+  sunday: {
+    day: "sunday",
+    kingCharacterCode: 22,
+    unlockCharacterCode: 21,
+    kingName: "SUNDAY KING",
+    rewardName: "BEAR RAIDER",
+    iconKey: "raider5Icon",
   },
 };
 
@@ -151,6 +263,20 @@ function getCurrentKingConfiguration(): KingConfiguration | null {
   return KING_CONFIGURATIONS[serverDay] ?? null;
 }
 
+function getNextKingResetAt(): number {
+  const now = new Date();
+
+  return Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() + 1,
+    0,
+    0,
+    0,
+    0,
+  );
+}
+
 function getKingBattleTokenKey(token: string): string {
   return `${KING_BATTLE_TOKEN_PREFIX}${token}`;
 }
@@ -159,13 +285,15 @@ type StoredKingBattleToken = {
   username: string;
 
   serverDay: KingDay;
+  dateKey: string;
 
   enemyCharacterCode: number;
-
   unlockCharacterCode: number;
 
-  createdAt: number;
+  kingLevel: number;
+  entryCost: number;
 
+  createdAt: number;
   expiresAt: number;
 };
 
@@ -1503,6 +1631,13 @@ api.get("/shared-profile-post", async (c) => {
           kills?: unknown;
 
           globalRank?: unknown;
+          kingDay?: unknown;
+          kingName?: unknown;
+          kingLevel?: unknown;
+          kingCharacterCode?: unknown;
+          iconKey?: unknown;
+          scoreAwarded?: unknown;
+          totalKills?: unknown;
         }
       | undefined;
 
@@ -1516,11 +1651,82 @@ api.get("/shared-profile-post", async (c) => {
       );
     }
 
+    if (postData.postType === "shared-king-victory") {
+      const username = String(postData.username ?? "Unknown King Slayer");
+
+      const kingDay = String(postData.kingDay ?? "") as KingDay;
+
+      const kingName = String(postData.kingName ?? "DAILY KING");
+
+      const kingLevel = Number(postData.kingLevel);
+
+      const kingCharacterCode = Number(postData.kingCharacterCode);
+
+      const iconKey = String(postData.iconKey ?? "");
+
+      const scoreAwarded = Number(postData.scoreAwarded);
+
+      const totalKills = Number(postData.totalKills);
+
+      const validDays: readonly KingDay[] = [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+      ];
+
+      if (
+        !validDays.includes(kingDay) ||
+        kingName.length < 1 ||
+        !Number.isInteger(kingLevel) ||
+        kingLevel < 1 ||
+        !Number.isInteger(kingCharacterCode) ||
+        !Number.isInteger(scoreAwarded) ||
+        scoreAwarded < 0 ||
+        !Number.isInteger(totalKills) ||
+        totalKills < 1 ||
+        iconKey.length < 1
+      ) {
+        return c.json<ApiErrorResponse>(
+          {
+            status: "error",
+            message: "The shared King victory data is invalid.",
+          },
+          400,
+        );
+      }
+
+      return c.json<SharedKingVictoryPostResponse>({
+        type: "shared-king-victory-post",
+
+        data: {
+          postType: "shared-king-victory",
+
+          username,
+
+          kingDay,
+
+          kingName,
+
+          kingLevel,
+
+          kingCharacterCode,
+
+          iconKey,
+
+          scoreAwarded,
+
+          totalKills,
+        },
+      });
+    }
+
     // share king slayer leaderboard
     if (postData.postType === "shared-king-slayer") {
-      const username = String(
-        postData.username ?? "Unknown King Slayer",
-      );
+      const username = String(postData.username ?? "Unknown King Slayer");
 
       const score = Number(postData.score);
 
@@ -1529,9 +1735,7 @@ api.get("/shared-profile-post", async (c) => {
       const rawRank = postData.globalRank;
 
       const globalRank =
-        rawRank === null || rawRank === undefined
-          ? null
-          : Number(rawRank);
+        rawRank === null || rawRank === undefined ? null : Number(rawRank);
 
       if (
         !Number.isFinite(score) ||
@@ -1573,24 +1777,16 @@ api.get("/shared-profile-post", async (c) => {
 
     // share profile leaderboard
     if (postData.postType === "shared-profile") {
-      const username = String(
-        postData.username ?? "Unknown Raider",
-      );
+      const username = String(postData.username ?? "Unknown Raider");
 
-      const highestScore = Number(
-        postData.highestScore,
-      );
+      const highestScore = Number(postData.highestScore);
 
-      const highestBaseSeen = Number(
-        postData.highestBaseSeen,
-      );
+      const highestBaseSeen = Number(postData.highestBaseSeen);
 
       const rawRank = postData.globalRank;
 
       const globalRank =
-        rawRank === null || rawRank === undefined
-          ? null
-          : Number(rawRank);
+        rawRank === null || rawRank === undefined ? null : Number(rawRank);
 
       if (
         !Number.isFinite(highestScore) ||
@@ -1639,15 +1835,10 @@ api.get("/shared-profile-post", async (c) => {
       404,
     );
   } catch (error) {
-    console.error(
-      "[Shared Profile Post] Failed:",
-      error,
-    );
+    console.error("[Shared Profile Post] Failed:", error);
 
     const message =
-      error instanceof Error
-        ? error.message
-        : "Unknown shared-profile error";
+      error instanceof Error ? error.message : "Unknown shared-profile error";
 
     return c.json<ApiErrorResponse>(
       {
@@ -2262,20 +2453,34 @@ api.get("/raider-collection", async (c) => {
         [username]: String(DEFAULT_RAIDER_CODE),
       });
     }
-    const defeatedSaturdayKing =
-      (await redis.hGet(
-        PLAYER_DEFEATED_KINGS_KEY,
-        getDefeatedKingField(username, "saturday"),
-      )) === "1";
 
-    const raiders: RaiderCollectionItem[] = ownershipValues.map(
-      ({ characterCode, owned }) => {
+    const raiders: RaiderCollectionItem[] = await Promise.all(
+      ownershipValues.map(async ({ characterCode, owned }) => {
         const requirement = getRaiderRequirement(characterCode);
 
         if (!requirement) {
           throw new Error(
             `Missing unlock requirement for Raider ${characterCode}.`,
           );
+        }
+
+        let requirementMet = owned;
+
+        if (!requirementMet) {
+          if (requirement.type === "king") {
+            const defeatedKingValue = await redis.hGet(
+              PLAYER_DEFEATED_KINGS_KEY,
+              getDefeatedKingField(username, requirement.kingDay),
+            );
+
+            requirementMet = defeatedKingValue === "1";
+          } else {
+            requirementMet = hasMetRaiderRequirement(
+              requirement,
+              playerValues.allTimeHighScore,
+              playerValues.cash,
+            );
+          }
         }
 
         return {
@@ -2289,17 +2494,12 @@ api.get("/raider-collection", async (c) => {
 
           requirementAmount: requirement.amount,
 
-          requirementMet:
-            owned ||
-            (requirement.type === "king"
-              ? requirement.kingDay === "saturday" && defeatedSaturdayKing
-              : hasMetRaiderRequirement(
-                  requirement,
-                  playerValues.allTimeHighScore,
-                  playerValues.cash,
-                )),
+          requirementMet,
+
+          kingDay:
+            requirement.type === "king" ? requirement.kingDay : undefined,
         };
-      },
+      }),
     );
 
     return c.json<RaiderCollectionResponse>({
@@ -2669,8 +2869,7 @@ api.get("/king-status", async (c) => {
       return c.json<ApiErrorResponse>(
         {
           status: "error",
-
-          message: "You must be logged in to enter a King Battle.",
+          message: "You must be logged in to view today's King.",
         },
         401,
       );
@@ -2678,43 +2877,67 @@ api.get("/king-status", async (c) => {
 
     const configuration = getCurrentKingConfiguration();
 
-    const serverDay = getCurrentServerDay();
-
     if (!configuration) {
       return c.json<ApiErrorResponse>(
         {
           status: "error",
-
-          message: "Today's King Battle is not available yet.",
+          message: "Today's King Battle is not available.",
         },
         404,
       );
     }
 
-    const [cashValue, alreadyUnlocked] = await Promise.all([
+    const gameDay = getGameDayInfo();
+
+    const dailyDefeatsField = getDailyKingDefeatsField(
+      username,
+      gameDay.dateKey,
+    );
+
+    const [cashValue, alreadyUnlocked, dailyDefeatsValue] = await Promise.all([
       redis.hGet(PLAYER_CASH_KEY, username),
 
       playerOwnsRaider(username, configuration.unlockCharacterCode),
+
+      redis.hGet(PLAYER_DAILY_KING_DEFEATS_KEY, dailyDefeatsField),
     ]);
 
     const currentCash = parseStoredCash(cashValue);
 
+    const defeatsToday = parseKingDefeatCount(dailyDefeatsValue);
+
+    const kingLevel = getKingLevelFromDefeats(defeatsToday);
+
+    const entryCost = getKingEntryCost(kingLevel);
+
     return c.json<KingStatusResponse>({
       type: "king-status",
 
-      serverDay,
+      serverDay: configuration.day,
 
-      kingCharacterCode: configuration.enemyCharacterCode,
+      kingCharacterCode: configuration.kingCharacterCode,
 
       unlockCharacterCode: configuration.unlockCharacterCode,
 
-      entryCost: configuration.entryCost,
+      kingName: configuration.kingName,
+
+      rewardName: configuration.rewardName,
+
+      iconKey: configuration.iconKey,
+
+      kingLevel,
+
+      defeatsToday,
+
+      entryCost,
 
       currentCash,
 
-      canEnter: currentCash >= configuration.entryCost,
+      canEnter: currentCash >= entryCost,
 
       alreadyUnlocked,
+
+      nextResetAt: gameDay.nextResetAt,
     });
   } catch (error) {
     console.error("[King Status] Failed:", error);
@@ -2725,7 +2948,6 @@ api.get("/king-status", async (c) => {
     return c.json<ApiErrorResponse>(
       {
         status: "error",
-
         message: `Unable to load King Battle: ${message}`,
       },
       500,
@@ -2741,7 +2963,6 @@ api.post("/king-entry", async (c) => {
       return c.json<ApiErrorResponse>(
         {
           status: "error",
-
           message: "You must be logged in to enter a King Battle.",
         },
         401,
@@ -2754,7 +2975,6 @@ api.post("/king-entry", async (c) => {
       return c.json<ApiErrorResponse>(
         {
           status: "error",
-
           message: "King Battle information is required.",
         },
         400,
@@ -2763,46 +2983,63 @@ api.post("/king-entry", async (c) => {
 
     const configuration = getCurrentKingConfiguration();
 
-    const serverDay = getCurrentServerDay();
-
     if (!configuration) {
       return c.json<ApiErrorResponse>(
         {
           status: "error",
-
-          message: "Today's King Battle is not available yet.",
+          message: "Today's King Battle is not available.",
         },
         404,
       );
     }
 
-    if (body.expectedDay !== serverDay) {
+    if (body.expectedDay !== configuration.day) {
       return c.json<ApiErrorResponse>(
         {
           status: "error",
-
           message:
-            "The server day changed. Please reopen the King Battle menu.",
+            "The daily King has changed. Please return to the Main Menu.",
         },
         409,
       );
     }
 
     for (let attempt = 0; attempt < 5; attempt++) {
-      const transaction = await redis.watch(PLAYER_CASH_KEY);
+      const gameDay = getGameDayInfo();
 
-      const cashValue = await redis.hGet(PLAYER_CASH_KEY, username);
+      const dailyDefeatsField = getDailyKingDefeatsField(
+        username,
+        gameDay.dateKey,
+      );
+
+      const transaction = await redis.watch(
+        PLAYER_CASH_KEY,
+        PLAYER_DAILY_KING_DEFEATS_KEY,
+      );
+
+      const [cashValue, dailyDefeatsValue] = await Promise.all([
+        redis.hGet(PLAYER_CASH_KEY, username),
+
+        redis.hGet(PLAYER_DAILY_KING_DEFEATS_KEY, dailyDefeatsField),
+      ]);
 
       const currentCash = parseStoredCash(cashValue);
 
-      if (currentCash < configuration.entryCost) {
+      const defeatsToday = parseKingDefeatCount(dailyDefeatsValue);
+
+      const kingLevel = getKingLevelFromDefeats(defeatsToday);
+
+      const entryCost = getKingEntryCost(kingLevel);
+
+      if (currentCash < entryCost) {
         await transaction.unwatch();
 
         return c.json<ApiErrorResponse>(
           {
             status: "error",
-
-            message: `You need ${configuration.entryCost} cash to enter this King Battle.`,
+            message:
+              `You need ${entryCost} cash ` +
+              `to enter Level ${kingLevel} King Battle.`,
           },
           403,
         );
@@ -2817,11 +3054,15 @@ api.post("/king-entry", async (c) => {
       const tokenData: StoredKingBattleToken = {
         username,
 
-        serverDay,
+        serverDay: configuration.day,
+        dateKey: gameDay.dateKey,
 
-        enemyCharacterCode: configuration.enemyCharacterCode,
+        enemyCharacterCode: configuration.kingCharacterCode,
 
         unlockCharacterCode: configuration.unlockCharacterCode,
+
+        kingLevel,
+        entryCost,
 
         createdAt,
 
@@ -2830,11 +3071,7 @@ api.post("/king-entry", async (c) => {
 
       await transaction.multi();
 
-      await transaction.hIncrBy(
-        PLAYER_CASH_KEY,
-        username,
-        -configuration.entryCost,
-      );
+      await transaction.hIncrBy(PLAYER_CASH_KEY, username, -entryCost);
 
       const result = await transaction.exec();
 
@@ -2854,15 +3091,19 @@ api.post("/king-entry", async (c) => {
 
         status: "success",
 
-        serverDay,
+        serverDay: configuration.day,
 
-        kingCharacterCode: configuration.enemyCharacterCode,
+        kingCharacterCode: configuration.kingCharacterCode,
 
         unlockCharacterCode: configuration.unlockCharacterCode,
 
-        entryCost: configuration.entryCost,
+        kingLevel,
 
-        remainingCash: currentCash - configuration.entryCost,
+        defeatsToday,
+
+        entryCost,
+
+        remainingCash: currentCash - entryCost,
 
         battleToken,
       });
@@ -2871,8 +3112,7 @@ api.post("/king-entry", async (c) => {
     return c.json<ApiErrorResponse>(
       {
         status: "error",
-
-        message: "Your cash changed while entering. Please try again.",
+        message: "Your King progress changed while entering. Please try again.",
       },
       409,
     );
@@ -2885,7 +3125,6 @@ api.post("/king-entry", async (c) => {
     return c.json<ApiErrorResponse>(
       {
         status: "error",
-
         message: `Unable to enter King Battle: ${message}`,
       },
       500,
@@ -2901,7 +3140,6 @@ api.post("/king-victory", async (c) => {
       return c.json<ApiErrorResponse>(
         {
           status: "error",
-
           message: "You must be logged in to complete a King Battle.",
         },
         401,
@@ -2920,7 +3158,6 @@ api.post("/king-victory", async (c) => {
       return c.json<ApiErrorResponse>(
         {
           status: "error",
-
           message: "A valid King Battle token is required.",
         },
         400,
@@ -2933,7 +3170,6 @@ api.post("/king-victory", async (c) => {
       return c.json<ApiErrorResponse>(
         {
           status: "error",
-
           message: "The defeated King is invalid.",
         },
         400,
@@ -2951,7 +3187,6 @@ api.post("/king-victory", async (c) => {
       return c.json<ApiErrorResponse>(
         {
           status: "error",
-
           message: "The submitted King Slayer score is invalid.",
         },
         400,
@@ -2960,118 +3195,335 @@ api.post("/king-victory", async (c) => {
 
     const tokenKey = getKingBattleTokenKey(body.battleToken);
 
-    const rawToken = await redis.get(tokenKey);
-
-    if (!rawToken) {
-      return c.json<ApiErrorResponse>(
-        {
-          status: "error",
-
-          message:
-            "This King Battle has expired or has already been completed.",
-        },
-        410,
+    for (let attempt = 0; attempt < 5; attempt++) {
+      // If another request changes any of these keys before exec(), redis cancels the transaction and we retry.
+      const transaction = await redis.watch(
+        tokenKey,
+        PLAYER_DAILY_KING_DEFEATS_KEY,
+        PLAYER_DEFEATED_KINGS_KEY,
+        KING_SLAYER_LEADERBOARD_KEY,
+        KING_SLAYER_KILLS_KEY,
+        PLAYER_LATEST_KING_VICTORY_KEY,
       );
+
+      const rawToken = await redis.get(tokenKey);
+
+      if (!rawToken) {
+        await transaction.unwatch();
+
+        return c.json<ApiErrorResponse>(
+          {
+            status: "error",
+            message:
+              "This King Battle has expired or has already been completed.",
+          },
+          410,
+        );
+      }
+
+      let tokenData: StoredKingBattleToken;
+
+      try {
+        tokenData = JSON.parse(rawToken) as StoredKingBattleToken;
+      } catch {
+        await transaction.unwatch();
+
+        // Invalid token data cannot be used, so remove it.
+        await redis.del(tokenKey);
+
+        return c.json<ApiErrorResponse>(
+          {
+            status: "error",
+            message: "The King Battle token is invalid.",
+          },
+          400,
+        );
+      }
+
+      if (
+        typeof tokenData.username !== "string" ||
+        typeof tokenData.serverDay !== "string" ||
+        typeof tokenData.dateKey !== "string" ||
+        !Number.isInteger(tokenData.enemyCharacterCode) ||
+        !Number.isInteger(tokenData.unlockCharacterCode) ||
+        !Number.isInteger(tokenData.kingLevel) ||
+        tokenData.kingLevel < 1 ||
+        !Number.isInteger(tokenData.entryCost) ||
+        tokenData.entryCost < 0 ||
+        !Number.isFinite(tokenData.createdAt) ||
+        !Number.isFinite(tokenData.expiresAt)
+      ) {
+        await transaction.unwatch();
+
+        await redis.del(tokenKey);
+
+        return c.json<ApiErrorResponse>(
+          {
+            status: "error",
+            message: "The King Battle token contains invalid data.",
+          },
+          400,
+        );
+      }
+
+      if (tokenData.username !== username) {
+        await transaction.unwatch();
+
+        return c.json<ApiErrorResponse>(
+          {
+            status: "error",
+            message: "This King Battle belongs to another player.",
+          },
+          403,
+        );
+      }
+
+      if (Date.now() >= tokenData.expiresAt) {
+        await transaction.unwatch();
+
+        await redis.del(tokenKey);
+
+        return c.json<ApiErrorResponse>(
+          {
+            status: "error",
+            message: "This King Battle has expired.",
+          },
+          410,
+        );
+      }
+
+      if (kingCharacterCode !== tokenData.enemyCharacterCode) {
+        await transaction.unwatch();
+
+        return c.json<ApiErrorResponse>(
+          {
+            status: "error",
+            message: "The defeated King does not match this battle.",
+          },
+          400,
+        );
+      }
+
+      const currentGameDay = getGameDayInfo();
+
+      if (tokenData.dateKey !== currentGameDay.dateKey) {
+        await transaction.unwatch();
+
+        await redis.del(tokenKey);
+
+        return c.json<ApiErrorResponse>(
+          {
+            status: "error",
+            message: "This King Battle belongs to a previous daily King.",
+          },
+          409,
+        );
+      }
+
+      const currentConfiguration = getCurrentKingConfiguration();
+
+      if (
+        !currentConfiguration ||
+        currentConfiguration.day !== tokenData.serverDay ||
+        currentConfiguration.kingCharacterCode !== tokenData.enemyCharacterCode
+      ) {
+        await transaction.unwatch();
+
+        await redis.del(tokenKey);
+
+        return c.json<ApiErrorResponse>(
+          {
+            status: "error",
+            message:
+              "The daily King has changed. This battle can no longer be completed.",
+          },
+          409,
+        );
+      }
+
+      const dailyDefeatsField = getDailyKingDefeatsField(
+        username,
+        tokenData.dateKey,
+      );
+
+      const defeatedKingField = getDefeatedKingField(
+        username,
+        tokenData.serverDay,
+      );
+
+      const [
+        dailyDefeatsValue,
+        existingScoreValue,
+        existingKillsValue,
+        ownedRaiderValue,
+      ] = await Promise.all([
+        redis.hGet(PLAYER_DAILY_KING_DEFEATS_KEY, dailyDefeatsField),
+
+        redis.zScore(KING_SLAYER_LEADERBOARD_KEY, username),
+
+        redis.hGet(KING_SLAYER_KILLS_KEY, username),
+
+        redis.hGet(
+          PLAYER_OWNED_RAIDERS_KEY,
+          getOwnedRaiderField(username, tokenData.unlockCharacterCode),
+        ),
+      ]);
+
+      const currentDailyDefeats = parseKingDefeatCount(dailyDefeatsValue);
+
+      /*
+       * Level 1 means zero previous victories.
+       * Level 2 means one previous victory, and so on.
+       *
+       * This rejects an old lower-level token after the player has already
+       * progressed to a higher King level.
+       */
+      const expectedDefeatsBeforeVictory = tokenData.kingLevel - 1;
+
+      if (currentDailyDefeats !== expectedDefeatsBeforeVictory) {
+        await transaction.unwatch();
+
+        await redis.del(tokenKey);
+
+        return c.json<ApiErrorResponse>(
+          {
+            status: "error",
+            message:
+              "Your King level has already changed. Return to the Main Menu to enter the current King Battle.",
+          },
+          409,
+        );
+      }
+
+      const previousTotalScore =
+        existingScoreValue === undefined || existingScoreValue === null
+          ? 0
+          : Math.max(0, Math.floor(existingScoreValue));
+
+      const parsedTotalKills = existingKillsValue
+        ? Number.parseInt(existingKillsValue, 10)
+        : 0;
+
+      const previousTotalKills = Number.isFinite(parsedTotalKills)
+        ? Math.max(0, parsedTotalKills)
+        : 0;
+
+      const alreadyUnlocked = ownedRaiderValue === "1";
+
+      const defeatsToday = currentDailyDefeats + 1;
+
+      const nextKingLevel = getKingLevelFromDefeats(defeatsToday);
+
+      const nextEntryCost = getKingEntryCost(nextKingLevel);
+
+      const totalScore = previousTotalScore + submittedScore;
+
+      const totalKills = previousTotalKills + 1;
+
+      await transaction.multi();
+
+      // Consume the token inside the same transaction.
+      await transaction.del(tokenKey);
+
+      // Increase today's King defeat count.
+      await transaction.hIncrBy(
+        PLAYER_DAILY_KING_DEFEATS_KEY,
+        dailyDefeatsField,
+        1,
+      );
+
+      // Permanently record that this weekday King was defeated.
+      await transaction.hSet(PLAYER_DEFEATED_KINGS_KEY, {
+        [defeatedKingField]: "1",
+      });
+
+      // Update the all-time King Slayer leaderboard.
+      await transaction.zIncrBy(
+        KING_SLAYER_LEADERBOARD_KEY,
+        username,
+        submittedScore,
+      );
+
+      // Update all-time King kills.
+      await transaction.hIncrBy(KING_SLAYER_KILLS_KEY, username, 1);
+      const latestVictory: StoredLatestKingVictory = {
+        dateKey: tokenData.dateKey,
+
+        serverDay: tokenData.serverDay,
+
+        kingCharacterCode: tokenData.enemyCharacterCode,
+
+        kingLevel: tokenData.kingLevel,
+
+        scoreAwarded: submittedScore,
+
+        totalKills,
+
+        completedAt: Date.now(),
+      };
+
+      await transaction.hSet(PLAYER_LATEST_KING_VICTORY_KEY, {
+        [username]: JSON.stringify(latestVictory),
+      });
+      const result = await transaction.exec();
+
+      if (result === null) {
+        // watched key changed. retry and read the latest values
+        continue;
+      }
+
+      const completedConfiguration = KING_CONFIGURATIONS[tokenData.serverDay];
+
+      const completedKingName =
+        completedConfiguration?.kingName ??
+        `${tokenData.serverDay.toUpperCase()} KING`;
+
+      const rewardName = completedConfiguration?.rewardName ?? "RAIDER";
+
+      return c.json<CompleteKingBattleResponse>({
+        type: "complete-king-battle",
+
+        status: "success",
+
+        serverDay: tokenData.serverDay,
+
+        defeatedKingCharacterCode: tokenData.enemyCharacterCode,
+
+        unlockedCharacterCode: tokenData.unlockCharacterCode,
+
+        defeatedKingLevel: tokenData.kingLevel,
+
+        defeatsToday,
+
+        nextKingLevel,
+
+        nextEntryCost,
+
+        alreadyUnlocked,
+
+        scoreAwarded: submittedScore,
+
+        totalScore,
+
+        totalKills,
+
+        message: alreadyUnlocked
+          ? `${completedKingName} Level ${tokenData.kingLevel} defeated! ` +
+            `+${submittedScore} King Slayer score. `
+          : `${completedKingName} Level ${tokenData.kingLevel} defeated! ` +
+            `+${submittedScore} King Slayer score. ` +
+            `Visit Collections to unlock ${rewardName}. `,
+      });
     }
 
-    let tokenData: StoredKingBattleToken;
-
-    try {
-      tokenData = JSON.parse(rawToken) as StoredKingBattleToken;
-    } catch {
-      await redis.del(tokenKey);
-
-      return c.json<ApiErrorResponse>(
-        {
-          status: "error",
-
-          message: "The King Battle token is invalid.",
-        },
-        400,
-      );
-    }
-
-    if (tokenData.username !== username) {
-      return c.json<ApiErrorResponse>(
-        {
-          status: "error",
-
-          message: "This King Battle belongs to another player.",
-        },
-        403,
-      );
-    }
-
-    if (Date.now() >= tokenData.expiresAt) {
-      await redis.del(tokenKey);
-
-      return c.json<ApiErrorResponse>(
-        {
-          status: "error",
-
-          message: "This King Battle has expired.",
-        },
-        410,
-      );
-    }
-
-    if (kingCharacterCode !== tokenData.enemyCharacterCode) {
-      return c.json<ApiErrorResponse>(
-        {
-          status: "error",
-
-          message: "The defeated King does not match this battle.",
-        },
-        400,
-      );
-    }
-
-    const alreadyUnlocked = await playerOwnsRaider(
-      username,
-      tokenData.unlockCharacterCode,
+    return c.json<ApiErrorResponse>(
+      {
+        status: "error",
+        message:
+          "Your King progress changed while saving the victory. Please try again.",
+      },
+      409,
     );
-
-    await redis.del(tokenKey);
-
-    await redis.hSet(PLAYER_DEFEATED_KINGS_KEY, {
-      [getDefeatedKingField(username, tokenData.serverDay)]: "1",
-    });
-
-    const newTotalScore = await redis.zIncrBy(
-      KING_SLAYER_LEADERBOARD_KEY,
-      username,
-      submittedScore,
-    );
-
-    const newTotalKills = await redis.hIncrBy(
-      KING_SLAYER_KILLS_KEY,
-      username,
-      1,
-    );
-
-    return c.json<CompleteKingBattleResponse>({
-      type: "complete-king-battle",
-
-      status: "success",
-
-      serverDay: tokenData.serverDay,
-
-      defeatedKingCharacterCode: tokenData.enemyCharacterCode,
-
-      unlockedCharacterCode: tokenData.unlockCharacterCode,
-
-      alreadyUnlocked,
-
-      scoreAwarded: submittedScore,
-
-      totalScore: Math.max(0, Math.floor(newTotalScore)),
-
-      totalKills: Math.max(0, Math.floor(newTotalKills)),
-
-      message: alreadyUnlocked
-        ? `Saturday King defeated! +${submittedScore} King Slayer score.`
-        : `Saturday King defeated! +${submittedScore} King Slayer score. Visit Collections to unlock Chicken Raider.`,
-    });
   } catch (error) {
     console.error("[King Victory] Failed:", error);
 
@@ -3081,8 +3533,172 @@ api.post("/king-victory", async (c) => {
     return c.json<ApiErrorResponse>(
       {
         status: "error",
-
         message: `Unable to complete King Battle: ${message}`,
+      },
+      500,
+    );
+  }
+});
+
+api.post("/share-king-victory", async (c) => {
+  try {
+    const username = await reddit.getCurrentUsername();
+
+    if (!username) {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "You must be logged in to share a King victory.",
+        },
+        401,
+      );
+    }
+
+    const { subredditName } = context;
+
+    if (!subredditName) {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "The current subreddit could not be found.",
+        },
+        400,
+      );
+    }
+
+    const rawVictory = await redis.hGet(
+      PLAYER_LATEST_KING_VICTORY_KEY,
+      username,
+    );
+
+    if (!rawVictory) {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "No completed King victory was found.",
+        },
+        404,
+      );
+    }
+
+    let victory: StoredLatestKingVictory;
+
+    try {
+      victory = JSON.parse(rawVictory) as StoredLatestKingVictory;
+    } catch {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "Your latest King victory could not be read.",
+        },
+        500,
+      );
+    }
+
+    if (
+      typeof victory.dateKey !== "string" ||
+      typeof victory.serverDay !== "string" ||
+      !Number.isInteger(victory.kingCharacterCode) ||
+      !Number.isInteger(victory.kingLevel) ||
+      victory.kingLevel < 1 ||
+      !Number.isInteger(victory.scoreAwarded) ||
+      victory.scoreAwarded < 0 ||
+      !Number.isInteger(victory.totalKills) ||
+      victory.totalKills < 1
+    ) {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "Your latest King victory is invalid.",
+        },
+        500,
+      );
+    }
+
+    const configuration = KING_CONFIGURATIONS[victory.serverDay];
+
+    if (
+      !configuration ||
+      configuration.kingCharacterCode !== victory.kingCharacterCode
+    ) {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "The defeated King configuration could not be found.",
+        },
+        500,
+      );
+    }
+
+    const dayLabel =
+      victory.serverDay.charAt(0).toUpperCase() + victory.serverDay.slice(1);
+
+    const title =
+      `I defeated Level ${victory.kingLevel} ` +
+      `${dayLabel} King in The Young Raider!`;
+
+    const postText = [
+      `I have defeated Level ${victory.kingLevel} ${dayLabel} King.`,
+      "",
+      `King Slayer score earned: ${victory.scoreAwarded.toLocaleString()}`,
+      `Total Kings defeated: ${victory.totalKills.toLocaleString()}`,
+      "",
+      "Can you defeat a stronger King?",
+    ].join("\n");
+
+    await reddit.submitCustomPost({
+      runAs: "USER",
+
+      title,
+
+      entry: "sharedProfile",
+
+      postData: {
+        postType: "shared-king-victory",
+
+        username,
+
+        kingDay: victory.serverDay,
+
+        kingName: configuration.kingName,
+
+        kingLevel: victory.kingLevel,
+
+        kingCharacterCode: victory.kingCharacterCode,
+
+        iconKey: configuration.iconKey,
+
+        scoreAwarded: victory.scoreAwarded,
+
+        totalKills: victory.totalKills,
+      },
+
+      userGeneratedContent: {
+        text: postText,
+      },
+    });
+
+    return c.json<ShareKingVictoryResponse>({
+      type: "share-king-victory",
+
+      status: "success",
+
+      message:
+        `Level ${victory.kingLevel} ` +
+        `${dayLabel} King victory shared to r/${subredditName}!`,
+    });
+  } catch (error) {
+    console.error("[Share King Victory] Failed:", error);
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unknown King victory sharing error";
+
+    return c.json<ApiErrorResponse>(
+      {
+        status: "error",
+        message: `Unable to share King victory: ${message}`,
       },
       500,
     );

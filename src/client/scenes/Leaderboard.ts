@@ -226,10 +226,6 @@ export class Leaderboard extends Scene {
 
       this.kingSlayerPlayerRank = kingSlayerData.playerRank;
 
-      /*
-       * Both endpoints should return the same
-       * current Reddit username.
-       */
       if (!this.username) {
         this.username = kingSlayerData.username;
       }

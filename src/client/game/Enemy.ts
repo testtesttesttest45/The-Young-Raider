@@ -162,9 +162,14 @@ class Enemy {
     }
 
     this.animationConfig = character.enemyAnimations;
-    this.level = level;
+
+    this.level = Math.max(1, Math.floor(level));
+
     this.strengthenLevel = 1;
-    const levelMultiplier = 1 + (this.level - 1) * 0.3; // 20% increase per level
+
+    const levelMultiplier = this.isKing
+      ? Math.pow(1.05, this.level - 1) // king enemies get a 5% increase per level, while normal enemies get a 3% increase per level
+      : 1 + (this.level - 1) * 0.3;
     this.health = Math.round(character.health * levelMultiplier * 0.75); // player character and enemy character same, the enemy should be weaker
     this.maxHealth = this.health;
     this.isDead = false;

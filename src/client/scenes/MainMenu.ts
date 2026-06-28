@@ -2,7 +2,11 @@ import { GameObjects, Scene, Structs } from "phaser";
 import Phaser from "phaser";
 import type { ApiErrorResponse, PlayerProfileResponse } from "../../shared/api";
 
-import type { EnterKingBattleResponse } from "../../shared/raiderUnlocks";
+import type {
+  EnterKingBattleResponse,
+  KingDay,
+  KingStatusResponse,
+} from "../../shared/raiderUnlocks";
 
 type MainMenuLayout = {
   mobile: boolean;
@@ -113,6 +117,14 @@ export class MainMenu extends Scene {
   private dailyRewardCanClaim = false;
   private dailyRewardCountdownEvent: Phaser.Time.TimerEvent | null = null;
   private kingEntryInProgress = false;
+  private currentKingDay: KingDay = "saturday";
+  private currentKingName = "SATURDAY KING";
+  private currentKingRewardName = "CHICKEN RAIDER";
+  private currentKingIconKey = "raider4Icon";
+  private currentKingEntryCost = 5;
+  private currentKingLevel = 1;
+
+  private currentKingResetAt = 0;
 
   private currentActionWidth = ACTION_WIDTH;
   private currentActionHeight = ACTION_HEIGHT;
@@ -141,11 +153,18 @@ export class MainMenu extends Scene {
     this.dailyRewardCanClaim = false;
     this.dailyRewardCountdownEvent = null;
     this.kingEntryInProgress = false;
+    this.currentKingDay = "saturday";
+    this.currentKingName = "SATURDAY KING";
+    this.currentKingRewardName = "CHICKEN RAIDER";
+    this.currentKingIconKey = "raider4Icon";
+    this.currentKingEntryCost = 5;
+    this.currentKingResetAt = 0;
     this.currentActionWidth = ACTION_WIDTH;
     this.currentActionHeight = ACTION_HEIGHT;
+    this.currentKingLevel = 1;
   }
 
-  create(): void {
+  async create(): Promise<void> {
     const width = this.scale.width;
     const height = this.scale.height;
 
@@ -159,14 +178,8 @@ export class MainMenu extends Scene {
     this.mainCard = this.add.container(0, 0);
 
     this.createMainCard(this.layout);
-
     this.createHeader(this.layout);
-
     this.createProfilePanel(this.layout);
-
-    this.createMenuButtons(this.layout);
-
-    this.createFooter(this.layout);
 
     this.scale.on("resize", this.handleResize, this);
 
@@ -181,6 +194,15 @@ export class MainMenu extends Scene {
     });
 
     void this.loadPlayerProfile();
+
+    await this.loadKingStatus();
+
+    if (!this.sys.isActive() || !this.layout) {
+      return;
+    }
+
+    this.createMenuButtons(this.layout);
+    this.createFooter(this.layout);
   }
 
   private addRoundedRect(
@@ -605,7 +627,9 @@ export class MainMenu extends Scene {
       height: compact ? 50 : 58,
 
       title: "KING BATTLE",
-      subtitle: "SATURDAY KING  •  ENTRY: 5 CASH",
+      subtitle:
+        `${this.currentKingName} LV.${this.currentKingLevel}` +
+        `  •  ENTRY: ${this.currentKingEntryCost} CASH`,
 
       backgroundColor: 0x6b3515,
       borderColor: 0xffb45c,
@@ -848,6 +872,60 @@ export class MainMenu extends Scene {
       this.profileStatusText
         ?.setColor(TEXT.danger)
         .setText(["PROFILE UNAVAILABLE", message].join("\n"));
+    }
+  }
+
+  private async loadKingStatus(): Promise<void> {
+    try {
+      const response = await fetch("/api/king-status", {
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      const rawResponse = await response.text();
+
+      let responseData: KingStatusResponse | ApiErrorResponse;
+
+      try {
+        responseData = rawResponse
+          ? JSON.parse(rawResponse)
+          : {
+              status: "error",
+              message: "The server returned no King information.",
+            };
+      } catch {
+        throw new Error("The server returned invalid King information.");
+      }
+
+      if (
+        !response.ok ||
+        !("type" in responseData) ||
+        responseData.type !== "king-status"
+      ) {
+        const message =
+          "message" in responseData
+            ? responseData.message
+            : "Unable to load today's King.";
+
+        throw new Error(message);
+      }
+
+      this.currentKingDay = responseData.serverDay;
+
+      this.currentKingName = responseData.kingName;
+
+      this.currentKingRewardName = responseData.rewardName;
+
+      this.currentKingIconKey = responseData.iconKey;
+
+      this.currentKingEntryCost = responseData.entryCost;
+
+      this.currentKingLevel = responseData.kingLevel;
+
+      this.currentKingResetAt = responseData.nextResetAt;
+    } catch (error) {
+      console.error("[MainMenu] Failed to load King status:", error);
     }
   }
 
@@ -1910,7 +1988,7 @@ export class MainMenu extends Scene {
 
     this.kingEntryInProgress = true;
 
-    this.showCashRequestStatus("Preparing Saturday King Battle...", true);
+    this.showCashRequestStatus(`Preparing ${this.currentKingName}...`, true);
 
     try {
       const response = await fetch("/api/king-entry", {
@@ -1922,7 +2000,7 @@ export class MainMenu extends Scene {
         },
 
         body: JSON.stringify({
-          expectedDay: "saturday",
+          expectedDay: this.currentKingDay,
         }),
       });
 
@@ -1956,13 +2034,12 @@ export class MainMenu extends Scene {
 
       this.scene.start("Game", {
         mode: "king",
-
         kingDay: responseData.serverDay,
-
         kingCharacterCode: responseData.kingCharacterCode,
-
         unlockCharacterCode: responseData.unlockCharacterCode,
-
+        kingLevel: responseData.kingLevel,
+        kingName: this.currentKingName,
+        kingRewardName: this.currentKingRewardName,
         battleToken: responseData.battleToken,
       });
     } catch (error) {
@@ -2042,9 +2119,13 @@ export class MainMenu extends Scene {
       .circle(iconX, 0, iconRadius, 0x422515, 1)
       .setStrokeStyle(2, 0xffd37a, 0.9);
 
+    const sourceIconKey = this.textures.exists(this.currentKingIconKey)
+      ? this.currentKingIconKey
+      : "raider4Icon";
+
     const circularKingTexture = this.createCircularIconTexture(
-      "raider4Icon",
-      "raider4Icon_today_king_circular",
+      sourceIconKey,
+      `${sourceIconKey}_today_king_circular`,
       1.3,
     );
 
@@ -2066,7 +2147,7 @@ export class MainMenu extends Scene {
       .setOrigin(0, 0.5);
 
     const kingNameText = this.add
-      .text(textX, 1, "SATURDAY KING", {
+      .text(textX, 1, this.currentKingName, {
         font: `bold ${mobile ? 14 : 17}px Orbitron`,
 
         color: "#ffffff",
@@ -2078,18 +2159,23 @@ export class MainMenu extends Scene {
       .setOrigin(0, 0.5);
 
     const rewardText = this.add
-      .text(textX, 25, "DEFEAT TO UNLOCK CHICKEN RAIDER", {
-        font: `bold ${mobile ? 6 : 8}px Orbitron`,
+      .text(
+        textX,
+        25,
+        `DEFEAT TO UNLOCK ${this.currentKingRewardName.toUpperCase()}`,
+        {
+          font: `bold ${mobile ? 6 : 8}px Orbitron`,
 
-        color: "#ffcf86",
+          color: "#ffcf86",
 
-        stroke: "#000000",
+          stroke: "#000000",
 
-        strokeThickness: 2,
-        wordWrap: {
-          width: width - (mobile ? 96 : 125),
+          strokeThickness: 2,
+          wordWrap: {
+            width: width - (mobile ? 96 : 125),
+          },
         },
-      })
+      )
       .setOrigin(0, 0.5);
 
     container.add([

@@ -1,3 +1,5 @@
+import type { KingDay } from "./raiderUnlocks";
+
 export type InitResponse = {
   type: "init";
   postId: string;
@@ -216,6 +218,7 @@ export type RaiderCollectionItem = {
   requirementAmount: number;
 
   requirementMet: boolean;
+  kingDay?: KingDay;
 };
 
 export type RaiderCollectionResponse = {
@@ -276,4 +279,33 @@ export type SharedKingSlayerPostResponse = {
   type: "shared-king-slayer-post";
 
   data: SharedKingSlayerPostData;
+};
+
+export type ShareKingVictoryResponse = {
+  type: "share-king-victory";
+  status: "success";
+  message: string;
+};
+
+export type SharedKingVictoryPostData = {
+  postType: "shared-king-victory";
+
+  username: string;
+
+  kingDay: KingDay;
+  kingName: string;
+
+  kingLevel: number;
+  kingCharacterCode: number;
+
+  iconKey: string;
+
+  scoreAwarded: number;
+  totalKills: number;
+};
+
+export type SharedKingVictoryPostResponse = {
+  type: "shared-king-victory-post";
+
+  data: SharedKingVictoryPostData;
 };

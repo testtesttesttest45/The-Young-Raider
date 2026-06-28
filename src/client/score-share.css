@@ -173,7 +173,7 @@ body {
 .eyebrow {
     margin: 0 0 8px;
 
-    color: #82e6ff;
+    color: #000000;
 
     font-size: 11px;
     font-weight: 700;
@@ -425,4 +425,35 @@ button:disabled {
             translate(-50%, -50%)
             scale(1.08);
     }
+}
+
+.king-icon-frame {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 4px auto 14px;
+}
+
+.king-icon {
+  width: 104px;
+  height: 104px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 3px solid #ffd84a;
+  background: #161e27;
+  box-shadow:
+    0 0 0 5px rgba(255, 216, 74, 0.12),
+    0 0 28px rgba(255, 216, 74, 0.42);
+}
+
+body.is-king-victory #highest-score {
+  font-size: clamp(1.45rem, 5vw, 2.4rem);
+  line-height: 1.05;
+  text-align: center;
+  white-space: normal;
+}
+
+body.is-king-victory #highest-base {
+  font-size: clamp(1.7rem, 6vw, 2.8rem);
+  white-space: nowrap;
 }

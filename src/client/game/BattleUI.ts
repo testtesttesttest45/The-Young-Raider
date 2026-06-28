@@ -147,7 +147,7 @@ export default class BattleUI extends Scene {
     this.scoreText = null;
     this.multiplier = 5;
     this.multiplierMin = 0.5;
-    this.multiplierDuration = 12000;
+    this.multiplierDuration = this.isKingMode() ? 30000 : 12000;
     this.lastMultiplierUpdate = 0;
     this.timerStarted = false;
     this.baseRebuildText = null;
@@ -186,6 +186,31 @@ export default class BattleUI extends Scene {
     const gameScene = this.scene.get("Game") as any;
 
     return gameScene?.gameMode === "king";
+  }
+
+  private getKingDayLabel(): string {
+    const gameScene = this.scene.get("Game") as any;
+
+    const kingDay =
+      typeof gameScene?.kingDay === "string" ? gameScene.kingDay : "daily";
+
+    return kingDay.toUpperCase();
+  }
+
+  private getKingName(): string {
+    const gameScene = this.scene.get("Game") as any;
+
+    return typeof gameScene?.kingName === "string"
+      ? gameScene.kingName
+      : `${this.getKingDayLabel()} KING`;
+  }
+
+  private getKingRewardName(): string {
+    const gameScene = this.scene.get("Game") as any;
+
+    return typeof gameScene?.kingRewardName === "string"
+      ? gameScene.kingRewardName
+      : "KING RAIDER";
   }
 
   startMultiplierTimer() {
@@ -616,7 +641,7 @@ export default class BattleUI extends Scene {
       .setScrollFactor(0)
       .setDepth(CONTENT_DEPTH);
 
-    const shopButtonWidth = 105;
+    const shopButtonWidth = 120;
     const shopButtonHeight = 26;
 
     this.shopButtonContainer = this.add
@@ -1879,6 +1904,41 @@ export default class BattleUI extends Scene {
     }
   }
 
+  private async shareKingVictory(): Promise<boolean> {
+    try {
+      const response = await fetch("/api/share-king-victory", {
+        method: "POST",
+
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      const rawResponse = await response.text();
+
+      let data: {
+        type?: string;
+        message?: string;
+      };
+
+      try {
+        data = rawResponse ? JSON.parse(rawResponse) : {};
+      } catch {
+        throw new Error("The server returned invalid sharing data.");
+      }
+
+      if (!response.ok || data.type !== "share-king-victory") {
+        throw new Error(data.message ?? "Unable to share King victory.");
+      }
+
+      return true;
+    } catch (error) {
+      console.error("[Share King Victory] Failed:", error);
+
+      return false;
+    }
+  }
+
   private displayGameOverResults(data: SubmitHighScoreResponse): void {
     if (
       !this.gameOverResultRows ||
@@ -1988,11 +2048,26 @@ export default class BattleUI extends Scene {
 
     message: string;
 
+    defeatedKingLevel?: number;
+    defeatedKingCharacterCode?: number;
+
+    scoreAwarded?: number;
+    totalKills?: number;
+
     unlockedCharacterCode?: number;
 
     alreadyUnlocked?: boolean;
   }): void {
     if (result.success) {
+      const kingName = this.getKingName();
+      const rewardName = this.getKingRewardName();
+
+      const defeatedKingLevel =
+        typeof result.defeatedKingLevel === "number" &&
+        result.defeatedKingLevel >= 1
+          ? result.defeatedKingLevel
+          : 1;
+
       this.createKingResultScreen({
         victory: true,
 
@@ -2000,10 +2075,12 @@ export default class BattleUI extends Scene {
 
         subtitle:
           result.alreadyUnlocked === true
-            ? "SATURDAY KING CONQUERED"
-            : "CHICKEN RAIDER UNLOCKED",
+            ? `${kingName} CONQUERED`
+            : `${rewardName} UNLOCKED`,
 
         message: result.message,
+
+        kingLevel: defeatedKingLevel,
       });
 
       return;
@@ -2027,12 +2104,14 @@ export default class BattleUI extends Scene {
     gameScene.isGamePaused = true;
     gameScene.allowInput = false;
 
+    const kingName = this.getKingName();
+
     this.createKingResultScreen({
       victory: false,
 
       title: "KING BATTLE LOST",
 
-      subtitle: "THE SATURDAY KING SURVIVED",
+      subtitle: `${kingName} SURVIVED`,
 
       message:
         "Return to the Main Menu to challenge the King again for 5 cash.",
@@ -2047,6 +2126,8 @@ export default class BattleUI extends Scene {
     subtitle: string;
 
     message: string;
+
+    kingLevel?: number;
   }): void {
     if (this.gameOverContainer && this.gameOverContainer.active) {
       return;
@@ -2138,7 +2219,7 @@ export default class BattleUI extends Scene {
     panelGraphics.fillRoundedRect(panelX - 100, panelTop + 18, 200, 5, 3);
 
     const modeLabel = this.add
-      .text(panelX, panelTop + 47, "SATURDAY KING BATTLE", {
+      .text(panelX, panelTop + 47, `${this.getKingDayLabel()} KING BATTLE`, {
         font: "bold 11px Orbitron",
 
         color: options.victory ? "#ffe790" : "#ff9ca2",
@@ -2222,12 +2303,13 @@ export default class BattleUI extends Scene {
 
     const createResultButton = (
       x: number,
+      y: number,
       label: string,
       backgroundColour: number,
       borderColour: number,
       callback: () => void,
     ): Phaser.GameObjects.Container => {
-      const container = this.add.container(x, panelTop + panelHeight - 70);
+      const container = this.add.container(x, y);
 
       const buttonWidth = 220;
 
@@ -2306,8 +2388,15 @@ export default class BattleUI extends Scene {
       return container;
     };
 
+    const primaryButtonY = options.victory
+      ? panelTop + panelHeight - 98
+      : panelTop + panelHeight - 70;
+
+    const lowerButtonY = panelTop + panelHeight - 42;
+
     const collectionsButton = createResultButton(
-      panelX - 120,
+      options.victory ? panelX - 120 : panelX - 120,
+      primaryButtonY,
       "COLLECTIONS",
       0x17658c,
       0x63d5ff,
@@ -2320,8 +2409,51 @@ export default class BattleUI extends Scene {
       },
     );
 
+    let shareButton: Phaser.GameObjects.Container | null = null;
+
+    if (options.victory) {
+      shareButton = createResultButton(
+        panelX + 120,
+        primaryButtonY,
+        "SHARE VICTORY",
+        0x24744a,
+        0x70e69b,
+        () => {
+          if (!shareButton || shareButton.getData("sharing")) {
+            return;
+          }
+
+          shareButton.setData("sharing", true);
+
+          const label = shareButton.list.find(
+            (child): child is Phaser.GameObjects.Text =>
+              child instanceof Phaser.GameObjects.Text,
+          );
+
+          label?.setText("SHARING...");
+
+          void this.shareKingVictory().then((success) => {
+            if (!shareButton?.active) {
+              return;
+            }
+
+            if (success) {
+              label?.setText("SHARED!");
+
+              return;
+            }
+
+            shareButton.setData("sharing", false);
+
+            label?.setText("SHARE VICTORY");
+          });
+        },
+      );
+    }
+
     const mainMenuButton = createResultButton(
-      panelX + 120,
+      options.victory ? panelX : panelX + 120,
+      options.victory ? lowerButtonY : primaryButtonY,
       "MAIN MENU",
       0x712b32,
       0xff747d,
@@ -2330,7 +2462,7 @@ export default class BattleUI extends Scene {
       },
     );
 
-    this.gameOverContainer.add([
+    const resultObjects: Phaser.GameObjects.GameObject[] = [
       overlay,
       panelGraphics,
       messagePanel,
@@ -2340,6 +2472,12 @@ export default class BattleUI extends Scene {
       message,
       collectionsButton,
       mainMenuButton,
-    ]);
+    ];
+
+    if (shareButton) {
+      resultObjects.push(shareButton);
+    }
+
+    this.gameOverContainer.add(resultObjects);
   }
 }

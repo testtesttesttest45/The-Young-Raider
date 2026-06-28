@@ -918,5 +918,581 @@ const characterMap: Record<number, CharacterDefinition> = {
       healthBarOffsetY: -48,
     },
   },
+  21: {
+    type: "raider",
+    ...RAIDER_STATS,
+    spritesheetKey: "raider5_idle",
+    movingSpritesheetKey: "raider5_move",
+    attackSpritesheetKey: "raider5_attack",
+    deathSpritesheetKey: "raider5_die",
+    slashSpritesheetKey: "raider5_slash",
+    dashSlashSpritesheetKey: "raider5_dash",
+    shieldSpritesheetKey: "raider5_shield",
+    shieldMoveSpritesheetKey: "raider5_shield_move",
+    name: "Bear Raider",
+    cost: 100,
+    tier: "hard",
+    icon: "raider5Icon",
+    idle: "raider5Idle",
+    description:
+      "Not your average Raider, this one has a bear on his head and is ready to fight.",
+  },
+  22: {
+    type: "enemy",
+
+    name: "Sunday King",
+
+    cost: 0,
+
+    tier: "king",
+
+    health: RAIDER_STATS.health * 3,
+
+    damage: RAIDER_STATS.damage * 3,
+
+    range: RAIDER_STATS.range,
+
+    speed: RAIDER_STATS.speed,
+
+    attackSpeed: RAIDER_STATS.attackSpeed,
+
+    attackCount: RAIDER_STATS.attackCount,
+
+    projectile: "",
+
+    icon: "raider5Icon",
+
+    idle: "raider5Idle",
+
+    description: "The Sunday King. Defeat him to unlock Bear Raider.",
+
+    enemyAnimations: {
+      idle: {
+        spritesheetKey: "raider5_idle",
+
+        framesPerDirection: 41,
+
+        frameRate: 24,
+
+        repeat: -1,
+      },
+
+      move: {
+        spritesheetKey: "raider5_move",
+
+        framesPerDirection: 21,
+
+        frameRate: 24,
+
+        repeat: -1,
+      },
+
+      attack: {
+        spritesheetKey: "raider5_attack",
+
+        framesPerDirection: 30,
+
+        frameRate: 24,
+
+        repeat: 0,
+
+        damageFrames: [20],
+      },
+
+      death: {
+        spritesheetKey: "raider5_die",
+
+        frameCount: 69,
+
+        frameRate: 24,
+
+        repeat: 0,
+      },
+
+      scale: 0.75,
+
+      healthBarOffsetY: -48,
+    },
+  },
+  23: {
+    type: "raider",
+    ...RAIDER_STATS,
+    spritesheetKey: "raider6_idle",
+    movingSpritesheetKey: "raider6_move",
+    attackSpritesheetKey: "raider6_attack",
+    deathSpritesheetKey: "raider6_die",
+    slashSpritesheetKey: "raider6_slash",
+    dashSlashSpritesheetKey: "raider6_dash",
+    shieldSpritesheetKey: "raider6_shield",
+    shieldMoveSpritesheetKey: "raider6_shield_move",
+    name: "Chem Raider",
+    cost: 100,
+    tier: "hard",
+    icon: "raider6Icon",
+    idle: "raider6Idle",
+    description:
+      "Not your average Raider, this one has a chemist on his head and is ready to fight.",
+  },
+  24: {
+    type: "enemy",
+
+    name: "Monday King",
+
+    cost: 0,
+
+    tier: "king",
+
+    health: RAIDER_STATS.health * 3,
+
+    damage: RAIDER_STATS.damage * 3,
+
+    range: RAIDER_STATS.range,
+
+    speed: RAIDER_STATS.speed,
+
+    attackSpeed: RAIDER_STATS.attackSpeed,
+
+    attackCount: RAIDER_STATS.attackCount,
+
+    projectile: "",
+
+    icon: "raider6Icon",
+
+    idle: "raider6Idle",
+
+    description: "The Monday King. Defeat him to unlock Chem Raider.",
+
+    enemyAnimations: {
+      idle: {
+        spritesheetKey: "raider6_idle",
+
+        framesPerDirection: 41,
+
+        frameRate: 24,
+
+        repeat: -1,
+      },
+
+      move: {
+        spritesheetKey: "raider6_move",
+
+        framesPerDirection: 21,
+
+        frameRate: 24,
+
+        repeat: -1,
+      },
+
+      attack: {
+        spritesheetKey: "raider6_attack",
+
+        framesPerDirection: 30,
+
+        frameRate: 24,
+
+        repeat: 0,
+
+        damageFrames: [20],
+      },
+
+      death: {
+        spritesheetKey: "raider6_die",
+
+        frameCount: 69,
+
+        frameRate: 24,
+
+        repeat: 0,
+      },
+
+      scale: 0.75,
+
+      healthBarOffsetY: -48,
+    },
+  },
+  25: {
+    type: "raider",
+    ...RAIDER_STATS,
+    spritesheetKey: "raider7_idle",
+    movingSpritesheetKey: "raider7_move",
+    attackSpritesheetKey: "raider7_attack",
+    deathSpritesheetKey: "raider7_die",
+    slashSpritesheetKey: "raider7_slash",
+    dashSlashSpritesheetKey: "raider7_dash",
+    shieldSpritesheetKey: "raider7_shield",
+    shieldMoveSpritesheetKey: "raider7_shield_move",
+    name: "Space Raider",
+    cost: 100,
+    tier: "hard",
+    icon: "raider7Icon",
+    idle: "raider7Idle",
+    description:
+      "Not your average Raider, this one has a space helmet on his head and is ready to fight.",
+  },
+  26: {
+    type: "enemy",
+
+    name: "Tuesday King",
+
+    cost: 0,
+
+    tier: "king",
+
+    health: RAIDER_STATS.health * 3,
+
+    damage: RAIDER_STATS.damage * 3,
+
+    range: RAIDER_STATS.range,
+
+    speed: RAIDER_STATS.speed,
+
+    attackSpeed: RAIDER_STATS.attackSpeed,
+
+    attackCount: RAIDER_STATS.attackCount,
+
+    projectile: "",
+
+    icon: "raider7Icon",
+
+    idle: "raider7Idle",
+
+    description: "The Tuesday King. Defeat him to unlock Space Raider.",
+
+    enemyAnimations: {
+      idle: {
+        spritesheetKey: "raider7_idle",
+
+        framesPerDirection: 41,
+
+        frameRate: 24,
+
+        repeat: -1,
+      },
+
+      move: {
+        spritesheetKey: "raider7_move",
+
+        framesPerDirection: 21,
+
+        frameRate: 24,
+
+        repeat: -1,
+      },
+
+      attack: {
+        spritesheetKey: "raider7_attack",
+
+        framesPerDirection: 30,
+
+        frameRate: 24,
+
+        repeat: 0,
+
+        damageFrames: [20],
+      },
+
+      death: {
+        spritesheetKey: "raider7_die",
+
+        frameCount: 69,
+
+        frameRate: 24,
+
+        repeat: 0,
+      },
+
+      scale: 0.75,
+
+      healthBarOffsetY: -48,
+    },
+  },
+  27: {
+    type: "raider",
+    ...RAIDER_STATS,
+    spritesheetKey: "raider8_idle",
+    movingSpritesheetKey: "raider8_move",
+    attackSpritesheetKey: "raider8_attack",
+    deathSpritesheetKey: "raider8_die",
+    slashSpritesheetKey: "raider8_slash",
+    dashSlashSpritesheetKey: "raider8_dash",
+    shieldSpritesheetKey: "raider8_shield",
+    shieldMoveSpritesheetKey: "raider8_shield_move",
+    name: "Mecha Raider",
+    cost: 100,
+    tier: "hard",
+    icon: "raider8Icon",
+    idle: "raider8Idle",
+    description:
+      "A futuristic Raider equipped with advanced technology and a powerful arsenal.",
+  },
+  28: {
+    type: "enemy",
+
+    name: "Wednesday King",
+
+    cost: 0,
+
+    tier: "king",
+
+    health: RAIDER_STATS.health * 3,
+
+    damage: RAIDER_STATS.damage * 3,
+
+    range: RAIDER_STATS.range,
+
+    speed: RAIDER_STATS.speed,
+
+    attackSpeed: RAIDER_STATS.attackSpeed,
+
+    attackCount: RAIDER_STATS.attackCount,
+
+    projectile: "",
+
+    icon: "raider8Icon",
+
+    idle: "raider8Idle",
+
+    description: "The Wednesday King. Defeat him to unlock Mecha Raider.",
+
+    enemyAnimations: {
+      idle: {
+        spritesheetKey: "raider8_idle",
+
+        framesPerDirection: 41,
+
+        frameRate: 24,
+
+        repeat: -1,
+      },
+
+      move: {
+        spritesheetKey: "raider8_move",
+
+        framesPerDirection: 21,
+
+        frameRate: 24,
+
+        repeat: -1,
+      },
+
+      attack: {
+        spritesheetKey: "raider8_attack",
+
+        framesPerDirection: 30,
+
+        frameRate: 24,
+
+        repeat: 0,
+
+        damageFrames: [20],
+      },
+
+      death: {
+        spritesheetKey: "raider8_die",
+
+        frameCount: 69,
+
+        frameRate: 24,
+
+        repeat: 0,
+      },
+
+      scale: 0.75,
+
+      healthBarOffsetY: -48,
+    },
+  },
+  29: {
+    type: "raider",
+    ...RAIDER_STATS,
+    spritesheetKey: "raider9_idle",
+    movingSpritesheetKey: "raider9_move",
+    attackSpritesheetKey: "raider9_attack",
+    deathSpritesheetKey: "raider9_die",
+    slashSpritesheetKey: "raider9_slash",
+    dashSlashSpritesheetKey: "raider9_dash",
+    shieldSpritesheetKey: "raider9_shield",
+    shieldMoveSpritesheetKey: "raider9_shield_move",
+    name: "Fullmetal Raider",
+    cost: 100,
+    tier: "hard",
+    icon: "raider9Icon",
+    idle: "raider9Idle",
+    description:
+      "A heavily armored Raider with a full metal suit, ready to take on any challenge.",
+  },
+  30: {
+    type: "enemy",
+
+    name: "Thursday King",
+
+    cost: 0,
+
+    tier: "king",
+
+    health: RAIDER_STATS.health * 3,
+
+    damage: RAIDER_STATS.damage * 3,
+
+    range: RAIDER_STATS.range,
+
+    speed: RAIDER_STATS.speed,
+
+    attackSpeed: RAIDER_STATS.attackSpeed,
+
+    attackCount: RAIDER_STATS.attackCount,
+
+    projectile: "",
+
+    icon: "raider9Icon",
+
+    idle: "raider9Idle",
+
+    description: "The Thursday King. Defeat him to unlock Fullmetal Raider.",
+
+    enemyAnimations: {
+      idle: {
+        spritesheetKey: "raider9_idle",
+
+        framesPerDirection: 41,
+
+        frameRate: 24,
+
+        repeat: -1,
+      },
+
+      move: {
+        spritesheetKey: "raider9_move",
+
+        framesPerDirection: 21,
+
+        frameRate: 24,
+
+        repeat: -1,
+      },
+
+      attack: {
+        spritesheetKey: "raider9_attack",
+
+        framesPerDirection: 30,
+
+        frameRate: 24,
+
+        repeat: 0,
+
+        damageFrames: [20],
+      },
+
+      death: {
+        spritesheetKey: "raider9_die",
+
+        frameCount: 69,
+
+        frameRate: 24,
+
+        repeat: 0,
+      },
+
+      scale: 0.75,
+
+      healthBarOffsetY: -48,
+    },
+  },
+  31: {
+    type: "raider",
+    ...RAIDER_STATS,
+    spritesheetKey: "raider10_idle",
+    movingSpritesheetKey: "raider10_move",
+    attackSpritesheetKey: "raider10_attack",
+    deathSpritesheetKey: "raider10_die",
+    slashSpritesheetKey: "raider10_slash",
+    dashSlashSpritesheetKey: "raider10_dash",
+    shieldSpritesheetKey: "raider10_shield",
+    shieldMoveSpritesheetKey: "raider10_shield_move",
+    name: "Alien Raider",
+    cost: 100,
+    tier: "hard",
+    icon: "raider10Icon",
+    idle: "raider10Idle",
+    description:
+      "A mysterious Raider from another world, equipped with alien technology and advanced weaponry.",
+  },
+  32: {
+    type: "enemy",
+
+    name: "Friday King",
+
+    cost: 0,
+
+    tier: "king",
+
+    health: RAIDER_STATS.health * 3,
+
+    damage: RAIDER_STATS.damage * 3,
+
+    range: RAIDER_STATS.range,
+
+    speed: RAIDER_STATS.speed,
+
+    attackSpeed: RAIDER_STATS.attackSpeed,
+
+    attackCount: RAIDER_STATS.attackCount,
+
+    projectile: "",
+
+    icon: "raider10Icon",
+
+    idle: "raider10Idle",
+
+    description: "The Friday King. Defeat him to unlock Alien Raider.",
+
+    enemyAnimations: {
+      idle: {
+        spritesheetKey: "raider10_idle",
+
+        framesPerDirection: 41,
+
+        frameRate: 24,
+
+        repeat: -1,
+      },
+
+      move: {
+        spritesheetKey: "raider10_move",
+
+        framesPerDirection: 21,
+
+        frameRate: 24,
+
+        repeat: -1,
+      },
+
+      attack: {
+        spritesheetKey: "raider10_attack",
+
+        framesPerDirection: 30,
+
+        frameRate: 24,
+
+        repeat: 0,
+
+        damageFrames: [20],
+      },
+
+      death: {
+        spritesheetKey: "raider10_die",
+
+        frameCount: 69,
+
+        frameRate: 24,
+
+        repeat: 0,
+      },
+
+      scale: 0.75,
+
+      healthBarOffsetY: -48,
+    },
+  },
 };
 export default characterMap;

@@ -473,16 +473,24 @@ class Player {
     this.createShieldIndicator();
     this.abilities.create();
 
-    this.healTimer = this.scene.time.addEvent({
-      delay: 3000,
-      callback: this.autoHeal,
-      callbackScope: this,
-      loop: true,
-      paused: true,
-    });
+    if (this.scene.gameMode !== "king") {
+      this.healTimer = this.scene.time.addEvent({
+        delay: 3000,
+        callback: this.autoHeal,
+        callbackScope: this,
+        loop: true,
+        paused: true,
+      });
+    } else {
+      this.healTimer = null;
+    }
   }
 
   autoHeal(): void {
+    // if king battle is active, do not heal
+    if (this.scene.gameMode === "king") {
+      return;
+    }
     if (this.currentHealth < this.maxHealth && !this.isDead) {
       // calc heal amount as 5% of max health
       let healAmount = Math.round(this.maxHealth * this.healPercentage);
@@ -495,13 +503,18 @@ class Player {
     }
   }
 
-  resetHealTimer() {
+  resetHealTimer(): void {
+    if (this.scene.gameMode === "king" || !this.healTimer) {
+      return;
+    }
+
     this.healTimer.reset({
       delay: 4000,
       callback: this.autoHeal,
       callbackScope: this,
       loop: true,
     });
+
     this.healTimer.paused = false;
   }
 

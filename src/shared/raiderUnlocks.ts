@@ -36,11 +36,20 @@ export type KingStatusResponse = {
   kingCharacterCode: number;
   unlockCharacterCode: number;
 
-  entryCost: number;
-  currentCash: number;
+  kingName: string;
+  rewardName: string;
+  iconKey: string;
 
+  kingLevel: number;
+  defeatsToday: number;
+
+  entryCost: number;
+
+  currentCash: number;
   canEnter: boolean;
   alreadyUnlocked: boolean;
+
+  nextResetAt: number;
 };
 
 export type EnterKingBattleRequest = {
@@ -55,6 +64,9 @@ export type EnterKingBattleResponse = {
 
   kingCharacterCode: number;
   unlockCharacterCode: number;
+
+  kingLevel: number;
+  defeatsToday: number;
 
   entryCost: number;
   remainingCash: number;
@@ -71,13 +83,23 @@ export type CompleteKingBattleRequest = {
 export type CompleteKingBattleResponse = {
   type: "complete-king-battle";
   status: "success";
+
   serverDay: KingDay;
+
   defeatedKingCharacterCode: number;
   unlockedCharacterCode: number;
+
+  defeatedKingLevel: number;
+  defeatsToday: number;
+  nextKingLevel: number;
+  nextEntryCost: number;
+
   alreadyUnlocked: boolean;
+
   scoreAwarded: number;
   totalScore: number;
   totalKills: number;
+
   message: string;
 };
 
@@ -97,13 +119,49 @@ export const RAIDER_UNLOCK_REQUIREMENTS: Record<
 
   18: {
     type: "cash",
-    amount: 50,
+    amount: 1000,
   },
 
   19: {
     type: "king",
     amount: 0,
     kingDay: "saturday",
+  },
+
+  21: {
+    type: "king",
+    amount: 0,
+    kingDay: "sunday",
+  },
+
+  23: {
+    type: "king",
+    amount: 0,
+    kingDay: "monday",
+  },
+
+  25: {
+    type: "king",
+    amount: 0,
+    kingDay: "tuesday",
+  },
+
+  27: {
+    type: "king",
+    amount: 0,
+    kingDay: "wednesday",
+  },
+
+  29: {
+    type: "king",
+    amount: 0,
+    kingDay: "thursday",
+  },
+
+  31: {
+    type: "king",
+    amount: 0,
+    kingDay: "friday",
   },
 };
 

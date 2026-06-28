@@ -26,13 +26,12 @@ type GameMode = "normal" | "king";
 
 type GameStartData = {
   mode?: GameMode;
-
   kingDay?: KingDay;
-
   kingCharacterCode?: number;
-
   unlockCharacterCode?: number;
-
+  kingLevel?: number;
+  kingName?: string;
+  kingRewardName?: string;
   battleToken?: string;
 };
 
@@ -74,15 +73,20 @@ export class Game extends Scene {
 
   gameMode: GameMode = "normal";
 
+  kingVictoryHandled = false;
+
   kingDay: KingDay | null = null;
 
   kingCharacterCode: number | null = null;
 
   kingUnlockCharacterCode: number | null = null;
 
-  kingBattleToken: string | null = null;
+  kingName = "DAILY KING";
 
-  kingVictoryHandled = false;
+  kingRewardName = "KING RAIDER";
+
+  kingBattleToken: string | null = null;
+  kingLevel = 1;
 
   constructor() {
     super("Game");
@@ -101,10 +105,27 @@ export class Game extends Scene {
       ? Number(data.unlockCharacterCode)
       : null;
 
+    this.kingName =
+      typeof data.kingName === "string" && data.kingName.length > 0
+        ? data.kingName
+        : this.kingDay
+          ? `${this.kingDay.toUpperCase()} KING`
+          : "DAILY KING";
+
+    this.kingRewardName =
+      typeof data.kingRewardName === "string" && data.kingRewardName.length > 0
+        ? data.kingRewardName
+        : "KING RAIDER";
+
     this.kingBattleToken =
       typeof data.battleToken === "string" && data.battleToken.length > 0
         ? data.battleToken
         : null;
+
+    this.kingLevel =
+      Number.isInteger(data.kingLevel) && Number(data.kingLevel) >= 1
+        ? Number(data.kingLevel)
+        : 1;
 
     this.kingVictoryHandled = false;
   }
@@ -350,7 +371,7 @@ export class Game extends Scene {
         throw new Error("Unexpected selected-Raider response.");
       }
 
-      const validRaiderCodes = [16, 17, 18, 19];
+      const validRaiderCodes = [16, 17, 18, 19, 21, 23, 25, 27, 29, 31];
 
       if (!validRaiderCodes.includes(data.characterCode)) {
         throw new Error(
@@ -581,7 +602,7 @@ export class Game extends Scene {
 
       this.player,
 
-      1,
+      this.kingLevel,
 
       null,
 
@@ -1030,6 +1051,14 @@ export class Game extends Scene {
         success: true,
 
         message: responseData.message,
+
+        defeatedKingLevel: responseData.defeatedKingLevel,
+
+        defeatedKingCharacterCode: responseData.defeatedKingCharacterCode,
+
+        scoreAwarded: responseData.scoreAwarded,
+
+        totalKills: responseData.totalKills,
 
         unlockedCharacterCode: responseData.unlockedCharacterCode,
 

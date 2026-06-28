@@ -7,6 +7,8 @@ import type {
   UnlockRaiderResponse,
 } from "../../shared/api";
 
+import type { KingDay } from "../../shared/raiderUnlocks";
+
 import characterMap, { type RaiderDefinition } from "../game/CharacterMap";
 
 type CharacterData = RaiderDefinition;
@@ -1081,8 +1083,10 @@ export class Collections extends Scene {
     }
 
     if (state?.unlockType === "king") {
+      const kingDay = this.formatKingDay(state.kingDay);
+
       this.selectedLabel
-        .setText("DEFEAT THE SATURDAY KING")
+        .setText(`DEFEAT THE ${kingDay} KING`)
         .setColor("#9ba8ae");
 
       return;
@@ -1110,9 +1114,12 @@ export class Collections extends Scene {
 
       const data = responseData as RaiderCollectionResponse;
 
+      const selectedDefinition = characterMap[data.selectedRaider];
+
       if (
         data.type !== "raider-collection" ||
-        ![16, 17, 18, 19].includes(data.selectedRaider)
+        !selectedDefinition ||
+        selectedDefinition.type !== "raider"
       ) {
         throw new Error("Invalid Raider collection response.");
       }
@@ -1147,6 +1154,14 @@ export class Collections extends Scene {
         requirementMet: true,
       });
     }
+  }
+
+  private formatKingDay(kingDay: KingDay | undefined): string {
+    if (!kingDay) {
+      return "DAILY";
+    }
+
+    return kingDay.toUpperCase();
   }
 
   private async saveSelectedRaider(): Promise<void> {
@@ -1249,7 +1264,9 @@ export class Collections extends Scene {
       } else if (state.unlockType === "highscore") {
         subtitle = `${state.requirementAmount.toLocaleString()} HIGH SCORE REQUIRED`;
       } else if (state.unlockType === "king") {
-        subtitle = "SATURDAY KING DEFEATED";
+        const kingDay = this.formatKingDay(state.kingDay);
+
+        subtitle = `${kingDay} KING DEFEATED`;
       } else {
         subtitle = "FREE RAIDER";
       }
@@ -1271,8 +1288,10 @@ export class Collections extends Scene {
       label = "LOCKED";
       subtitle = `NEED ${missingCash.toLocaleString()} MORE CASH`;
     } else if (state?.unlockType === "king") {
+      const kingDay = this.formatKingDay(state.kingDay);
+
       label = "LOCKED";
-      subtitle = "DEFEAT SATURDAY KING";
+      subtitle = `DEFEAT ${kingDay} KING`;
     }
 
     this.actionButton.label.setText(label);

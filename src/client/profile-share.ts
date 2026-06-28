@@ -3,6 +3,7 @@ import { requestExpandedMode } from "@devvit/web/client";
 import type {
   ApiErrorResponse,
   SharedKingSlayerPostResponse,
+  SharedKingVictoryPostResponse,
   SharedProfilePostResponse,
 } from "../shared/api";
 
@@ -31,9 +32,12 @@ const challengeText = document.querySelector<HTMLElement>("#challenge-text");
 
 const pageTitle = document.querySelector<HTMLTitleElement>("#page-title");
 
+const kingIcon = document.querySelector<HTMLImageElement>("#king-icon");
+
 type SharedPostResponse =
   | SharedProfilePostResponse
   | SharedKingSlayerPostResponse
+  | SharedKingVictoryPostResponse
   | ApiErrorResponse;
 
 function showNormalProfile(responseData: SharedProfilePostResponse): void {
@@ -159,6 +163,8 @@ async function loadProfile(): Promise<void> {
       showNormalProfile(responseData);
     } else if (responseData.type === "shared-king-slayer-post") {
       showKingSlayerProfile(responseData);
+    } else if (responseData.type === "shared-king-victory-post") {
+      showKingVictory(responseData);
     } else {
       throw new Error("This shared post type is not supported.");
     }
@@ -200,5 +206,83 @@ playButton?.addEventListener("click", async (event) => {
     playButton.textContent = "PLAY THE YOUNG RAIDER";
   }
 });
+
+function getKingIconPath(iconKey: string): string {
+  return `/assets/images/Raider Icons/${iconKey}.png`;
+}
+
+function showKingVictory(responseData: SharedKingVictoryPostResponse): void {
+  const { username, kingDay, kingName, kingLevel, iconKey } = responseData.data;
+
+  const dayLabel = kingDay.charAt(0).toUpperCase() + kingDay.slice(1);
+
+  const uppercaseDayLabel = dayLabel.toUpperCase();
+
+  if (profileTitle) {
+    profileTitle.textContent = "KING DEFEATED";
+  }
+
+  if (playerName) {
+    playerName.textContent = `u/${username}`;
+  }
+
+  /*
+   * Repurpose the large score card to display
+   * which daily King was defeated.
+   */
+  if (scoreLabel) {
+    scoreLabel.textContent = "";
+  }
+
+  if (scoreText) {
+    scoreText.textContent = `${uppercaseDayLabel} KING`;
+  }
+
+  /*
+   * The second large card displays the meaningful
+   * achievement: the defeated King's level.
+   */
+  if (baseLabel) {
+    baseLabel.textContent = "KING LEVEL";
+  }
+
+  if (baseText) {
+    baseText.textContent = `LEVEL ${kingLevel}`;
+  }
+
+  /*
+   * Global rank is not relevant to an individual
+   * King victory post.
+   */
+  if (rankText) {
+    rankText.textContent = "";
+    rankText.hidden = true;
+
+    const rankContainer = rankText.parentElement;
+
+    if (rankContainer) {
+      rankContainer.hidden = true;
+    }
+  }
+
+  if (challengeText) {
+    challengeText.textContent =
+      `I DEFEATED LEVEL ${kingLevel} ` + `${uppercaseDayLabel} KING`;
+  }
+
+  if (pageTitle) {
+    pageTitle.textContent = `Level ${kingLevel} ${kingName} Defeated`;
+  }
+
+  if (kingIcon) {
+    kingIcon.src = getKingIconPath(iconKey);
+
+    kingIcon.alt = `Level ${kingLevel} ${kingName}`;
+
+    kingIcon.hidden = false;
+  }
+
+  document.body.classList.add("is-king-victory");
+}
 
 void loadProfile();
