@@ -2,6 +2,7 @@ import characterMap from "./CharacterMap";
 import Base from "./Base";
 import * as Phaser from "phaser";
 import PlayerAbilities from "./PlayerAbilities";
+import audioManager from "../scenes/AudioManager";
 
 class Player {
   scene: any;
@@ -207,6 +208,27 @@ class Player {
     this.shieldIndicatorOffset = 18;
 
     this.shieldIndicatorHalfAngle = Phaser.Math.DegToRad(55);
+  }
+
+  applyCommunityRewards(damageBonus: number, healthBonus: number): void {
+    if (this.scene.gameMode === "king") {
+      return;
+    }
+
+    const safeDamageBonus = Number.isFinite(damageBonus)
+      ? Phaser.Math.Clamp(Math.floor(damageBonus), 0, 200)
+      : 0;
+
+    const safeHealthBonus = Number.isFinite(healthBonus)
+      ? Phaser.Math.Clamp(Math.floor(healthBonus), 0, 500)
+      : 0;
+
+    this.originalDamage += safeDamageBonus;
+    this.damage += safeDamageBonus;
+
+    this.originalHealth += safeHealthBonus;
+    this.maxHealth += safeHealthBonus;
+    this.currentHealth += safeHealthBonus;
   }
 
   create(): void {
@@ -834,9 +856,10 @@ class Player {
       return;
     }
 
-    // hield only blocks directional damage, not catastrophe
+    // shield only blocks directional damage, not catastrophe
     if (this.abilities.shouldBlockDamage(source)) {
       this.createShieldBlockedText();
+      audioManager.playSound("sfx-shield-block", 0.5);
       return;
     }
 
@@ -919,7 +942,7 @@ class Player {
     this.isDead = true;
 
     console.log("Player died");
-
+    audioManager.playSound("sfx-player-die", 0.85);
     if (this.currentTween) {
       this.currentTween.stop();
     }
@@ -1092,8 +1115,6 @@ class Player {
     const frameRateRatio = this.attackSpeed / this.originalAttackSpeed;
 
     this.robotSprite.anims.play(attackAnimationKey);
-    this.robotSprite.anims.msPerFrame =
-      this.robotSprite.anims.msPerFrame / frameRateRatio;
 
     this.robotSprite.off("animationupdate");
     this.robotSprite.off("animationcomplete");
@@ -1235,11 +1256,26 @@ class Player {
     this.targetedEnemy = null;
     this.isMovingTowardsEnemy = false;
     this.continueAttacking = false;
-    this.isAttacking = true;
 
+    this.isAttacking = true;
     this.isActionLocked = true;
+    audioManager.playSound("sfx-player-attack", 0.55);
+
     this.attackAnimationComplete = false;
     this.hasAppliedAttackDamage = false;
+
+    /*
+     * 1.0 at the character's original attack speed.
+     * Energy Gun increases attackSpeed, causing the attack
+     * animation and recovery lock to finish sooner.
+     */
+    const attackSpeedMultiplier = Phaser.Math.Clamp(
+      this.attackSpeed / this.originalAttackSpeed,
+      0.25,
+      3,
+    );
+
+    this.robotSprite.anims.timeScale = attackSpeedMultiplier;
 
     this.robotSprite.play(attackAnimationKey, true);
 
@@ -1248,7 +1284,7 @@ class Player {
     const onAnimationUpdate = (
       animation: Phaser.Animations.Animation,
       frame: Phaser.Animations.AnimationFrame,
-    ) => {
+    ): void => {
       if (animation.key !== attackAnimationKey) {
         return;
       }
@@ -1260,7 +1296,9 @@ class Player {
       }
     };
 
-    const onAnimationComplete = (animation: Phaser.Animations.Animation) => {
+    const onAnimationComplete = (
+      animation: Phaser.Animations.Animation,
+    ): void => {
       if (animation.key !== attackAnimationKey) {
         return;
       }
@@ -1269,6 +1307,12 @@ class Player {
         Phaser.Animations.Events.ANIMATION_UPDATE,
         onAnimationUpdate,
       );
+
+      /*
+       * Reset this before playing idle so movement, idle,
+       * Slash and Dash animations keep their normal speed.
+       */
+      this.robotSprite.anims.timeScale = 1;
 
       this.isActionLocked = false;
       this.isAttacking = false;

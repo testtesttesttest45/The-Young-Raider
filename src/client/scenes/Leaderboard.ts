@@ -9,6 +9,7 @@ import type {
   KingSlayerLeaderboardEntry,
   KingSlayerLeaderboardResponse,
 } from "../../shared/raiderUnlocks";
+import audioManager from "./AudioManager";
 
 const ROWS_PER_PAGE = 10;
 type LeaderboardTab = "normal" | "king-slayer";
@@ -82,6 +83,7 @@ export class Leaderboard extends Scene {
   }
 
   create(): void {
+    audioManager.createMuteButton(this, this.scale.width - 20, 18);
     const width = this.scale.width;
 
     const height = this.scale.height;
@@ -358,6 +360,9 @@ export class Leaderboard extends Scene {
 
       kingSlayerButton.setStroke("#ffd36b", 3).setAlpha(1);
     }
+
+    audioManager.addButtonSound(normalButton);
+    audioManager.addButtonSound(kingSlayerButton);
 
     normalButton.on("pointerdown", () => {
       if (this.activeTab === "normal") {
@@ -643,6 +648,9 @@ export class Leaderboard extends Scene {
 
     this.setButtonEnabled(nextButton, hasNextPage);
 
+    audioManager.addButtonSound(previousButton);
+    audioManager.addButtonSound(nextButton);
+
     previousButton.on("pointerdown", () => {
       if (!hasPreviousPage) {
         return;
@@ -836,6 +844,8 @@ export class Leaderboard extends Scene {
       16,
     );
 
+    audioManager.addButtonSound(shareButton);
+
     shareButton.on("pointerdown", () => {
       if (!this.username || shareButton.getData("sharing")) {
         return;
@@ -875,6 +885,8 @@ export class Leaderboard extends Scene {
         shareButton.setData("sharing", false);
       });
     });
+
+    audioManager.addButtonSound(backButton);
 
     backButton.on("pointerdown", () => {
       if (this.returnTo === "game-over") {

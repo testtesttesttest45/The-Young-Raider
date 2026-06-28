@@ -89,6 +89,14 @@ export type SubmitHighScoreResponse = {
   isNewBest: boolean;
   isNewDailyBest: boolean;
   isNewHighestBaseSeen: boolean;
+  communityContribution: {
+    challenge: "damage" | "health" | null;
+    amount: number;
+    previousBest: number;
+    newBest: number;
+  };
+
+  communityRewards: CommunityRewardValues;
 };
 
 export type LeaderboardResponse = {
@@ -308,4 +316,48 @@ export type SharedKingVictoryPostResponse = {
   type: "shared-king-victory-post";
 
   data: SharedKingVictoryPostData;
+};
+
+export type CommunityChallengeType = "damage" | "health" | "gold";
+
+export type CommunityProgressValues = {
+  damage: number;
+  health: number;
+  gold: number;
+};
+
+export type CommunityRewardValues = {
+  damageBonus: number;
+  healthBonus: number;
+  goldBonus: number;
+};
+
+export type CommunityStatusResponse = {
+  type: "community-status";
+
+  selectedChallenge: CommunityChallengeType;
+
+  progress: CommunityProgressValues;
+
+  rewards: CommunityRewardValues;
+
+  targets: {
+    damage: number;
+    health: number;
+    gold: number;
+  };
+};
+
+export type SelectCommunityChallengeRequest = {
+  challenge: CommunityChallengeType;
+};
+
+export type SelectCommunityChallengeResponse = {
+  type: "select-community-challenge";
+
+  status: "success";
+
+  selectedChallenge: CommunityChallengeType;
+
+  message: string;
 };

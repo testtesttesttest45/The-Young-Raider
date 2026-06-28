@@ -49,6 +49,11 @@ import type {
   SharedKingSlayerPostResponse,
   ShareKingVictoryResponse,
   SharedKingVictoryPostResponse,
+  CommunityChallengeType,
+  CommunityRewardValues,
+  CommunityStatusResponse,
+  SelectCommunityChallengeRequest,
+  SelectCommunityChallengeResponse,
 } from "../../shared/api";
 
 export const api = new Hono();
@@ -81,13 +86,15 @@ const PLAYER_SELECTED_RAIDER_KEY = "the-young-raider:players:selected-raider";
 
 const DEFAULT_RAIDER_CODE = 16;
 
-const VALID_RAIDER_CODES = new Set([16, 17, 18, 19, 21, 23, 25, 27, 29, 31]);
+const VALID_RAIDER_CODES = new Set([
+  16, 17, 18, 19, 21, 23, 25, 27, 29, 31, 33,
+]);
 
 const PLAYER_OWNED_RAIDERS_KEY = "the-young-raider:players:owned-raiders";
 
 const PLAYER_TUTORIAL_KEY = "the-young-raider:players:tutorial-completed";
 
-const BASE_KING_ENTRY_COST = 5;
+const BASE_KING_ENTRY_COST = 50;
 
 const KING_LEVEL_GROWTH = 1.05;
 
@@ -111,6 +118,31 @@ const KING_SLAYER_LEADERBOARD_SIZE = 100;
 
 const MAXIMUM_KING_SCORE_PER_CLEAR = 500;
 
+const COMMUNITY_PROGRESS_KEY = "the-young-raider:community:progress";
+
+const PLAYER_COMMUNITY_CHALLENGE_KEY =
+  "the-young-raider:players:community-challenge";
+
+const PLAYER_COMMUNITY_SCORE_BESTS_KEY =
+  "the-young-raider:players:community-score-bests";
+
+const DEFAULT_COMMUNITY_CHALLENGE: CommunityChallengeType = "damage";
+
+const COMMUNITY_DAMAGE_TARGET = 1_000_000;
+const COMMUNITY_HEALTH_TARGET = 1_000_000;
+const COMMUNITY_GOLD_TARGET = 1_000;
+
+const COMMUNITY_SCORE_MILESTONE = 10_000;
+const COMMUNITY_KILL_MILESTONE = 10;
+
+const COMMUNITY_DAMAGE_PER_MILESTONE = 2;
+const COMMUNITY_HEALTH_PER_MILESTONE = 5;
+const COMMUNITY_GOLD_PER_MILESTONE = 10;
+
+const COMMUNITY_MAX_DAMAGE_BONUS = 200;
+const COMMUNITY_MAX_HEALTH_BONUS = 500;
+const COMMUNITY_MAX_GOLD_BONUS = 1_000;
+
 type StoredLatestKingVictory = {
   dateKey: string;
 
@@ -126,6 +158,161 @@ type StoredLatestKingVictory = {
 
   completedAt: number;
 };
+
+function parseCommunityProgress(rawValue: string | undefined | null): number {
+  if (!rawValue) {
+    return 0;
+  }
+
+  const parsedValue = Number.parseInt(rawValue, 10);
+
+  if (!Number.isFinite(parsedValue)) {
+    return 0;
+  }
+
+  return Math.max(0, parsedValue);
+}
+
+function parseCommunityChallenge(
+  rawValue: string | undefined | null,
+): CommunityChallengeType {
+  if (rawValue === "damage" || rawValue === "health" || rawValue === "gold") {
+    return rawValue;
+  }
+
+  return DEFAULT_COMMUNITY_CHALLENGE;
+}
+
+function getCommunityScoreBestField(
+  username: string,
+  challenge: "damage" | "health",
+): string {
+  return `${username}:${challenge}`;
+}
+
+async function contributeCommunityScore(
+  username: string,
+  challenge: "damage" | "health",
+  submittedScore: number,
+): Promise<{
+  amount: number;
+  previousBest: number;
+  newBest: number;
+}> {
+  const bestField = getCommunityScoreBestField(username, challenge);
+
+  const target =
+    challenge === "damage" ? COMMUNITY_DAMAGE_TARGET : COMMUNITY_HEALTH_TARGET;
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const transaction = await redis.watch(
+      PLAYER_COMMUNITY_SCORE_BESTS_KEY,
+      COMMUNITY_PROGRESS_KEY,
+    );
+
+    const [previousBestValue, currentProgressValue] = await Promise.all([
+      redis.hGet(PLAYER_COMMUNITY_SCORE_BESTS_KEY, bestField),
+
+      redis.hGet(COMMUNITY_PROGRESS_KEY, challenge),
+    ]);
+
+    const previousBest = parseCommunityProgress(previousBestValue);
+
+    const currentProgress = parseCommunityProgress(currentProgressValue);
+
+    const safeSubmittedScore = Math.max(0, Math.floor(submittedScore));
+
+    const newBest = Math.max(previousBest, safeSubmittedScore);
+
+    const rawImprovement = Math.max(0, newBest - previousBest);
+
+    const remainingProgress = Math.max(0, target - currentProgress);
+
+    const contributionAmount = Math.min(rawImprovement, remainingProgress);
+
+    await transaction.multi();
+
+    if (newBest > previousBest) {
+      await transaction.hSet(PLAYER_COMMUNITY_SCORE_BESTS_KEY, {
+        [bestField]: newBest.toString(),
+      });
+    }
+
+    if (contributionAmount > 0) {
+      await transaction.hIncrBy(
+        COMMUNITY_PROGRESS_KEY,
+        challenge,
+        contributionAmount,
+      );
+    }
+
+    const result = await transaction.exec();
+
+    if (result === null) {
+      continue;
+    }
+
+    return {
+      amount: contributionAmount,
+      previousBest,
+      newBest,
+    };
+  }
+
+  throw new Error("Community progress changed while saving the score.");
+}
+
+async function getCommunityProgress(): Promise<{
+  damage: number;
+  health: number;
+  gold: number;
+}> {
+  const [damageValue, healthValue, goldValue] = await Promise.all([
+    redis.hGet(COMMUNITY_PROGRESS_KEY, "damage"),
+    redis.hGet(COMMUNITY_PROGRESS_KEY, "health"),
+    redis.hGet(COMMUNITY_PROGRESS_KEY, "gold"),
+  ]);
+
+  return {
+    damage: Math.min(
+      COMMUNITY_DAMAGE_TARGET,
+      parseCommunityProgress(damageValue),
+    ),
+
+    health: Math.min(
+      COMMUNITY_HEALTH_TARGET,
+      parseCommunityProgress(healthValue),
+    ),
+
+    gold: Math.min(COMMUNITY_GOLD_TARGET, parseCommunityProgress(goldValue)),
+  };
+}
+
+function calculateCommunityRewards(progress: {
+  damage: number;
+  health: number;
+  gold: number;
+}): CommunityRewardValues {
+  return {
+    damageBonus: Math.min(
+      COMMUNITY_MAX_DAMAGE_BONUS,
+      Math.floor(progress.damage / COMMUNITY_SCORE_MILESTONE) *
+        COMMUNITY_DAMAGE_PER_MILESTONE,
+    ),
+
+    healthBonus: Math.min(
+      COMMUNITY_MAX_HEALTH_BONUS,
+      Math.floor(progress.health / COMMUNITY_SCORE_MILESTONE) *
+        COMMUNITY_HEALTH_PER_MILESTONE,
+    ),
+
+    goldBonus: Math.min(
+      COMMUNITY_MAX_GOLD_BONUS,
+      Math.floor(progress.gold / COMMUNITY_KILL_MILESTONE) *
+        COMMUNITY_GOLD_PER_MILESTONE,
+    ),
+  };
+}
 
 function getDefeatedKingField(username: string, day: KingDay): string {
   return `${username}:${day}`;
@@ -844,6 +1031,15 @@ api.post("/highscore", async (c) => {
       );
     }
 
+    const selectedCommunityValue = await redis.hGet(
+      PLAYER_COMMUNITY_CHALLENGE_KEY,
+      username,
+    );
+
+    const selectedCommunityChallenge = parseCommunityChallenge(
+      selectedCommunityValue,
+    );
+
     const dailyLeaderboardKey = getDailyLeaderboardKey();
 
     const [existingAllTimeScore, existingDailyScore, existingHighestBaseSeen] =
@@ -917,6 +1113,36 @@ api.post("/highscore", async (c) => {
 
     const rank = await getPlayerRank(username);
 
+    let communityContributionChallenge: "damage" | "health" | null = null;
+
+    let communityContributionAmount = 0;
+
+    let previousCommunityBest = 0;
+    let newCommunityBest = 0;
+
+    if (
+      selectedCommunityChallenge === "damage" ||
+      selectedCommunityChallenge === "health"
+    ) {
+      const contribution = await contributeCommunityScore(
+        username,
+        selectedCommunityChallenge,
+        submittedScore,
+      );
+
+      communityContributionChallenge = selectedCommunityChallenge;
+
+      communityContributionAmount = contribution.amount;
+
+      previousCommunityBest = contribution.previousBest;
+
+      newCommunityBest = contribution.newBest;
+    }
+
+    const communityProgress = await getCommunityProgress();
+
+    const communityRewards = calculateCommunityRewards(communityProgress);
+
     return c.json<SubmitHighScoreResponse>({
       type: "submit-high-score",
 
@@ -943,6 +1169,14 @@ api.post("/highscore", async (c) => {
       isNewDailyBest,
 
       isNewHighestBaseSeen,
+      communityContribution: {
+        challenge: communityContributionChallenge,
+        amount: communityContributionAmount,
+        previousBest: previousCommunityBest,
+        newBest: newCommunityBest,
+      },
+
+      communityRewards,
     });
   } catch (error) {
     console.error("[Game Result] Failed to submit:", error);
@@ -3196,7 +3430,6 @@ api.post("/king-victory", async (c) => {
     const tokenKey = getKingBattleTokenKey(body.battleToken);
 
     for (let attempt = 0; attempt < 5; attempt++) {
-      // If another request changes any of these keys before exec(), redis cancels the transaction and we retry.
       const transaction = await redis.watch(
         tokenKey,
         PLAYER_DAILY_KING_DEFEATS_KEY,
@@ -3204,6 +3437,7 @@ api.post("/king-victory", async (c) => {
         KING_SLAYER_LEADERBOARD_KEY,
         KING_SLAYER_KILLS_KEY,
         PLAYER_LATEST_KING_VICTORY_KEY,
+        COMMUNITY_PROGRESS_KEY,
       );
 
       const rawToken = await redis.get(tokenKey);
@@ -3228,7 +3462,6 @@ api.post("/king-victory", async (c) => {
       } catch {
         await transaction.unwatch();
 
-        // Invalid token data cannot be used, so remove it.
         await redis.del(tokenKey);
 
         return c.json<ApiErrorResponse>(
@@ -3356,6 +3589,8 @@ api.post("/king-victory", async (c) => {
         existingScoreValue,
         existingKillsValue,
         ownedRaiderValue,
+        selectedCommunityValue,
+        currentCommunityGoldValue,
       ] = await Promise.all([
         redis.hGet(PLAYER_DAILY_KING_DEFEATS_KEY, dailyDefeatsField),
 
@@ -3367,17 +3602,14 @@ api.post("/king-victory", async (c) => {
           PLAYER_OWNED_RAIDERS_KEY,
           getOwnedRaiderField(username, tokenData.unlockCharacterCode),
         ),
+
+        redis.hGet(PLAYER_COMMUNITY_CHALLENGE_KEY, username),
+
+        redis.hGet(COMMUNITY_PROGRESS_KEY, "gold"),
       ]);
 
       const currentDailyDefeats = parseKingDefeatCount(dailyDefeatsValue);
 
-      /*
-       * Level 1 means zero previous victories.
-       * Level 2 means one previous victory, and so on.
-       *
-       * This rejects an old lower-level token after the player has already
-       * progressed to a higher King level.
-       */
       const expectedDefeatsBeforeVictory = tokenData.kingLevel - 1;
 
       if (currentDailyDefeats !== expectedDefeatsBeforeVictory) {
@@ -3420,32 +3652,20 @@ api.post("/king-victory", async (c) => {
 
       const totalKills = previousTotalKills + 1;
 
-      await transaction.multi();
-
-      // Consume the token inside the same transaction.
-      await transaction.del(tokenKey);
-
-      // Increase today's King defeat count.
-      await transaction.hIncrBy(
-        PLAYER_DAILY_KING_DEFEATS_KEY,
-        dailyDefeatsField,
-        1,
+      const selectedCommunityChallenge = parseCommunityChallenge(
+        selectedCommunityValue,
       );
 
-      // Permanently record that this weekday King was defeated.
-      await transaction.hSet(PLAYER_DEFEATED_KINGS_KEY, {
-        [defeatedKingField]: "1",
-      });
-
-      // Update the all-time King Slayer leaderboard.
-      await transaction.zIncrBy(
-        KING_SLAYER_LEADERBOARD_KEY,
-        username,
-        submittedScore,
+      const currentCommunityGold = parseCommunityProgress(
+        currentCommunityGoldValue,
       );
 
-      // Update all-time King kills.
-      await transaction.hIncrBy(KING_SLAYER_KILLS_KEY, username, 1);
+      const communityGoldContribution =
+        selectedCommunityChallenge === "gold" &&
+        currentCommunityGold < COMMUNITY_GOLD_TARGET
+          ? 1
+          : 0;
+
       const latestVictory: StoredLatestKingVictory = {
         dateKey: tokenData.dateKey,
 
@@ -3462,15 +3682,49 @@ api.post("/king-victory", async (c) => {
         completedAt: Date.now(),
       };
 
+      await transaction.multi();
+
+      if (communityGoldContribution > 0) {
+        await transaction.hIncrBy(
+          COMMUNITY_PROGRESS_KEY,
+          "gold",
+          communityGoldContribution,
+        );
+      }
+
+      await transaction.del(tokenKey);
+
+      await transaction.hIncrBy(
+        PLAYER_DAILY_KING_DEFEATS_KEY,
+        dailyDefeatsField,
+        1,
+      );
+
+      await transaction.hSet(PLAYER_DEFEATED_KINGS_KEY, {
+        [defeatedKingField]: "1",
+      });
+
+      await transaction.zIncrBy(
+        KING_SLAYER_LEADERBOARD_KEY,
+        username,
+        submittedScore,
+      );
+
+      await transaction.hIncrBy(KING_SLAYER_KILLS_KEY, username, 1);
+
       await transaction.hSet(PLAYER_LATEST_KING_VICTORY_KEY, {
         [username]: JSON.stringify(latestVictory),
       });
+
       const result = await transaction.exec();
 
       if (result === null) {
-        // watched key changed. retry and read the latest values
         continue;
       }
+
+      const communityProgress = await getCommunityProgress();
+
+      const communityRewards = calculateCommunityRewards(communityProgress);
 
       const completedConfiguration = KING_CONFIGURATIONS[tokenData.serverDay];
 
@@ -3507,12 +3761,20 @@ api.post("/king-victory", async (c) => {
 
         totalKills,
 
+        communityContribution: {
+          challenge: communityGoldContribution > 0 ? "gold" : null,
+
+          amount: communityGoldContribution,
+        },
+
+        communityRewards,
+
         message: alreadyUnlocked
           ? `${completedKingName} Level ${tokenData.kingLevel} defeated! ` +
-            `+${submittedScore} King Slayer score. `
+            `+${submittedScore} King Slayer score.`
           : `${completedKingName} Level ${tokenData.kingLevel} defeated! ` +
             `+${submittedScore} King Slayer score. ` +
-            `Visit Collections to unlock ${rewardName}. `,
+            `Visit Collections to unlock ${rewardName}.`,
       });
     }
 
@@ -3818,6 +4080,129 @@ api.get("/king-slayer-leaderboard", async (c) => {
         status: "error",
 
         message: `Unable to load King Slayer leaderboard: ${message}`,
+      },
+      500,
+    );
+  }
+});
+
+api.get("/community-status", async (c) => {
+  try {
+    const username = await reddit.getCurrentUsername();
+
+    if (!username) {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "You must be logged in to view community progress.",
+        },
+        401,
+      );
+    }
+
+    const [selectionValue, progress] = await Promise.all([
+      redis.hGet(PLAYER_COMMUNITY_CHALLENGE_KEY, username),
+
+      getCommunityProgress(),
+    ]);
+
+    const selectedChallenge = parseCommunityChallenge(selectionValue);
+
+    const rewards = calculateCommunityRewards(progress);
+
+    return c.json<CommunityStatusResponse>({
+      type: "community-status",
+
+      selectedChallenge,
+
+      progress,
+
+      rewards,
+
+      targets: {
+        damage: COMMUNITY_DAMAGE_TARGET,
+        health: COMMUNITY_HEALTH_TARGET,
+        gold: COMMUNITY_GOLD_TARGET,
+      },
+    });
+  } catch (error) {
+    console.error("[Community Status] Failed:", error);
+
+    const message =
+      error instanceof Error ? error.message : "Unknown community-status error";
+
+    return c.json<ApiErrorResponse>(
+      {
+        status: "error",
+        message: `Unable to load community progress: ${message}`,
+      },
+      500,
+    );
+  }
+});
+
+api.post("/community-selection", async (c) => {
+  try {
+    const username = await reddit.getCurrentUsername();
+
+    if (!username) {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "You must be logged in to select a community challenge.",
+        },
+        401,
+      );
+    }
+
+    const body = await c.req
+      .json<SelectCommunityChallengeRequest>()
+      .catch(() => null);
+
+    const challenge = body?.challenge;
+
+    if (
+      challenge !== "damage" &&
+      challenge !== "health" &&
+      challenge !== "gold"
+    ) {
+      return c.json<ApiErrorResponse>(
+        {
+          status: "error",
+          message: "The selected community challenge is invalid.",
+        },
+        400,
+      );
+    }
+
+    await redis.hSet(PLAYER_COMMUNITY_CHALLENGE_KEY, {
+      [username]: challenge,
+    });
+
+    const challengeLabel =
+      challenge.charAt(0).toUpperCase() + challenge.slice(1);
+
+    return c.json<SelectCommunityChallengeResponse>({
+      type: "select-community-challenge",
+
+      status: "success",
+
+      selectedChallenge: challenge,
+
+      message: `${challengeLabel} community challenge selected.`,
+    });
+  } catch (error) {
+    console.error("[Community Selection] Failed:", error);
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unknown community-selection error";
+
+    return c.json<ApiErrorResponse>(
+      {
+        status: "error",
+        message: `Unable to select community challenge: ${message}`,
       },
       500,
     );

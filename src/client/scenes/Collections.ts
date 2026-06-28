@@ -10,6 +10,7 @@ import type {
 import type { KingDay } from "../../shared/raiderUnlocks";
 
 import characterMap, { type RaiderDefinition } from "../game/CharacterMap";
+import audioManager from "./AudioManager";
 
 type CharacterData = RaiderDefinition;
 
@@ -125,6 +126,7 @@ export class Collections extends Scene {
   }
 
   async create(): Promise<void> {
+    audioManager.createMuteButton(this, this.scale.width - 20, 18);
     const width = this.scale.width;
     const height = this.scale.height;
 
@@ -365,6 +367,8 @@ export class Collections extends Scene {
 
     const backButton = this.createBackButton(cardX + 76, cardY + 48);
 
+    audioManager.addButtonSound(backButton);
+
     backButton.on("activate", () => {
       this.scene.start("MainMenu");
     });
@@ -444,6 +448,8 @@ export class Collections extends Scene {
     container.add([shadow, background, label]);
 
     let pressedHere = false;
+
+    audioManager.addButtonSound(background);
 
     background.on("pointerover", () => {
       container.setScale(1.04);
@@ -729,6 +735,8 @@ export class Collections extends Scene {
     let pressedHere = false;
     let pressX = 0;
     let pressY = 0;
+
+    audioManager.addButtonSound(interactionArea);
 
     interactionArea.on("pointerover", () => {
       if (card !== this.selectedCard && !this.isDraggingContent) {
@@ -1490,6 +1498,8 @@ export class Collections extends Scene {
     ]);
 
     let pressedHere = false;
+
+    audioManager.addButtonSound(interactionArea);
 
     interactionArea.on("pointerover", () => {
       container.setScale(1.025);

@@ -8,17 +8,13 @@ import type {
   ApiErrorResponse,
   SubmitHighScoreResponse,
 } from "../../shared/api";
+import audioManager from "../scenes/AudioManager";
 
 declare global {
   interface Window {
     fetchHighestScore?: () => void;
   }
 }
-const musicManager: any = {
-  play: (_path?: string) => {},
-  stop: () => {},
-};
-
 export default class BattleUI extends Scene {
   gold: number;
   score: number;
@@ -112,11 +108,15 @@ export default class BattleUI extends Scene {
   cashIcon: any;
   shop: BattleShop;
   tutorial: TutorialOverlay;
+  legendaryIconsContainer: Phaser.GameObjects.Container | null = null;
+
+  fpsText: Phaser.GameObjects.Text | null;
+  private lastFpsUpdateTime = 0;
 
   constructor() {
     super({ key: "BattleUI", active: false });
     this.shop = new BattleShop(this);
-    this.gold = 2000;
+    this.gold = 20000;
     this.score = 0;
     this.scoreText = null;
     this.multiplier = 5;
@@ -137,12 +137,20 @@ export default class BattleUI extends Scene {
     this.finalScore = 0;
     this.strengthenLabelText = null;
     this.tutorial = new TutorialOverlay(this);
+    this.fpsText = null;
   }
 
   resetState(): void {
     console.log("State reset");
 
-    this.gold = 2000;
+    const gameScene = this.scene.get("Game") as any;
+
+    const communityGoldBonus =
+      !this.isKingMode() && Number.isFinite(gameScene?.communityGoldBonus)
+        ? Math.max(0, Math.floor(gameScene.communityGoldBonus))
+        : 0;
+
+    this.gold = 20000 + communityGoldBonus;
     this.score = 0;
     this.scoreText = null;
     this.multiplier = 5;
@@ -180,6 +188,9 @@ export default class BattleUI extends Scene {
     this.gameOverContainer = null;
     this.tutorial.reset();
     this.shop.reset();
+    this.legendaryIconsContainer = null;
+    this.fpsText = null;
+    this.lastFpsUpdateTime = 0;
   }
 
   private isKingMode(): boolean {
@@ -290,12 +301,13 @@ export default class BattleUI extends Scene {
     const leftSectionX = 12;
     const leftSectionWidth = 430;
 
-    const rightSectionWidth = 280;
-    const rightSectionX = width - rightSectionWidth - 12;
-
     const centerSectionX = leftSectionX + leftSectionWidth + sectionGap;
 
-    const centerSectionWidth = rightSectionX - centerSectionX - sectionGap;
+    const centerSectionWidth = 430;
+
+    const rightSectionX = centerSectionX + centerSectionWidth + sectionGap;
+
+    const rightSectionWidth = width - rightSectionX - 12;
 
     // Section backgrounds
     this.add
@@ -443,17 +455,14 @@ export default class BattleUI extends Scene {
 
     const timerBarX = centerSectionX + 44;
 
-    const multiplierAreaWidth = 96;
-
-    const timerBarWidth = Math.max(
-      130,
-      centerSectionWidth - multiplierAreaWidth - 74,
-    );
+    const timerBarWidth = 235;
 
     const timerBarHeight = 10;
 
+    const multiplierAreaWidth = 105;
+
     const multiplierX =
-      centerSectionX + centerSectionWidth - multiplierAreaWidth / 2 - 8;
+      centerSectionX + centerSectionWidth - multiplierAreaWidth / 2 - 6;
     // Catastrophe row
     this.catastropheIcon = this.add
       .image(timerIconX, 29, "catastrophe")
@@ -601,6 +610,11 @@ export default class BattleUI extends Scene {
 
     const rightContentX = rightSectionX + 14;
 
+    this.legendaryIconsContainer = this.add
+      .container(rightSectionX + 220, 43)
+      .setScrollFactor(0)
+      .setDepth(CONTENT_DEPTH + 2);
+
     const rightSectionCenterX = rightSectionX + rightSectionWidth / 2;
 
     this.scoreText = this.add
@@ -645,13 +659,15 @@ export default class BattleUI extends Scene {
     const shopButtonHeight = 26;
 
     this.shopButtonContainer = this.add
-      .container(rightSectionCenterX - 35, 84)
+      .container(rightSectionX + 80, 84)
       .setSize(shopButtonWidth, shopButtonHeight)
       .setScrollFactor(0)
       .setDepth(CONTENT_DEPTH + 1)
       .setInteractive({
         useHandCursor: true,
       });
+
+    audioManager.addButtonSound(this.shopButtonContainer);
 
     const shopButtonBackground = this.add
       .rectangle(0, 0, shopButtonWidth, shopButtonHeight, 0x1d6f94, 1)
@@ -691,22 +707,78 @@ export default class BattleUI extends Scene {
       this.shopText.setText("SHOP (Disabled)");
     }
 
-    const pauseButton = this.add
-      .text(rightSectionX + rightSectionWidth - 30, 84, "Ⅱ", {
-        font: "bold 18px Orbitron",
-        color: "#ffffff",
-        backgroundColor: "#a92e2e",
-        padding: {
-          x: 8,
-          y: 5,
-        },
+    /*
+     * Bottom-right utility controls:
+     *
+     * [ FPS: 60 ] [ 🔊 ] [ Ⅱ ]
+     */
+    const utilityY = 84;
+
+    const utilityRight = rightSectionX + rightSectionWidth - 14;
+
+    const controlHeight = 28;
+
+    const pauseWidth = 34;
+    const muteWidth = 38;
+    const fpsWidth = 72;
+
+    const controlGap = 7;
+
+    const pauseX = utilityRight - pauseWidth / 2;
+
+    const muteX = pauseX - pauseWidth / 2 - controlGap - muteWidth / 2;
+
+    const fpsX = muteX - muteWidth / 2 - controlGap - fpsWidth / 2;
+
+    const fpsBackground = this.add
+      .rectangle(fpsX, utilityY, fpsWidth, controlHeight, 0x101a22, 0.92)
+      .setStrokeStyle(1, 0x44758d, 0.9)
+      .setScrollFactor(0)
+      .setDepth(CONTENT_DEPTH + 1);
+
+    this.fpsText = this.add
+      .text(fpsX, utilityY, "FPS: --", {
+        font: "bold 11px monospace",
+        color: "#7dff8b",
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
-      .setDepth(CONTENT_DEPTH + 1)
+      .setDepth(CONTENT_DEPTH + 2);
+
+    audioManager.createMuteButton(this, muteX, utilityY, CONTENT_DEPTH + 2);
+
+    const pauseButton = this.add
+      .text(pauseX, utilityY, "Ⅱ", {
+        font: "bold 16px Orbitron",
+        color: "#ffffff",
+        backgroundColor: "#8f3036",
+
+        fixedWidth: pauseWidth,
+        fixedHeight: controlHeight,
+
+        align: "center",
+
+        padding: {
+          top: 5,
+        },
+      })
+      .setOrigin(0.5)
+      .setStroke("#ff737b", 1)
+      .setScrollFactor(0)
+      .setDepth(CONTENT_DEPTH + 2)
       .setInteractive({
         useHandCursor: true,
       });
+
+    audioManager.addButtonSound(pauseButton);
+
+    pauseButton.on("pointerover", () => {
+      pauseButton.setScale(1.05);
+    });
+
+    pauseButton.on("pointerout", () => {
+      pauseButton.setScale(1);
+    });
 
     pauseButton.on(
       "pointerdown",
@@ -717,9 +789,16 @@ export default class BattleUI extends Scene {
         event: Phaser.Types.Input.EventData,
       ) => {
         event.stopPropagation();
+
+        pauseButton.setScale(0.95);
+
         this.pauseGame();
       },
     );
+
+    pauseButton.on("pointerup", () => {
+      pauseButton.setScale(1.05);
+    });
 
     this.flashing = false;
     this.flashingTween = null;
@@ -935,7 +1014,23 @@ export default class BattleUI extends Scene {
     this.baseRebuildGraphics.clear();
   }
 
-  override update(): void {
+  override update(time: number): void {
+    if (this.fpsText && time - this.lastFpsUpdateTime >= 250) {
+      const fps = Math.round(this.game.loop.actualFps);
+
+      this.fpsText.setText(`FPS: ${fps}`);
+
+      if (fps >= 50) {
+        this.fpsText.setColor("#7dff8b");
+      } else if (fps >= 30) {
+        this.fpsText.setColor("#ffd84a");
+      } else {
+        this.fpsText.setColor("#ff6666");
+      }
+
+      this.lastFpsUpdateTime = time;
+    }
+
     this.displayPlayerStats();
 
     if (!this.timerStarted) {
@@ -1046,6 +1141,8 @@ export default class BattleUI extends Scene {
     if (this.gameOverContainer && this.gameOverContainer.active) {
       return;
     }
+
+    audioManager.playSound("sfx-game-over", 0.9);
 
     const width = this.scale.width;
     const height = this.scale.height;
@@ -1439,6 +1536,7 @@ export default class BattleUI extends Scene {
 
       border.strokeRoundedRect(x - 122.5, y - 23, 245, 46, 8);
 
+      audioManager.addButtonSound(button);
       button.on("pointerover", () => {
         button.setScale(1.025).setAlpha(1);
       });
@@ -1676,6 +1774,7 @@ export default class BattleUI extends Scene {
 
     button.setStroke("#000000", 4);
     button.setShadow(2, 2, "rgba(0,0,0,0.5)", 2, true, true);
+    audioManager.addButtonSound(button);
 
     return button;
   }
@@ -2103,7 +2202,7 @@ export default class BattleUI extends Scene {
     gameScene.isGameOver = true;
     gameScene.isGamePaused = true;
     gameScene.allowInput = false;
-
+    audioManager.playSound("sfx-game-over", 0.9);
     const kingName = this.getKingName();
 
     this.createKingResultScreen({
@@ -2113,8 +2212,7 @@ export default class BattleUI extends Scene {
 
       subtitle: `${kingName} SURVIVED`,
 
-      message:
-        "Return to the Main Menu to challenge the King again for 5 cash.",
+      message: "Return to the Main Menu to challenge the King again.",
     });
   }
 

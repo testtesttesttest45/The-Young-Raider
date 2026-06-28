@@ -149,7 +149,7 @@ export class Preloader extends Scene {
       .text(
         centerX,
         centerY - 28,
-        "Loading enemies, abilities and battlefield resources...",
+        "Loading battlefield resources. The first load may take longer than subsequent loads...",
         {
           font: "14px Arial",
           color: "#b9cfda",
@@ -371,7 +371,9 @@ export class Preloader extends Scene {
 
   preload() {
     this.load.setPath("../assets");
+    this.load.image("audio-on", "ui/audio-on.png");
 
+    this.load.image("audio-off", "ui/audio-off.png");
     this.load.image("enemy_camp", "images/enemy_camp.png");
 
     this.load.image("land", "images/land2.png");
@@ -392,9 +394,7 @@ export class Preloader extends Scene {
     this.load.image("health1", "images/health1.png");
     this.load.image("health2", "images/health2.png");
     this.load.image("attackSpeed1", "images/attackSpeed1.png");
-    this.load.image("attackSpeed2", "images/attackSpeed2.png");
     this.load.image("moveSpeed1", "images/moveSpeed1.png");
-    this.load.image("moveSpeed2", "images/moveSpeed2.png");
     this.load.image("thunderlordSeal", "images/thunderlordSeal.png");
     this.load.image("elixirOfLife", "images/elixirOfLife.png");
     this.load.image("winterFrost", "images/winterFrost.png");
@@ -421,6 +421,28 @@ export class Preloader extends Scene {
     this.loadEnemySpritesheets(1, 15);
     this.loadRaiderPreviewSpritesheets();
     this.loadRaiderIcons();
+
+    this.load.audio("music-main", "audio/music/game-theme.mp3");
+
+    this.load.audio("sfx-player-attack", "audio/sfx/player-attack.wav");
+
+    this.load.audio("sfx-shield-block", "audio/sfx/shield-block.wav");
+
+    this.load.audio("sfx-dash", "audio/sfx/dash.wav");
+
+    this.load.audio("sfx-slash", "audio/sfx/slash.wav");
+
+    this.load.audio("sfx-player-die", "audio/sfx/player-die.wav");
+
+    this.load.audio("sfx-enemy-die", "audio/sfx/enemy-die.wav");
+
+    this.load.audio("sfx-button-click", "audio/sfx/button-click.wav");
+
+    this.load.audio("sfx-buy", "audio/sfx/buy.wav");
+
+    this.load.audio("sfx-game-over", "audio/sfx/game-over.wav");
+    this.load.audio("sfx-enemy-hit-player", "audio/sfx/enemy-hit-player.wav");
+    this.load.audio("sfx-catastrophe", "audio/sfx/catastrophe.wav");
   }
 
   private loadEnemySpritesheets(
@@ -476,7 +498,7 @@ export class Preloader extends Scene {
       this.load.image(
         character.icon,
         // raider1Icon.png
-        `images/Raider Icons/${character.icon}.png`
+        `images/Raider Icons/${character.icon}.png`,
       );
     });
   }

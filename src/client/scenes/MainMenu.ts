@@ -1,6 +1,13 @@
 import { GameObjects, Scene, Structs } from "phaser";
+import audioManager from "./AudioManager";
 import Phaser from "phaser";
-import type { ApiErrorResponse, PlayerProfileResponse } from "../../shared/api";
+import type {
+  ApiErrorResponse,
+  CommunityChallengeType,
+  CommunityStatusResponse,
+  PlayerProfileResponse,
+  SelectCommunityChallengeResponse,
+} from "../../shared/api";
 
 import type {
   EnterKingBattleResponse,
@@ -29,6 +36,10 @@ type MainMenuLayout = {
 
   todayKingY: number;
   todayKingWidth: number;
+
+  communityY: number;
+  communityWidth: number;
+  communityHeight: number;
 
   playY: number;
   kingBattleY: number;
@@ -128,6 +139,41 @@ export class MainMenu extends Scene {
 
   private currentActionWidth = ACTION_WIDTH;
   private currentActionHeight = ACTION_HEIGHT;
+
+  private communityContainer: GameObjects.Container | null = null;
+
+  private communitySelectionModal: GameObjects.Container | null = null;
+
+  private communitySelectionInProgress = false;
+
+  private selectedCommunityChallenge: CommunityChallengeType = "damage";
+
+  private pendingCommunityChallenge: CommunityChallengeType = "damage";
+
+  private communitySaveButton: GameObjects.Container | null = null;
+
+  private communitySaveButtonText: GameObjects.Text | null = null;
+
+  private communityCardsContainer: GameObjects.Container | null = null;
+
+  private communityProgress = {
+    damage: 0,
+    health: 0,
+    gold: 0,
+  };
+
+  private communityRewards = {
+    damageBonus: 0,
+    healthBonus: 0,
+    goldBonus: 0,
+  };
+
+  private communityTargets = {
+    damage: 1_000_000,
+    health: 1_000_000,
+    gold: 1_000,
+  };
+
   constructor() {
     super("MainMenu");
   }
@@ -162,9 +208,42 @@ export class MainMenu extends Scene {
     this.currentActionWidth = ACTION_WIDTH;
     this.currentActionHeight = ACTION_HEIGHT;
     this.currentKingLevel = 1;
+    this.communityContainer = null;
+
+    this.communitySelectionModal = null;
+
+    this.communitySelectionInProgress = false;
+
+    this.selectedCommunityChallenge = "damage";
+    this.pendingCommunityChallenge = "damage";
+
+    this.communityProgress = {
+      damage: 0,
+      health: 0,
+      gold: 0,
+    };
+
+    this.communityRewards = {
+      damageBonus: 0,
+      healthBonus: 0,
+      goldBonus: 0,
+    };
+
+    this.communityTargets = {
+      damage: 1_000_000,
+      health: 1_000_000,
+      gold: 1_000,
+    };
+
+    this.communitySaveButton = null;
+    this.communitySaveButtonText = null;
+    this.communityCardsContainer = null;
   }
 
   async create(): Promise<void> {
+    audioManager.initialize(this.game);
+    audioManager.playMusic("music-main");
+    audioManager.createMuteButton(this, this.scale.width - 20, 18);
     const width = this.scale.width;
     const height = this.scale.height;
 
@@ -195,7 +274,7 @@ export class MainMenu extends Scene {
 
     void this.loadPlayerProfile();
 
-    await this.loadKingStatus();
+    await Promise.all([this.loadKingStatus(), this.loadCommunityStatus()]);
 
     if (!this.sys.isActive() || !this.layout) {
       return;
@@ -412,7 +491,7 @@ export class MainMenu extends Scene {
     const eyebrow = this.add
       .text(
         centerX,
-        headerY - (compact ? 34 : 43),
+        headerY - (compact ? 24 : 33),
         "SURVIVE  •  GROW  •  CONQUER",
         {
           font: `bold ${mobile ? 8 : 9}px Orbitron`,
@@ -580,34 +659,71 @@ export class MainMenu extends Scene {
     const {
       centerX,
       contentWidth,
+
       todayKingY,
       todayKingWidth,
+
+      communityY,
+      communityWidth,
+      communityHeight,
+
       playY,
       kingBattleY,
+
       secondaryY,
       secondaryWidth,
       secondaryGap,
+
       compact,
       mobile,
     } = layout;
 
-    const primaryWidth = mobile ? contentWidth : Math.min(500, contentWidth);
+    const featureGap = mobile ? 8 : 12;
+
+    const featuresShareRow = todayKingY === communityY;
+
+    const todayKingX = featuresShareRow
+      ? centerX - featureGap / 2 - todayKingWidth / 2
+      : centerX;
+
+    const communityX = featuresShareRow
+      ? centerX + featureGap / 2 + communityWidth / 2
+      : centerX;
 
     const todayKingPanel = this.createTodayKingPanel(
-      centerX,
+      todayKingX,
       todayKingY,
       todayKingWidth,
     );
 
+    const communityPanel = this.createCommunityPanel(
+      communityX,
+      communityY,
+      communityWidth,
+      communityHeight,
+    );
+
+    const buttonGap = mobile ? 8 : 12;
+
+    const buttonWidth = (contentWidth - buttonGap) / 2;
+
+    const leftButtonX = centerX - buttonGap / 2 - buttonWidth / 2;
+
+    const rightButtonX = centerX + buttonGap / 2 + buttonWidth / 2;
+
+    const mainButtonHeight = compact ? 46 : 50;
+
+    const secondaryButtonHeight = compact ? 42 : 46;
+
     const playButton = this.createMenuButton({
-      x: centerX,
+      x: leftButtonX,
       y: playY,
 
-      width: primaryWidth,
-      height: compact ? 54 : 62,
+      width: buttonWidth,
+      height: mainButtonHeight,
 
       title: "PLAY NOW",
-      subtitle: "BEGIN A NEW RUN",
+      subtitle: "START A NEW RUN",
 
       backgroundColor: 0x14633a,
       borderColor: COLORS.greenStroke,
@@ -620,16 +736,16 @@ export class MainMenu extends Scene {
     });
 
     const kingButton = this.createMenuButton({
-      x: centerX,
+      x: rightButtonX,
       y: kingBattleY,
 
-      width: primaryWidth,
-      height: compact ? 50 : 58,
+      width: buttonWidth,
+      height: mainButtonHeight,
 
       title: "KING BATTLE",
       subtitle:
-        `${this.currentKingName} LV.${this.currentKingLevel}` +
-        `  •  ENTRY: ${this.currentKingEntryCost} CASH`,
+        `LV.${this.currentKingLevel}` +
+        `  •  ${this.currentKingEntryCost} CASH`,
 
       backgroundColor: 0x6b3515,
       borderColor: 0xffb45c,
@@ -644,7 +760,7 @@ export class MainMenu extends Scene {
       y: secondaryY,
 
       width: secondaryWidth,
-      height: compact ? 46 : 52,
+      height: secondaryButtonHeight,
 
       title: "COLLECTIONS",
       subtitle: "YOUR RAIDERS",
@@ -662,11 +778,11 @@ export class MainMenu extends Scene {
       y: secondaryY,
 
       width: secondaryWidth,
-      height: compact ? 46 : 52,
+      height: secondaryButtonHeight,
 
       title: mobile ? "RANKINGS" : "LEADERBOARD",
 
-      subtitle: mobile ? "TOP RAIDERS" : "TOP 100 RAIDERS",
+      subtitle: "TOP RAIDERS",
 
       backgroundColor: 0x3a2a5c,
       borderColor: 0xb995ef,
@@ -680,6 +796,7 @@ export class MainMenu extends Scene {
 
     this.mainCard?.add([
       todayKingPanel,
+      communityPanel,
       playButton,
       kingButton,
       collectionsButton,
@@ -689,33 +806,35 @@ export class MainMenu extends Scene {
 
   private createMenuButton(options: MenuButtonOptions): GameObjects.Container {
     const container = this.add.container(options.x, options.y);
+
     let wasPressed = false;
 
-    const radius = Math.min(16, options.height / 2.4);
+    const radius = Math.min(12, options.height / 2.6);
 
     const shadow = this.addRoundedRect(
       0,
-      5,
+      4,
       options.width,
       options.height,
       radius,
       COLORS.shadow,
-      0.4,
+      0.38,
     );
 
     const glow = this.addRoundedRect(
       0,
       0,
-      options.width + 9,
-      options.height + 9,
-      radius + 3,
+      options.width + 6,
+      options.height + 6,
+      radius + 2,
       options.borderColor,
       0,
       options.borderColor,
-      0.6,
-      2,
+      0.55,
+      1.5,
     );
-    glow.setAlpha(0.12);
+
+    glow.setAlpha(0.1);
 
     const button = this.addRoundedRect(
       0,
@@ -724,47 +843,54 @@ export class MainMenu extends Scene {
       options.height,
       radius,
       options.backgroundColor,
-      0.97,
+      0.96,
       options.borderColor,
-      0.6,
-      1.5,
+      0.62,
+      1.25,
     );
 
     const topHighlight = this.addRoundedRect(
       0,
-      -options.height * 0.28,
-      options.width - 16,
-      options.height * 0.2,
-      radius * 0.6,
+      -options.height * 0.27,
+      options.width - 12,
+      Math.max(5, options.height * 0.16),
+      radius * 0.55,
       0xffffff,
-      0.05,
+      0.045,
     );
 
-    const isPrimaryButton =
-      options.title === "PLAY NOW" || options.title === "KING BATTLE";
+    const titleSize = options.height >= 48 ? 15 : 12;
+
+    const subtitleSize = options.width < 190 ? 5 : 6;
 
     const titleText = this.add
-      .text(0, isPrimaryButton ? -7 : -6, options.title, {
-        font: isPrimaryButton ? "bold 19px Orbitron" : "bold 14px Orbitron",
+      .text(0, options.height >= 48 ? -6 : -5, options.title, {
+        font: `bold ${titleSize}px Orbitron`,
         color: TEXT.bright,
         stroke: "#03121b",
-        strokeThickness: 3,
+        strokeThickness: 2,
         letterSpacing: 1,
+        align: "center",
       })
       .setOrigin(0.5);
 
     const subtitleText = this.add
-      .text(0, isPrimaryButton ? 16 : 14, options.subtitle, {
-        font: "bold 7px Orbitron",
+      .text(0, options.height >= 48 ? 13 : 11, options.subtitle, {
+        font: `bold ${subtitleSize}px Orbitron`,
         color: "#cfe6ef",
         letterSpacing: 1,
+        align: "center",
       })
       .setOrigin(0.5);
+
+    subtitleText.setCrop(0, 0, options.width - 16, subtitleText.height);
 
     const hit = this.add
       .rectangle(0, 0, options.width, options.height, 0xffffff, 0)
       .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
+      .setInteractive({
+        useHandCursor: true,
+      });
 
     container.add([
       shadow,
@@ -776,20 +902,27 @@ export class MainMenu extends Scene {
       hit,
     ]);
 
+    audioManager.addButtonSound(hit);
+
     hit.on("pointerover", () => {
       this.tweens.killTweensOf(container);
+
       this.tweens.add({
         targets: container,
-        scaleX: 1.025,
-        scaleY: 1.025,
+        scaleX: 1.02,
+        scaleY: 1.02,
         duration: 90,
         ease: "Quad.easeOut",
       });
-      glow.setAlpha(0.5);
+
+      glow.setAlpha(0.42);
     });
+
     hit.on("pointerout", () => {
       wasPressed = false;
+
       this.tweens.killTweensOf(container);
+
       this.tweens.add({
         targets: container,
         scaleX: 1,
@@ -797,25 +930,466 @@ export class MainMenu extends Scene {
         duration: 90,
         ease: "Quad.easeOut",
       });
-      glow.setAlpha(0.12);
+
+      glow.setAlpha(0.1);
     });
+
     hit.on("pointerdown", () => {
       wasPressed = true;
+
       container.setScale(0.97);
     });
+
     hit.on("pointerup", () => {
       container.setScale(1);
+
       if (!wasPressed) {
         return;
       }
+
       wasPressed = false;
+
       options.onClick();
     });
+
     hit.on("pointerupoutside", () => {
       wasPressed = false;
+
       container.setScale(1);
     });
+
     return container;
+  }
+
+  private createCommunityPanel(
+    centerX: number,
+    y: number,
+    width: number,
+    height: number,
+  ): GameObjects.Container {
+    this.communityContainer?.destroy(true);
+
+    const container = this.add.container(centerX, y);
+
+    this.communityContainer = container;
+
+    const challenge = this.selectedCommunityChallenge;
+
+    const progress = this.communityProgress[challenge];
+
+    const target = this.communityTargets[challenge];
+
+    const progressPercentage =
+      target > 0 ? Phaser.Math.Clamp(progress / target, 0, 1) : 0;
+
+    const narrow = width < 300;
+
+    const challengeLabel =
+      challenge === "damage"
+        ? "DAMAGE"
+        : challenge === "health"
+          ? "MAX HEALTH"
+          : "STARTING GOLD";
+
+    const rewardValue =
+      challenge === "damage"
+        ? `+${this.communityRewards.damageBonus} DMG`
+        : challenge === "health"
+          ? `+${this.communityRewards.healthBonus} HP`
+          : `+${this.communityRewards.goldBonus} GOLD`;
+
+    const borderColor =
+      challenge === "damage"
+        ? 0xff6f61
+        : challenge === "health"
+          ? 0x63e68c
+          : 0xffd45c;
+
+    const backgroundColor =
+      challenge === "damage"
+        ? 0x301719
+        : challenge === "health"
+          ? 0x12301f
+          : 0x342c15;
+
+    const shadow = this.addRoundedRect(
+      3,
+      5,
+      width,
+      height,
+      12,
+      COLORS.shadow,
+      0.42,
+    );
+
+    const background = this.addRoundedRect(
+      0,
+      0,
+      width,
+      height,
+      12,
+      backgroundColor,
+      0.97,
+      borderColor,
+      0.72,
+      1.5,
+    );
+
+    const leftX = -width / 2 + 14;
+
+    const rightX = width / 2 - 14;
+
+    const heading = this.add
+      .text(leftX, -height / 2 + 17, "COMMUNITY", {
+        font: `bold ${narrow ? 7 : 8}px Orbitron`,
+        color: TEXT.muted,
+        letterSpacing: 1,
+      })
+      .setOrigin(0, 0.5);
+
+    const editText = this.add
+      .text(rightX, -height / 2 + 17, "CHANGE", {
+        font: `bold ${narrow ? 6 : 7}px Orbitron`,
+        color: TEXT.accent,
+        letterSpacing: 1,
+      })
+      .setOrigin(1, 0.5);
+
+    const challengeText = this.add
+      .text(leftX, -height / 2 + 38, challengeLabel, {
+        font: `bold ${narrow ? 11 : 14}px Orbitron`,
+        color: TEXT.bright,
+        stroke: "#000000",
+        strokeThickness: 2,
+      })
+      .setOrigin(0, 0.5);
+
+    const rewardText = this.add
+      .text(rightX, -height / 2 + 38, rewardValue, {
+        font: `bold ${narrow ? 8 : 10}px Orbitron`,
+        color:
+          challenge === "gold"
+            ? TEXT.gold
+            : challenge === "health"
+              ? TEXT.green
+              : "#ffaaa3",
+      })
+      .setOrigin(1, 0.5);
+
+    const progressLabel = this.add
+      .text(
+        leftX,
+        height / 2 - 28,
+        `${progress.toLocaleString()} / ${target.toLocaleString()}`,
+        {
+          font: `bold ${narrow ? 6 : 7}px Orbitron`,
+          color: "#d7e6ec",
+        },
+      )
+      .setOrigin(0, 0.5);
+
+    const percentageText = this.add
+      .text(
+        rightX,
+        height / 2 - 28,
+        `${Math.floor(progressPercentage * 100)}%`,
+        {
+          font: `bold ${narrow ? 6 : 7}px Orbitron`,
+          color: TEXT.primary,
+        },
+      )
+      .setOrigin(1, 0.5);
+
+    const barWidth = width - 28;
+
+    const barY = height / 2 - 13;
+
+    const barBackground = this.add
+      .rectangle(leftX, barY, barWidth, 7, 0x000000, 0.55)
+      .setOrigin(0, 0.5);
+
+    const fillWidth = Math.max(
+      progressPercentage > 0 ? 2 : 0,
+      barWidth * progressPercentage,
+    );
+
+    const barFill = this.add
+      .rectangle(leftX, barY, fillWidth, 7, borderColor, 1)
+      .setOrigin(0, 0.5);
+
+    const hit = this.add
+      .rectangle(0, 0, width, height, 0xffffff, 0)
+      .setInteractive({
+        useHandCursor: true,
+      });
+
+    container.add([
+      shadow,
+      background,
+      heading,
+      editText,
+      challengeText,
+      rewardText,
+      progressLabel,
+      percentageText,
+      barBackground,
+      barFill,
+      hit,
+    ]);
+
+    audioManager.addButtonSound(hit);
+
+    let pressed = false;
+
+    hit.on("pointerover", () => {
+      container.setScale(1.012);
+    });
+
+    hit.on("pointerout", () => {
+      pressed = false;
+
+      container.setScale(1);
+    });
+
+    hit.on("pointerdown", () => {
+      pressed = true;
+
+      container.setScale(0.985);
+    });
+
+    hit.on("pointerup", () => {
+      container.setScale(1);
+
+      if (!pressed) {
+        return;
+      }
+
+      pressed = false;
+
+      this.openCommunitySelectionModal();
+    });
+
+    return container;
+  }
+
+  private openCommunitySelectionModal(): void {
+    if (this.communitySelectionModal?.active) {
+      return;
+    }
+
+    this.pendingCommunityChallenge = this.selectedCommunityChallenge;
+
+    const screenWidth = this.scale.width;
+    const screenHeight = this.scale.height;
+
+    const modal = this.add.container(0, 0).setDepth(2000);
+
+    this.communitySelectionModal = modal;
+
+    const overlay = this.add
+      .rectangle(0, 0, screenWidth, screenHeight, 0x02070c, 0.9)
+      .setOrigin(0, 0)
+      .setInteractive();
+
+    const mobile = screenWidth < 680;
+
+    const panelWidth = Math.min(
+      mobile ? screenWidth - 24 : 700,
+      screenWidth - 24,
+    );
+
+    const panelHeight = Math.min(
+      mobile ? screenHeight - 30 : 620,
+      screenHeight - 30,
+    );
+
+    const panelX = screenWidth / 2;
+    const panelY = screenHeight / 2;
+
+    const panelShadow = this.add
+      .rectangle(
+        panelX + 5,
+        panelY + 7,
+        panelWidth,
+        panelHeight,
+        0x000000,
+        0.55,
+      )
+      .setStrokeStyle(0);
+
+    const panel = this.add
+      .rectangle(panelX, panelY, panelWidth, panelHeight, 0x08131d, 1)
+      .setStrokeStyle(2, COLORS.accent, 0.75);
+
+    const titleY = panelY - panelHeight / 2 + 42;
+
+    const title = this.add
+      .text(panelX, titleY, "COMMUNITY CHALLENGE", {
+        font: `bold ${mobile ? 17 : 22}px Orbitron`,
+        color: TEXT.bright,
+        stroke: "#02090e",
+        strokeThickness: 4,
+        align: "center",
+      })
+      .setOrigin(0.5);
+
+    const description = this.add
+      .text(
+        panelX,
+        titleY + 35,
+        [
+          "Choose where your next result contributes.",
+          "Only improvements over your personal best add score.",
+        ],
+        {
+          font: `${mobile ? 8 : 10}px Orbitron`,
+          color: TEXT.muted,
+          align: "center",
+          lineSpacing: 6,
+          wordWrap: {
+            width: panelWidth - 50,
+          },
+        },
+      )
+      .setOrigin(0.5);
+
+    const divider = this.add.rectangle(
+      panelX,
+      titleY + 76,
+      panelWidth - 42,
+      1,
+      COLORS.accent,
+      0.14,
+    );
+
+    this.communityCardsContainer = this.add.container(0, 0);
+
+    modal.add([
+      overlay,
+      panelShadow,
+      panel,
+      title,
+      description,
+      divider,
+      this.communityCardsContainer,
+    ]);
+
+    this.rebuildCommunitySelectionCards(
+      panelX,
+      panelY,
+      panelWidth,
+      panelHeight,
+      mobile,
+    );
+
+    const saveY = panelY + panelHeight / 2 - 72;
+
+    this.communitySaveButton = this.createCommunitySaveButton(
+      panelX,
+      saveY,
+      Math.min(panelWidth - 50, 360),
+      mobile ? 50 : 56,
+    );
+
+    const closeText = this.add
+      .text(panelX, panelY + panelHeight / 2 - 28, "CANCEL", {
+        font: `bold ${mobile ? 9 : 10}px Orbitron`,
+        color: TEXT.muted,
+        letterSpacing: 1,
+      })
+      .setOrigin(0.5)
+      .setInteractive({
+        useHandCursor: true,
+      });
+
+    audioManager.addButtonSound(closeText);
+
+    closeText.on("pointerover", () => {
+      closeText.setColor(TEXT.bright);
+    });
+
+    closeText.on("pointerout", () => {
+      closeText.setColor(TEXT.muted);
+    });
+
+    closeText.on("pointerup", () => {
+      if (!this.communitySelectionInProgress) {
+        this.closeCommunitySelectionModal();
+      }
+    });
+
+    modal.add([this.communitySaveButton, closeText]);
+  }
+
+  private rebuildCommunitySelectionCards(
+    panelX: number,
+    panelY: number,
+    panelWidth: number,
+    panelHeight: number,
+    mobile: boolean,
+  ): void {
+    this.communityCardsContainer?.removeAll(true);
+
+    const cardWidth = panelWidth - 46;
+
+    const availableHeight = panelHeight - 250;
+
+    const cardGap = mobile ? 9 : 12;
+
+    const cardHeight = Math.min(
+      mobile ? 96 : 108,
+      (availableHeight - cardGap * 2) / 3,
+    );
+
+    const totalCardsHeight = cardHeight * 3 + cardGap * 2;
+
+    const firstCardY = panelY - totalCardsHeight / 2 + 21;
+
+    const challengeDefinitions = [
+      {
+        type: "damage" as const,
+        title: "DAMAGE",
+        description: "Improve your normal-game high score.",
+        milestone: "Every 10,000 community points grants +2 base damage.",
+        maximum: "MAXIMUM BONUS: +200 DAMAGE",
+        color: 0xff756a,
+        fill: 0x321719,
+      },
+      {
+        type: "health" as const,
+        title: "MAX HEALTH",
+        description: "Improve your normal-game high score.",
+        milestone: "Every 10,000 community points grants +5 max health.",
+        maximum: "MAXIMUM BONUS: +500 HEALTH",
+        color: 0x69e99a,
+        fill: 0x13321f,
+      },
+      {
+        type: "gold" as const,
+        title: "STARTING GOLD",
+        description: "Defeat Kings while this challenge is selected.",
+        milestone: "Every 10 community King kills grants +10 starting gold.",
+        maximum: "MAXIMUM BONUS: +1,000 GOLD",
+        color: 0xffd76a,
+        fill: 0x382f15,
+      },
+    ];
+
+    challengeDefinitions.forEach((definition, index) => {
+      const cardY =
+        firstCardY + cardHeight / 2 + index * (cardHeight + cardGap);
+
+      const card = this.createCommunitySelectionCard(
+        panelX,
+        cardY,
+        cardWidth,
+        cardHeight,
+        definition,
+        mobile,
+      );
+
+      this.communityCardsContainer?.add(card);
+    });
   }
 
   private createFooter(layout: MainMenuLayout): void {
@@ -843,6 +1417,369 @@ export class MainMenu extends Scene {
       .setOrigin(0.5);
 
     this.mainCard?.add([line, footer]);
+  }
+
+  private createCommunitySelectionCard(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    challenge: {
+      type: CommunityChallengeType;
+      title: string;
+      description: string;
+      milestone: string;
+      maximum: string;
+      color: number;
+      fill: number;
+    },
+    mobile: boolean,
+  ): GameObjects.Container {
+    const container = this.add.container(x, y);
+
+    const selected = challenge.type === this.pendingCommunityChallenge;
+
+    const savedSelection = challenge.type === this.selectedCommunityChallenge;
+
+    const shadow = this.add.rectangle(3, 5, width, height, 0x000000, 0.35);
+
+    const background = this.add
+      .rectangle(0, 0, width, height, challenge.fill, selected ? 1 : 0.88)
+      .setStrokeStyle(selected ? 3 : 1, challenge.color, selected ? 1 : 0.34);
+
+    const indicatorX = -width / 2 + (mobile ? 23 : 29);
+
+    const indicator = this.add
+      .circle(
+        indicatorX,
+        0,
+        mobile ? 10 : 12,
+        selected ? challenge.color : 0x071019,
+        1,
+      )
+      .setStrokeStyle(2, challenge.color, selected ? 1 : 0.6);
+
+    const innerIndicator = this.add.circle(
+      indicatorX,
+      0,
+      selected ? (mobile ? 4 : 5) : 0,
+      0xffffff,
+      1,
+    );
+
+    const contentX = -width / 2 + (mobile ? 48 : 58);
+
+    const title = this.add
+      .text(contentX, -height * 0.3, challenge.title, {
+        font: `bold ${mobile ? 11 : 14}px Orbitron`,
+        color: TEXT.bright,
+        letterSpacing: 1,
+      })
+      .setOrigin(0, 0.5);
+
+    const status = this.add
+      .text(
+        width / 2 - 15,
+        -height * 0.3,
+        savedSelection ? "CURRENT" : selected ? "SELECTED" : "",
+        {
+          font: `bold ${mobile ? 6 : 7}px Orbitron`,
+          color: savedSelection ? TEXT.green : TEXT.accent,
+          letterSpacing: 1,
+        },
+      )
+      .setOrigin(1, 0.5);
+
+    const description = this.add
+      .text(contentX, -height * 0.03, challenge.description, {
+        font: `${mobile ? 7 : 9}px Orbitron`,
+        color: "#d7e6ec",
+      })
+      .setOrigin(0, 0.5);
+
+    const milestone = this.add
+      .text(contentX, height * 0.21, challenge.milestone, {
+        font: `bold ${mobile ? 6 : 8}px Orbitron`,
+        color: Phaser.Display.Color.IntegerToColor(challenge.color).rgba,
+        wordWrap: {
+          width: width - (mobile ? 72 : 90),
+        },
+      })
+      .setOrigin(0, 0.5);
+
+    const maximum = this.add
+      .text(width / 2 - 15, height * 0.36, challenge.maximum, {
+        font: `bold ${mobile ? 5 : 6}px Orbitron`,
+        color: TEXT.muted,
+      })
+      .setOrigin(1, 0.5);
+
+    const hit = this.add
+      .rectangle(0, 0, width, height, 0xffffff, 0)
+      .setInteractive({
+        useHandCursor: true,
+      });
+
+    container.add([
+      shadow,
+      background,
+      indicator,
+      innerIndicator,
+      title,
+      status,
+      description,
+      milestone,
+      maximum,
+      hit,
+    ]);
+
+    audioManager.addButtonSound(hit);
+
+    hit.on("pointerover", () => {
+      if (challenge.type !== this.pendingCommunityChallenge) {
+        container.setScale(1.01);
+      }
+    });
+
+    hit.on("pointerout", () => {
+      container.setScale(1);
+    });
+
+    hit.on("pointerdown", () => {
+      container.setScale(0.99);
+    });
+
+    hit.on("pointerup", () => {
+      container.setScale(1);
+
+      if (this.communitySelectionInProgress) {
+        return;
+      }
+
+      this.pendingCommunityChallenge = challenge.type;
+
+      const modalWidth = Math.min(
+        mobile ? this.scale.width - 24 : 700,
+        this.scale.width - 24,
+      );
+
+      const modalHeight = Math.min(
+        mobile ? this.scale.height - 30 : 620,
+        this.scale.height - 30,
+      );
+
+      this.rebuildCommunitySelectionCards(
+        this.scale.width / 2,
+        this.scale.height / 2,
+        modalWidth,
+        modalHeight,
+        mobile,
+      );
+
+      this.updateCommunitySaveButton();
+    });
+
+    return container;
+  }
+
+  private createCommunitySaveButton(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ): GameObjects.Container {
+    const container = this.add.container(x, y);
+
+    const background = this.add
+      .rectangle(0, 0, width, height, 0x145f39, 1)
+      .setStrokeStyle(2, COLORS.greenStroke, 0.9);
+
+    this.communitySaveButtonText = this.add
+      .text(0, 0, "SAVE SELECTION", {
+        font: "bold 13px Orbitron",
+        color: TEXT.bright,
+        letterSpacing: 1,
+      })
+      .setOrigin(0.5);
+
+    const hit = this.add
+      .rectangle(0, 0, width, height, 0xffffff, 0)
+      .setInteractive({
+        useHandCursor: true,
+      });
+
+    container.add([background, this.communitySaveButtonText, hit]);
+
+    audioManager.addButtonSound(hit);
+
+    hit.on("pointerover", () => {
+      if (!this.communitySelectionInProgress) {
+        container.setScale(1.02);
+      }
+    });
+
+    hit.on("pointerout", () => {
+      container.setScale(1);
+    });
+
+    hit.on("pointerdown", () => {
+      if (!this.communitySelectionInProgress) {
+        container.setScale(0.98);
+      }
+    });
+
+    hit.on("pointerup", () => {
+      container.setScale(1);
+
+      if (this.communitySelectionInProgress) {
+        return;
+      }
+
+      if (this.pendingCommunityChallenge === this.selectedCommunityChallenge) {
+        this.communitySaveButtonText?.setText("ALREADY SAVED");
+
+        return;
+      }
+
+      void this.savePendingCommunityChallenge();
+    });
+
+    this.updateCommunitySaveButton();
+
+    return container;
+  }
+
+  private updateCommunitySaveButton(): void {
+    if (!this.communitySaveButtonText) {
+      return;
+    }
+
+    if (this.communitySelectionInProgress) {
+      this.communitySaveButtonText.setText("SAVING...");
+
+      return;
+    }
+
+    if (this.pendingCommunityChallenge === this.selectedCommunityChallenge) {
+      this.communitySaveButtonText.setText("SAVED");
+
+      return;
+    }
+
+    this.communitySaveButtonText.setText("SAVE SELECTION");
+  }
+
+  private closeCommunitySelectionModal(): void {
+    this.communitySelectionModal?.destroy(true);
+
+    this.communitySelectionModal = null;
+  }
+
+  private async savePendingCommunityChallenge(): Promise<void> {
+    if (this.communitySelectionInProgress) {
+      return;
+    }
+
+    if (this.pendingCommunityChallenge === this.selectedCommunityChallenge) {
+      this.updateCommunitySaveButton();
+
+      return;
+    }
+
+    this.communitySelectionInProgress = true;
+
+    this.updateCommunitySaveButton();
+
+    try {
+      const response = await fetch("/api/community-selection", {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+
+        body: JSON.stringify({
+          challenge: this.pendingCommunityChallenge,
+        }),
+      });
+
+      const rawResponse = await response.text();
+
+      let responseData: SelectCommunityChallengeResponse | ApiErrorResponse;
+
+      try {
+        responseData = rawResponse
+          ? JSON.parse(rawResponse)
+          : {
+              status: "error",
+              message: "The server returned no selection information.",
+            };
+      } catch {
+        throw new Error("The server returned invalid selection information.");
+      }
+
+      if (
+        !response.ok ||
+        !("type" in responseData) ||
+        responseData.type !== "select-community-challenge"
+      ) {
+        const message =
+          "message" in responseData
+            ? responseData.message
+            : "Unable to save Community challenge.";
+
+        throw new Error(message);
+      }
+
+      this.selectedCommunityChallenge = responseData.selectedChallenge;
+
+      this.pendingCommunityChallenge = responseData.selectedChallenge;
+
+      await this.loadCommunityStatus();
+
+      this.communitySaveButtonText?.setText("SAVED");
+
+      this.rebuildCommunityPanel();
+
+      this.showCashRequestStatus(responseData.message, true);
+
+      this.time.delayedCall(700, () => {
+        if (this.communitySelectionModal?.active) {
+          this.closeCommunitySelectionModal();
+        }
+      });
+    } catch (error) {
+      console.error("[MainMenu] Community save failed:", error);
+
+      this.communitySaveButtonText?.setText("SAVE FAILED — TRY AGAIN");
+
+      this.showCashRequestStatus(
+        error instanceof Error
+          ? error.message
+          : "Unable to save Community challenge.",
+        false,
+      );
+    } finally {
+      this.communitySelectionInProgress = false;
+    }
+  }
+
+  private rebuildCommunityPanel(): void {
+    if (!this.layout) {
+      return;
+    }
+
+    this.communityContainer?.destroy(true);
+
+    this.communityContainer = this.createCommunityPanel(
+      this.layout.centerX,
+      this.layout.communityY,
+      this.layout.communityWidth,
+      this.layout.communityHeight,
+    );
+
+    this.mainCard?.add(this.communityContainer);
   }
 
   private async loadPlayerProfile(): Promise<void> {
@@ -926,6 +1863,68 @@ export class MainMenu extends Scene {
       this.currentKingResetAt = responseData.nextResetAt;
     } catch (error) {
       console.error("[MainMenu] Failed to load King status:", error);
+    }
+  }
+
+  private async loadCommunityStatus(): Promise<void> {
+    try {
+      const response = await fetch("/api/community-status", {
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      const rawResponse = await response.text();
+
+      let responseData: CommunityStatusResponse | ApiErrorResponse;
+
+      try {
+        responseData = rawResponse
+          ? JSON.parse(rawResponse)
+          : {
+              status: "error",
+              message: "The server returned no Community information.",
+            };
+      } catch {
+        throw new Error("The server returned invalid Community information.");
+      }
+
+      if (
+        !response.ok ||
+        !("type" in responseData) ||
+        responseData.type !== "community-status"
+      ) {
+        const message =
+          "message" in responseData
+            ? responseData.message
+            : "Unable to load Community progress.";
+
+        throw new Error(message);
+      }
+
+      this.selectedCommunityChallenge = responseData.selectedChallenge;
+
+      this.pendingCommunityChallenge = responseData.selectedChallenge;
+
+      this.communityProgress = {
+        damage: responseData.progress.damage,
+        health: responseData.progress.health,
+        gold: responseData.progress.gold,
+      };
+
+      this.communityRewards = {
+        damageBonus: responseData.rewards.damageBonus,
+        healthBonus: responseData.rewards.healthBonus,
+        goldBonus: responseData.rewards.goldBonus,
+      };
+
+      this.communityTargets = {
+        damage: responseData.targets.damage,
+        health: responseData.targets.health,
+        gold: responseData.targets.gold,
+      };
+    } catch (error) {
+      console.error("[MainMenu] Failed to load Community status:", error);
     }
   }
 
@@ -1089,6 +2088,8 @@ export class MainMenu extends Scene {
       this.dailyRewardButtonHit,
     ]);
 
+    audioManager.addButtonSound(this.dailyRewardButtonHit);
+
     // request cash
     this.cashRequestAvailableAt = profile.cashRequestAvailableAt;
 
@@ -1126,6 +2127,8 @@ export class MainMenu extends Scene {
       this.cashRequestButtonText,
       this.cashRequestButtonHit,
     ]);
+
+    audioManager.addButtonSound(this.cashRequestButtonHit);
 
     // player stats
     const statsY = panelY + 43;
@@ -2279,6 +3282,7 @@ export class MainMenu extends Scene {
 
   private calculateLayout(width: number, height: number): MainMenuLayout {
     const mobile = width < 680;
+
     const compact = height < 720;
 
     const outerMargin = mobile ? 10 : 17;
@@ -2291,45 +3295,75 @@ export class MainMenu extends Scene {
     const cardHeight = height - outerMargin * 2;
 
     const cardTop = outerMargin;
+
     const cardBottom = cardTop + cardHeight;
 
     const centerX = width / 2;
 
-    const horizontalPadding = mobile ? 18 : 40;
+    const horizontalPadding = mobile ? 14 : 32;
 
     const contentWidth = cardWidth - horizontalPadding * 2;
 
-    const headerY = cardTop + (compact ? 48 : mobile ? 58 : 70);
+    const headerY = cardTop + (compact ? 44 : mobile ? 55 : 66);
 
-    const profileHeight = mobile ? (compact ? 205 : 225) : 190;
+    const profileHeight = mobile ? (compact ? 198 : 215) : 184;
 
-    const profileY = cardTop + (compact ? 145 : mobile ? 165 : 205);
+    const profileY = cardTop + (compact ? 140 : mobile ? 160 : 196);
 
     const profileWidth = contentWidth;
 
     const profileBottom = profileY + profileHeight / 2;
 
-    const todayKingHeight = compact ? 72 : 82;
+    const featureGap = mobile ? 8 : 12;
 
-    const todayKingY = profileBottom + 14 + todayKingHeight / 2;
+    const featuresShareRow = !mobile;
 
-    const todayKingWidth = mobile ? contentWidth : Math.min(500, contentWidth);
+    const featureHeight = compact ? 78 : 86;
 
-    const playHeight = compact ? 54 : 62;
+    const todayKingWidth = featuresShareRow
+      ? (contentWidth - featureGap) / 2
+      : contentWidth;
 
-    const playY = todayKingY + todayKingHeight / 2 + 14 + playHeight / 2;
+    const communityWidth = featuresShareRow
+      ? (contentWidth - featureGap) / 2
+      : contentWidth;
 
-    const kingBattleY = playY + playHeight / 2 + 12 + (compact ? 27 : 30);
+    const communityHeight = featureHeight;
 
-    const secondaryWidth = mobile
-      ? Math.max(135, (contentWidth - 12) / 2)
-      : Math.min(280, (contentWidth - 20) / 2);
+    const todayKingY = profileBottom + 12 + featureHeight / 2;
 
-    const secondaryGap = secondaryWidth / 2 + 6;
+    const communityY = featuresShareRow
+      ? todayKingY
+      : todayKingY + featureHeight / 2 + 8 + communityHeight / 2;
 
-    const secondaryY = kingBattleY + (compact ? 61 : 70);
+    const featureBottom = featuresShareRow
+      ? todayKingY + featureHeight / 2
+      : communityY + communityHeight / 2;
 
-    const footerY = Math.min(cardBottom - 23, secondaryY + (compact ? 48 : 57));
+    const mainButtonHeight = compact ? 46 : 50;
+
+    const secondaryButtonHeight = compact ? 42 : 46;
+
+    const buttonRowGap = compact ? 8 : 10;
+
+    const playY = featureBottom + 12 + mainButtonHeight / 2;
+
+    // Play and King Battle share the same row.
+    const kingBattleY = playY;
+
+    const secondaryY =
+      playY + mainButtonHeight / 2 + buttonRowGap + secondaryButtonHeight / 2;
+
+    const buttonHorizontalGap = mobile ? 8 : 12;
+
+    const secondaryWidth = (contentWidth - buttonHorizontalGap) / 2;
+
+    const secondaryGap = secondaryWidth / 2 + buttonHorizontalGap / 2;
+
+    const footerY = Math.min(
+      cardBottom - 20,
+      secondaryY + secondaryButtonHeight / 2 + 24,
+    );
 
     return {
       mobile,
@@ -2352,6 +3386,10 @@ export class MainMenu extends Scene {
 
       todayKingY,
       todayKingWidth,
+
+      communityY,
+      communityWidth,
+      communityHeight,
 
       playY,
       kingBattleY,

@@ -1,6 +1,7 @@
 import chroma from "chroma-js";
 import * as Phaser from "phaser";
 import characterMap, { EnemyAnimationConfig } from "./CharacterMap";
+import audioManager from "../scenes/AudioManager";
 
 const WORLD_W = 1280;
 const WORLD_H = 720;
@@ -94,7 +95,7 @@ class Enemy {
   attackCount: any;
 
   patrolling: any;
-
+  isChasingPlayer: boolean;
   patrolBounds: any;
   nextPatrolTime: any;
   patrolInterval: any;
@@ -167,8 +168,8 @@ class Enemy {
 
     this.strengthenLevel = 1;
 
-    const levelMultiplier = this.isKing
-      ? Math.pow(1.05, this.level - 1) // king enemies get a 5% increase per level, while normal enemies get a 3% increase per level
+    const levelMultiplier = isKing
+      ? Math.pow(1.05, this.level - 1)
       : 1 + (this.level - 1) * 0.3;
     this.health = Math.round(character.health * levelMultiplier * 0.75); // player character and enemy character same, the enemy should be weaker
     this.maxHealth = this.health;
@@ -230,7 +231,7 @@ class Enemy {
     this.enemyStrengthenInterval = 15000;
     this.attackCount = character.attackCount;
     this.patrolling = false;
-
+    this.isChasingPlayer = false;
     this.patrolBounds = {
       minX: 50,
       maxX: WORLD_W - 50,
@@ -276,6 +277,14 @@ class Enemy {
   strengthenEnemies() {
     const damageIncrease = Math.ceil(this.damage * 0.27);
     this.strengthenLevel++;
+    if (this.strengthenedSquareText && this.strengthenedSquareText.setTexture) {
+      this.strengthenedSquareText.setTexture(
+        this.getNumberTextureKey(
+          "enemy-strength-level-number",
+          this.strengthenLevel,
+        ),
+      );
+    }
     this.damage += damageIncrease;
 
     // Only increase max health if the enemy is not patrolling
@@ -493,6 +502,12 @@ class Enemy {
     // Enemy detects player if damage source is the player
     if (source !== "catastrophe") {
       this.hasPlayerBeenDetected = true;
+
+      this.stopPatrolMovementForCombat();
+
+      this.isAlert = true;
+      this.timeInAlert = 0;
+      this.timeOutOfDetection = 0;
     }
 
     const color = source === "catastrophe" ? "#ff0" : "#ff0000"; // Yellow for catastrophe, red for player
@@ -520,12 +535,14 @@ class Enemy {
       this.isAttacking ||
       this.returningToCamp ||
       !this.hasPlayerBeenDetected ||
-      !this.attacker?.getPosition
+      !this.attacker?.getPosition ||
+      this.attacker.isDead
     ) {
       return;
     }
 
     this.isMoving = true;
+    this.isChasingPlayer = true;
     this.isAttacking = false;
     this.inCamp = false;
 
@@ -538,10 +555,10 @@ class Enemy {
       }
 
       this.isMoving = false;
+      this.isChasingPlayer = false;
     };
 
     const moveTowardsCurrentPlayerPosition = (): void => {
-      // stop the recursive chase if the enemy is dead, attacking, returning to camp, or if the player has not been detected
       if (
         this.isDead ||
         this.isAttacking ||
@@ -577,14 +594,14 @@ class Enemy {
 
       this.playEnemyAnimation("Moving", direction, true);
 
-      const movementDuration = Math.min(
-        refreshInterval,
-        (distance / this.speed) * 1000,
+      const movementDuration = Math.max(
+        16,
+        Math.min(refreshInterval, (distance / Math.max(1, this.speed)) * 1000),
       );
 
       const movementDistance = this.speed * (movementDuration / 1000);
 
-      const ratio = Math.min(1, movementDistance / distance);
+      const ratio = Math.min(1, movementDistance / Math.max(1, distance));
 
       const targetX = Phaser.Math.Linear(
         this.sprite.x,
@@ -603,7 +620,7 @@ class Enemy {
         this.moveTween = null;
       }
 
-      this.moveTween = this.scene.tweens.add({
+      const chaseTween = this.scene.tweens.add({
         targets: this.sprite,
 
         x: targetX,
@@ -614,6 +631,11 @@ class Enemy {
         ease: "Linear",
 
         onComplete: () => {
+          // Ignore an old callback after another tween replaced it.
+          if (this.moveTween !== chaseTween) {
+            return;
+          }
+
           this.moveTween = null;
 
           if (
@@ -621,18 +643,40 @@ class Enemy {
             this.isAttacking ||
             this.returningToCamp ||
             !this.hasPlayerBeenDetected ||
-            this.attacker?.isDead
+            !this.attacker?.getPosition ||
+            this.attacker.isDead
           ) {
             this.isMoving = false;
+            this.isChasingPlayer = false;
             return;
           }
 
           moveTowardsCurrentPlayerPosition();
         },
       });
+
+      this.moveTween = chaseTween;
     };
 
     moveTowardsCurrentPlayerPosition();
+  }
+
+  private stopPatrolMovementForCombat(): void {
+    if (!this.patrolling) {
+      return;
+    }
+
+    // Do not stop a tween that already belongs to the chase.
+    if (this.isChasingPlayer) {
+      return;
+    }
+
+    if (this.moveTween) {
+      this.moveTween.stop();
+      this.moveTween = null;
+    }
+
+    this.isMoving = false;
   }
 
   updateEnemy(playerX: any, playerY: any, player: any, delta: any) {
@@ -657,7 +701,13 @@ class Enemy {
       // If the player is within attack range, attack; otherwise, move towards the player
       if (distance <= this.attackRange && !this.isAttacking) {
         this.isMoving = false;
-        if (this.moveTween) this.moveTween.stop();
+        this.isChasingPlayer = false;
+
+        if (this.moveTween) {
+          this.moveTween.stop();
+          this.moveTween = null;
+        }
+
         this.attackPlayer(player);
       } else if (distance > this.attackRange && !this.isMoving) {
         this.moveToPlayer(playerX, playerY);
@@ -683,16 +733,24 @@ class Enemy {
         // Set player as detected if within detection radius for the first time
         if (!this.hasPlayerBeenDetected && distance < this.detectionRadius) {
           this.hasPlayerBeenDetected = true;
+
+          // Stop the current patrol route so combat movement can begin immediately.
+          this.stopPatrolMovementForCombat();
         }
 
         this.isAlert = true;
+        this.stopPatrolMovementForCombat();
         this.timeOutOfDetection = 0; // Reset out-of-detection timer
         this.updateDetectionBar(1); // full bar
         if (distance <= this.attackRange && !this.isAttacking) {
           this.isMoving = false;
+          this.isChasingPlayer = false;
+
           if (this.moveTween) {
             this.moveTween.stop();
+            this.moveTween = null;
           }
+
           this.attackPlayer(player);
         } else if (distance > this.attackRange && !this.isMoving) {
           this.moveToPlayer(playerX, playerY);
@@ -713,7 +771,7 @@ class Enemy {
 
           if (distance <= this.attackRange && !this.isAttacking) {
             this.isMoving = false;
-
+            this.isChasingPlayer = false;
             if (this.moveTween) {
               this.moveTween.stop();
               this.moveTween = null;
@@ -744,7 +802,7 @@ class Enemy {
         if (this.timeOutOfDetection < 3000) {
           if (distance <= this.attackRange && !this.isAttacking) {
             this.isMoving = false;
-
+            this.isChasingPlayer = false;
             if (this.moveTween) {
               this.moveTween.stop();
               this.moveTween = null;
@@ -778,11 +836,12 @@ class Enemy {
 
         this.isMoving = false;
         this.isAttacking = false;
+        this.isChasingPlayer = false;
 
         if (this.patrolling) {
-          // patrollers go to patrol
           this.returningToCamp = false;
           this.isMoving = false;
+          this.isChasingPlayer = false;
 
           this.nextPatrolTime =
             this.scene.time.now + Phaser.Math.Between(300, 900);
@@ -923,6 +982,7 @@ class Enemy {
             currentAngle + Math.PI / 6,
           )
         ) {
+          audioManager.playSound("sfx-enemy-hit-player", 0.6);
           player.takeDamage(this.damage, this);
         } else {
           this.createDodgeText(player);
@@ -1007,6 +1067,7 @@ class Enemy {
             player.getPosition().y,
           ) < 10
         ) {
+          audioManager.playSound("sfx-enemy-hit-player", 0.6);
           player.takeDamage(this.damage, this);
           projectile.hit = true;
           projectile.destroy();
@@ -1189,6 +1250,8 @@ class Enemy {
     }
     this.isDead = true;
 
+    audioManager.playSound("sfx-enemy-die", 0.55);
+
     if (!this.isKing) {
       const scoreAward = causedByBaseDestruction ? 50 : 100;
 
@@ -1202,6 +1265,8 @@ class Enemy {
       this.moveTween.stop();
     }
     this.isMoving = false;
+    this.isChasingPlayer = false;
+    this.moveTween = null;
 
     const scoreAward = causedByBaseDestruction ? 50 : 100;
 
@@ -1361,130 +1426,275 @@ class Enemy {
     return this.fireGraphics;
   }
 
-  createHealthBar() {
-    this.healthBar = this.scene.add.graphics();
-    this.healthBar.setDepth(1);
+  private getBlueSquareTextureKey(): string {
+    const key = "enemy-blue-level-square";
 
-    // this.customSquare = this.fireEffect(); // i do not understand this fire code by the way!
-    this.customSquare = this.scene.add.graphics();
-    this.customSquare.fillStyle(0x0000ff, 1);
-    this.customSquare.fillRect(-10, -10, 25, 25);
-    this.customSquareText = this.scene.add
-      .text(0, 0, this.level, {
-        font: "16px Orbitron",
-        fill: "#ffffff",
-      })
-      .setOrigin(0.5, 0.5);
+    if (this.scene.textures.exists(key)) {
+      return key;
+    }
 
-    this.customSquareContainer = this.scene.add.container(0, 0);
-    this.customSquareContainer.add(this.customSquare);
-    this.customSquareContainer.add(this.customSquareText);
-    this.customSquareContainer.setDepth(1);
+    const texture = this.scene.textures.createCanvas(key, 25, 25);
+    const context = texture.getContext();
 
-    this.strengthenedSquare = this.scene.add.graphics();
-    this.strengthenedSquareContainer = this.scene.add.container(
-      this.sprite.x + 40,
-      this.sprite.y,
-    );
-    this.drawHexagon();
-    this.strengthenedSquareContainer.add(this.strengthenedSquare);
-    this.strengthenedSquareText = this.scene.add
-      .text(0, 0, "1", {
-        font: "16px Orbitron",
-        fill: "#ffffff",
-      })
-      .setOrigin(0.5, 0.5);
-    this.strengthenedSquareContainer.add(this.strengthenedSquareText);
-    this.strengthenedSquareContainer.setDepth(1);
+    context.clearRect(0, 0, 25, 25);
+    context.fillStyle = "#0000ff";
+    context.fillRect(0, 0, 25, 25);
 
-    this.updateHealthBar();
+    texture.refresh();
+
+    return key;
   }
 
-  drawHexagon() {
+  private getNumberTextureKey(prefix: string, value: number): string {
+    const key = `${prefix}-${value}`;
+
+    if (this.scene.textures.exists(key)) {
+      return key;
+    }
+
+    const size = 32;
+
+    const texture = this.scene.textures.createCanvas(key, size, size);
+
+    const context = texture.getContext();
+
+    context.clearRect(0, 0, size, size);
+
+    context.font = "16px Orbitron";
+    context.fillStyle = "#ffffff";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+
+    context.fillText(String(value), size / 2, size / 2 + 1);
+
+    texture.refresh();
+
+    return key;
+  }
+
+  private getStrengthHexagonTextureKey(): string {
     const immuneToStorm =
       this.inCamp ||
       this.returningToCamp ||
       (this.patrolling && !this.hasPlayerBeenDetected);
 
-    this.strengthenedSquare.clear();
-    if (this.patrolling) {
-      this.strengthenedSquare.fillStyle(0x228b6c, 1);
-    } else {
-      this.strengthenedSquare.fillStyle(0x000000, 1);
+    const key =
+      `enemy-strength-hex-` +
+      `${this.patrolling ? "patrol" : "normal"}-` +
+      `${immuneToStorm ? "immune" : "open"}`;
+
+    if (this.scene.textures.exists(key)) {
+      return key;
     }
 
-    if (immuneToStorm) {
-      this.strengthenedSquare.lineStyle(3, 0xffffff, 1);
-    }
-
+    const size = 38;
     const radius = 15;
-    this.strengthenedSquare.beginPath();
-    for (let i = 0; i < 6; i++) {
-      const x = radius * Math.cos((2 * Math.PI * i) / 6);
-      const y = radius * Math.sin((2 * Math.PI * i) / 6);
-      if (i === 0) this.strengthenedSquare.moveTo(x, y);
-      else this.strengthenedSquare.lineTo(x, y);
+
+    const texture = this.scene.textures.createCanvas(key, size, size);
+
+    const context = texture.getContext();
+
+    context.clearRect(0, 0, size, size);
+
+    context.beginPath();
+
+    for (let index = 0; index < 6; index++) {
+      const angle = (Math.PI * 2 * index) / 6;
+
+      const x = size / 2 + radius * Math.cos(angle);
+
+      const y = size / 2 + radius * Math.sin(angle);
+
+      if (index === 0) {
+        context.moveTo(x, y);
+      } else {
+        context.lineTo(x, y);
+      }
     }
-    this.strengthenedSquare.closePath();
-    this.strengthenedSquare.fill();
+
+    context.closePath();
+
+    context.fillStyle = this.patrolling ? "#228b6c" : "#000000";
+
+    context.fill();
 
     if (immuneToStorm) {
-      this.strengthenedSquare.strokePath();
+      context.strokeStyle = "#ffffff";
+      context.lineWidth = 3;
+      context.stroke();
     }
+
+    texture.refresh();
+
+    return key;
   }
 
-  updateHealthBar() {
-    if (this.isDead) return;
-    const barX = this.sprite.x - 30;
-    const barY = this.sprite.y - this.sprite.height / 2;
-    this.healthBar.clear();
-    this.healthBar.setPosition(barX, barY);
+  createHealthBar(): void {
+    /*
+     * Health bar:
+     * use two Rectangle objects instead of a Graphics
+     * object that clears and redraws constantly.
+     */
+    const healthBackground = this.scene.add.rectangle(
+      0,
+      0,
+      60,
+      7,
+      0x000000,
+      0.5,
+    );
 
-    // Background of health bar (transparent part)
-    this.healthBar.fillStyle(0x000000, 0.5);
-    this.healthBar.fillRect(0, 0, 60, 7);
+    healthBackground.setOrigin(0, 0);
 
-    // Health portion (dynamic width based on current health)
-    const healthPercentage = this.health / this.maxHealth;
-    const healthBarWidth = healthPercentage * 60;
-    this.healthBar.fillStyle(0xff0000, 1);
-    this.healthBar.fillRect(0, 0, healthBarWidth, 7);
+    const healthFill = this.scene.add.rectangle(0, 0, 60, 7, 0xff0000, 1);
 
-    if (this.customSquareContainer) {
-      const containerX = this.sprite.x - 40;
-      const containerY = this.sprite.y - this.sprite.height / 2 + 5;
-      this.customSquareContainer.setPosition(containerX, containerY);
+    healthFill.setOrigin(0, 0);
+
+    this.healthBar = this.scene.add.container(
+      this.sprite.x - 30,
+      this.sprite.y - this.sprite.displayHeight / 2,
+    );
+
+    this.healthBar.add([healthBackground, healthFill]);
+
+    this.healthBar.setDepth(1);
+
+    /*
+     * Store the fill rectangle on the container.
+     * This avoids adding another class property.
+     */
+    this.healthBar.setData("fill", healthFill);
+
+    /*
+     * Base-level badge:
+     * keep the Container because enrage code needs
+     * remove(), addAt(), exists() and bringToTop().
+     */
+    this.customSquareContainer = this.scene.add.container(0, 0);
+
+    this.customSquare = this.scene.add.image(
+      0,
+      0,
+      this.getBlueSquareTextureKey(),
+    );
+
+    this.customSquareText = this.scene.add.image(
+      0,
+      0,
+      this.getNumberTextureKey("enemy-base-level-number", this.level),
+    );
+
+    this.customSquareContainer.add([this.customSquare, this.customSquareText]);
+
+    this.customSquareContainer.setDepth(1);
+
+    /*
+     * Strength-level badge:
+     * two cached images inside the existing Container.
+     */
+    this.strengthenedSquareContainer = this.scene.add.container(0, 0);
+
+    this.strengthenedSquare = this.scene.add.image(
+      0,
+      0,
+      this.getStrengthHexagonTextureKey(),
+    );
+
+    this.strengthenedSquareText = this.scene.add.image(
+      0,
+      0,
+      this.getNumberTextureKey(
+        "enemy-strength-level-number",
+        this.strengthenLevel,
+      ),
+    );
+
+    this.strengthenedSquareContainer.add([
+      this.strengthenedSquare,
+      this.strengthenedSquareText,
+    ]);
+
+    this.strengthenedSquareContainer.setDepth(1);
+
+    this.updateHealthBar();
+  }
+
+  drawHexagon(): void {
+    if (!this.strengthenedSquare || !this.strengthenedSquare.setTexture) {
+      return;
     }
-    if (this.strengthenedSquareContainer) {
-      const strengthenedSquareX = this.sprite.x + 42;
-      const strengthenedSquareY = this.sprite.y - this.sprite.height / 2 + 3;
-      this.strengthenedSquareContainer.setPosition(
-        strengthenedSquareX,
-        strengthenedSquareY,
+
+    this.strengthenedSquare.setTexture(this.getStrengthHexagonTextureKey());
+  }
+
+  updateHealthBar(): void {
+    if (this.isDead || !this.sprite || !this.healthBar) {
+      return;
+    }
+
+    const topY = this.sprite.y - this.sprite.displayHeight / 2;
+
+    this.healthBar.setPosition(this.sprite.x - 30, topY);
+
+    const healthFill = this.healthBar.getData(
+      "fill",
+    ) as Phaser.GameObjects.Rectangle;
+
+    if (healthFill) {
+      const healthPercentage = Phaser.Math.Clamp(
+        this.health / this.maxHealth,
+        0,
+        1,
       );
-      // update the text
-      this.strengthenedSquareText.setText(this.strengthenLevel);
+
+      healthFill.displayWidth = 60 * healthPercentage;
     }
+
+    this.customSquareContainer?.setPosition(this.sprite.x - 40, topY + 5);
+
+    this.strengthenedSquareContainer?.setPosition(this.sprite.x + 42, topY + 3);
   }
 
-  updateDetectionBar(percentage: any) {
-    if (!this.hasPlayerBeenDetected) return;
-    const barX = this.sprite.x - 30; // same x as the health bar
-    const barY = this.sprite.y - this.sprite.height / 2 + 8;
+  updateDetectionBar(percentage: number): void {
+    if (this.isDead || !this.sprite || !this.detectionBar) {
+      return;
+    }
 
-    // this.detectionField.alpha = percentage;
+    if (!this.hasPlayerBeenDetected && !this.tutorialPursuitBarActive) {
+      this.detectionBar.clear();
+      return;
+    }
+
+    const clampedPercentage = Phaser.Math.Clamp(percentage, 0, 1);
+
+    const barX = this.sprite.x - 30;
+
+    /*
+     * Health bar starts at topY and is 7px tall.
+     * Detection bar starts 9px below topY, leaving
+     * a small 2px gap beneath the health bar.
+     */
+    const topY = this.sprite.y - this.sprite.displayHeight / 2;
+
+    const barY = topY + 9;
+
     this.detectionBar.clear();
+
     this.detectionBar.setPosition(barX, barY);
 
-    // White background
-    this.detectionBar.fillStyle(0xffffff, 1);
-    this.detectionBar.fillRect(0, 0, 60 * percentage, 5);
-
-    // transparent background
+    // Remaining/background portion.
     this.detectionBar.fillStyle(0xffffff, 0.4);
-    this.detectionBar.fillRect(60 * percentage, 0, 60 * (1 - percentage), 5);
 
-    if (percentage == 0) {
+    this.detectionBar.fillRect(0, 0, 60, 5);
+
+    // Current detection amount.
+    if (clampedPercentage > 0) {
+      this.detectionBar.fillStyle(0xffffff, 1);
+
+      this.detectionBar.fillRect(0, 0, 60 * clampedPercentage, 5);
+    }
+
+    if (clampedPercentage <= 0) {
       this.detectionBar.clear();
     }
   }
@@ -1496,7 +1706,14 @@ class Enemy {
     }
 
     this.isAttacking = false;
+    this.isMoving = false;
+    this.isChasingPlayer = false;
     this.attacker = null;
+
+    if (this.moveTween) {
+      this.moveTween.stop();
+      this.moveTween = null;
+    }
 
     if (this.isDead || !this.sprite || !this.sprite.active) {
       return;
@@ -1594,6 +1811,7 @@ class Enemy {
 
   setEnraged() {
     if (this.base.isDestroyed) return;
+    this.stopPatrolMovementForCombat();
     if (!this.isEnraged) {
       this.isEnraged = true;
       this.damage = this.damage * 2;
@@ -1642,71 +1860,109 @@ class Enemy {
     this.customSquareContainer.bringToTop(this.customSquareText);
   }
 
-  updatePatrol(time: any, delta: any) {
-    if (!this.patrolling) return;
-    if (this.isAttacking || this.hasPlayerBeenDetected) return;
+  updatePatrol(time: number, _delta: number): void {
+    if (
+      !this.patrolling ||
+      this.isDead ||
+      this.isAttacking ||
+      this.hasPlayerBeenDetected ||
+      this.isChasingPlayer ||
+      this.returningToCamp
+    ) {
+      return;
+    }
 
     if (!this.sprite || !this.sprite.active || !this.sprite.anims) {
       return;
     }
 
-    if (time >= this.nextPatrolTime) {
-      const newX = Phaser.Math.Between(
-        this.patrolBounds.minX,
-        this.patrolBounds.maxX,
-      );
+    // Allow the current patrol route to finish.
+    if (this.isMoving || this.moveTween) {
+      return;
+    }
 
-      const newY = Phaser.Math.Between(
-        this.patrolBounds.minY,
-        this.patrolBounds.maxY,
-      );
+    if (time < this.nextPatrolTime) {
+      return;
+    }
 
-      this.destination = {
-        x: newX,
-        y: newY,
-      };
+    const newX = Phaser.Math.Between(
+      this.patrolBounds.minX,
+      this.patrolBounds.maxX,
+    );
 
+    const newY = Phaser.Math.Between(
+      this.patrolBounds.minY,
+      this.patrolBounds.maxY,
+    );
+
+    this.destination = {
+      x: newX,
+      y: newY,
+    };
+
+    const distance = Phaser.Math.Distance.Between(
+      this.sprite.x,
+      this.sprite.y,
+      newX,
+      newY,
+    );
+
+    if (distance <= 2) {
       this.nextPatrolTime = time + this.patrolInterval;
 
-      const distance = Phaser.Math.Distance.Between(
-        this.sprite.x,
-        this.sprite.y,
-        newX,
-        newY,
-      );
+      this.playEnemyAnimation("Idle", this.lastDirection || "south", true);
 
-      const duration = (distance / (this.speed * 0.65)) * 1000;
-
-      const direction = this.determineDirectionToPoint(newX, newY);
-
-      this.lastDirection = direction;
-
-      this.playEnemyAnimation("Moving", direction, true);
-
-      if (this.moveTween) {
-        this.moveTween.stop();
-      }
-      this.isMoving = true;
-      this.moveTween = this.scene.tweens.add({
-        targets: this.sprite,
-        x: newX,
-        y: newY,
-        duration,
-        ease: "Linear",
-
-        onComplete: () => {
-          this.isMoving = false;
-
-          if (
-            !this.isDead &&
-            !this.isAttacking &&
-            !this.hasPlayerBeenDetected
-          ) {
-            this.playEnemyAnimation("Idle", this.lastDirection, true);
-          }
-        },
-      });
+      return;
     }
+
+    const patrolSpeed = Math.max(1, this.speed * 0.65);
+
+    const duration = (distance / patrolSpeed) * 1000;
+
+    const direction = this.determineDirectionToPoint(newX, newY);
+
+    this.lastDirection = direction;
+    this.isMoving = true;
+    this.isChasingPlayer = false;
+
+    this.playEnemyAnimation("Moving", direction, true);
+
+    const patrolTween = this.scene.tweens.add({
+      targets: this.sprite,
+
+      x: newX,
+      y: newY,
+
+      duration,
+
+      ease: "Linear",
+
+      onComplete: () => {
+        // Ignore a stale callback if combat replaced this tween.
+        if (this.moveTween !== patrolTween) {
+          return;
+        }
+
+        this.moveTween = null;
+        this.isMoving = false;
+
+        if (
+          this.isDead ||
+          this.isAttacking ||
+          this.hasPlayerBeenDetected ||
+          this.isChasingPlayer
+        ) {
+          return;
+        }
+
+        this.playEnemyAnimation("Idle", this.lastDirection || "south", true);
+
+        // Wait before choosing the next patrol destination.
+        this.nextPatrolTime = this.scene.time.now + this.patrolInterval;
+      },
+    });
+
+    this.moveTween = patrolTween;
   }
 
   update(time: any, delta: any) {
@@ -1721,6 +1977,14 @@ class Enemy {
     if (this.isDead) return;
 
     this.updateHealthBar();
+    if (this.hasPlayerBeenDetected || this.tutorialPursuitBarActive) {
+      const detectionPercentage =
+        this.isAlert || this.isEnraged || this.timeInAlert < this.alertTime
+          ? 1
+          : Phaser.Math.Clamp(1 - this.timeOutOfDetection / 3000, 0, 1);
+
+      this.updateDetectionBar(detectionPercentage);
+    }
     this.updatePatrol(time, delta);
     this.updateIdleDirection(time);
 
@@ -1973,23 +2237,7 @@ class Enemy {
 
     this.tutorialPursuitBarActive = true;
 
-    const barX = this.sprite.x - 30;
-
-    const barY = this.sprite.y - this.sprite.height / 2 + 8;
-
-    this.detectionBar.clear();
-
-    this.detectionBar.setPosition(barX, barY);
-
-    const percentage = 0.68;
-
-    this.detectionBar.fillStyle(0xffffff, 1);
-
-    this.detectionBar.fillRect(0, 0, 60 * percentage, 5);
-
-    this.detectionBar.fillStyle(0xffffff, 0.4);
-
-    this.detectionBar.fillRect(60 * percentage, 0, 60 * (1 - percentage), 5);
+   this.updateDetectionBar(0.68);
   }
   public hideTutorialPursuitBar(): void {
     if (!this.tutorialPursuitBarActive) {

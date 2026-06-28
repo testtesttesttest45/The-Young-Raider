@@ -101,6 +101,16 @@ export type CompleteKingBattleResponse = {
   totalKills: number;
 
   message: string;
+  communityContribution: {
+    challenge: "gold" | null;
+    amount: number;
+  };
+
+  communityRewards: {
+    damageBonus: number;
+    healthBonus: number;
+    goldBonus: number;
+  };
 };
 
 export const RAIDER_UNLOCK_REQUIREMENTS: Record<
@@ -162,6 +172,11 @@ export const RAIDER_UNLOCK_REQUIREMENTS: Record<
     type: "king",
     amount: 0,
     kingDay: "friday",
+  },
+
+  33: {
+    type: "cash",
+    amount: 350,
   },
 };
 

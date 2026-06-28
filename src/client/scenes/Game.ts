@@ -10,6 +10,7 @@ import type {
   ApiErrorResponse,
   GetSelectedRaiderResponse,
   TutorialStatusResponse,
+  CommunityStatusResponse,
 } from "../../shared/api";
 import type {
   CompleteKingBattleResponse,
@@ -17,6 +18,7 @@ import type {
 } from "../../shared/raiderUnlocks";
 
 import characterMap, { type RaiderDefinition } from "../game/CharacterMap";
+import audioManager from "./AudioManager";
 
 const WORLD_W = 1280;
 const WORLD_H = 720;
@@ -88,8 +90,65 @@ export class Game extends Scene {
   kingBattleToken: string | null = null;
   kingLevel = 1;
 
+  communityDamageBonus = 0;
+  communityHealthBonus = 0;
+  communityGoldBonus = 0;
   constructor() {
     super("Game");
+  }
+
+  private async loadCommunityRewards(): Promise<{
+    damageBonus: number;
+    healthBonus: number;
+    goldBonus: number;
+  }> {
+    if (this.gameMode === "king") {
+      return {
+        damageBonus: 0,
+        healthBonus: 0,
+        goldBonus: 0,
+      };
+    }
+
+    try {
+      const response = await fetch("/api/community-status", {
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      const responseData = (await response.json()) as unknown;
+
+      if (!response.ok) {
+        const errorData = responseData as ApiErrorResponse;
+
+        throw new Error(
+          errorData.message ?? "Unable to load community rewards.",
+        );
+      }
+
+      const data = responseData as CommunityStatusResponse;
+
+      if (data.type !== "community-status") {
+        throw new Error("Unexpected community-status response.");
+      }
+
+      return {
+        damageBonus: Math.max(0, Math.floor(data.rewards.damageBonus)),
+
+        healthBonus: Math.max(0, Math.floor(data.rewards.healthBonus)),
+
+        goldBonus: Math.max(0, Math.floor(data.rewards.goldBonus)),
+      };
+    } catch (error) {
+      console.error("[Game] Failed to load community rewards:", error);
+
+      return {
+        damageBonus: 0,
+        healthBonus: 0,
+        goldBonus: 0,
+      };
+    }
   }
 
   init(data: GameStartData): void {
@@ -132,6 +191,7 @@ export class Game extends Scene {
 
   create(): void {
     this.initializationVersion += 1;
+    audioManager.playMusic("music-main");
     const currentInitialization = this.initializationVersion;
     this.gameInitialized = false;
     this.shouldShowTutorial = false;
@@ -162,6 +222,7 @@ export class Game extends Scene {
 
     // prevent page blank while loading raider assets
     this.createWorldBackground();
+    
     this.createLoadingOverlay();
 
     void this.initializeGame(currentInitialization);
@@ -221,15 +282,25 @@ export class Game extends Scene {
   private async initializeGame(initializationVersion: number): Promise<void> {
     const selectedRaiderPromise = this.loadSelectedRaider();
 
+    const communityRewardsPromise = this.loadCommunityRewards();
+
     const tutorialStatusPromise =
       this.gameMode === "king"
         ? Promise.resolve(true)
         : this.loadTutorialStatus();
 
-    const [selectedRaider, tutorialCompleted] = await Promise.all([
-      selectedRaiderPromise,
-      tutorialStatusPromise,
-    ]);
+    const [selectedRaider, tutorialCompleted, communityRewards] =
+      await Promise.all([
+        selectedRaiderPromise,
+        tutorialStatusPromise,
+        communityRewardsPromise,
+      ]);
+
+    this.communityDamageBonus = communityRewards.damageBonus;
+
+    this.communityHealthBonus = communityRewards.healthBonus;
+
+    this.communityGoldBonus = communityRewards.goldBonus;
 
     this.characterInUse = selectedRaider;
 
@@ -299,6 +370,11 @@ export class Game extends Scene {
       playerStartY,
       this.characterInUse,
       this.enemies,
+    );
+
+    this.player.applyCommunityRewards(
+      this.communityDamageBonus,
+      this.communityHealthBonus,
     );
 
     this.player.create();
@@ -371,7 +447,7 @@ export class Game extends Scene {
         throw new Error("Unexpected selected-Raider response.");
       }
 
-      const validRaiderCodes = [16, 17, 18, 19, 21, 23, 25, 27, 29, 31];
+      const validRaiderCodes = [16, 17, 18, 19, 21, 23, 25, 27, 29, 31, 33];
 
       if (!validRaiderCodes.includes(data.characterCode)) {
         throw new Error(

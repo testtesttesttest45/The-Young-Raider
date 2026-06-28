@@ -1494,5 +1494,24 @@ const characterMap: Record<number, CharacterDefinition> = {
       healthBarOffsetY: -48,
     },
   },
+  33: {
+    type: "raider",
+    ...RAIDER_STATS,
+    spritesheetKey: "raider11_idle",
+    movingSpritesheetKey: "raider11_move",
+    attackSpritesheetKey: "raider11_attack",
+    deathSpritesheetKey: "raider11_die",
+    slashSpritesheetKey: "raider11_slash",
+    dashSlashSpritesheetKey: "raider11_dash",
+    shieldSpritesheetKey: "raider11_shield",
+    shieldMoveSpritesheetKey: "raider11_shield_move",
+    name: "Jester Raider",
+    cost: 100,
+    tier: "hard",
+    icon: "raider11Icon",
+    idle: "raider11Idle",
+    description:
+      "A playful and unpredictable Raider, the Jester Raider uses tricks and illusions to outsmart enemies.",
+  },
 };
 export default characterMap;

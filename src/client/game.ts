@@ -1,16 +1,13 @@
-import * as Phaser from 'phaser';
+import * as Phaser from "phaser";
 
-import { Boot } from './scenes/Boot';
-import { Preloader } from './scenes/Preloader';
-import { MainMenu } from './scenes/MainMenu';
-import { Collections } from './scenes/Collections';
-import { Game as MainGame } from './scenes/Game';
-import BattleUI from './game/BattleUI';
-import { GameOver } from './scenes/GameOver';
-import {
-    Leaderboard
-} from './scenes/Leaderboard';
-
+import { Boot } from "./scenes/Boot";
+import { Preloader } from "./scenes/Preloader";
+import { MainMenu } from "./scenes/MainMenu";
+import { Collections } from "./scenes/Collections";
+import { Game as MainGame } from "./scenes/Game";
+import BattleUI from "./game/BattleUI";
+import { GameOver } from "./scenes/GameOver";
+import { Leaderboard } from "./scenes/Leaderboard";
 
 const GAME_WIDTH = 1366;
 const GAME_HEIGHT = 768;
@@ -19,26 +16,23 @@ const GAME_ASPECT_RATIO = GAME_WIDTH / GAME_HEIGHT;
 const MOBILE_WIDTH_LIMIT = 700;
 
 const config: Phaser.Types.Core.GameConfig = {
-  type: Phaser.AUTO,
+  type: Phaser.WEBGL,
 
-  parent: 'game-container',
+  parent: "game-container",
 
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
-
-  backgroundColor: '#028af8',
+  fps: {
+    target: 60,
+    forceSetTimeOut: false,
+  },
+  backgroundColor: "#028af8",
 
   scale: {
     mode: Phaser.Scale.NONE,
 
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
-  },
-
-  render: {
-    antialias: true,
-    pixelArt: false,
-    roundPixels: false,
   },
 
   input: {
@@ -57,7 +51,7 @@ const config: Phaser.Types.Core.GameConfig = {
     MainGame,
     BattleUI,
     GameOver,
-    Leaderboard
+    Leaderboard,
   ],
 };
 
@@ -68,7 +62,7 @@ function getGameAreaSize(): {
   width: number;
   height: number;
 } {
-  const app = document.getElementById('app');
+  const app = document.getElementById("app");
 
   if (!app) {
     return {
@@ -95,42 +89,30 @@ function fixRotatedPointerInput(game: Phaser.Game): void {
     pointer: Phaser.Input.Pointer,
     pageX: number,
     pageY: number,
-    wasMove: boolean
+    wasMove: boolean,
   ): void => {
-    const rotationStage =
-      document.getElementById('rotation-stage');
+    const rotationStage = document.getElementById("rotation-stage");
 
     const isRotated =
-      rotationStage?.classList.contains('mobile-rotated') ??
-      false;
+      rotationStage?.classList.contains("mobile-rotated") ?? false;
 
     if (!isRotated || !rotationStage) {
-      originalTransformPointer(
-        pointer,
-        pageX,
-        pageY,
-        wasMove
-      );
+      originalTransformPointer(pointer, pageX, pageY, wasMove);
 
       return;
     }
 
-    const bounds =
-      rotationStage.getBoundingClientRect();
+    const bounds = rotationStage.getBoundingClientRect();
 
     const visibleX = pageX - bounds.left;
     const visibleY = pageY - bounds.top;
 
-    const normalizedX = Phaser.Math.Clamp(
-      visibleY / bounds.height,
-      0,
-      1
-    );
+    const normalizedX = Phaser.Math.Clamp(visibleY / bounds.height, 0, 1);
 
     const normalizedY = Phaser.Math.Clamp(
       (bounds.width - visibleX) / bounds.width,
       0,
-      1
+      1,
     );
 
     const gameX = normalizedX * GAME_WIDTH;
@@ -146,7 +128,7 @@ function fixRotatedPointerInput(game: Phaser.Game): void {
 
 function calculateFittedSize(
   availableWidth: number,
-  availableHeight: number
+  availableHeight: number,
 ): {
   width: number;
   height: number;
@@ -166,8 +148,7 @@ function calculateFittedSize(
 }
 
 function updateGameLayout(): void {
-  const rotationStage =
-    document.getElementById('rotation-stage');
+  const rotationStage = document.getElementById("rotation-stage");
 
   if (!rotationStage) {
     return;
@@ -176,32 +157,25 @@ function updateGameLayout(): void {
   const gameArea = getGameAreaSize();
 
   const shouldRotate =
-    gameArea.width <= MOBILE_WIDTH_LIMIT &&
-    gameArea.height > gameArea.width;
+    gameArea.width <= MOBILE_WIDTH_LIMIT && gameArea.height > gameArea.width;
 
   let stageWidth: number;
   let stageHeight: number;
 
   if (shouldRotate) {
-    const fittedSize = calculateFittedSize(
-      gameArea.height,
-      gameArea.width
-    );
+    const fittedSize = calculateFittedSize(gameArea.height, gameArea.width);
 
     stageWidth = fittedSize.width;
     stageHeight = fittedSize.height;
 
-    rotationStage.classList.add('mobile-rotated');
+    rotationStage.classList.add("mobile-rotated");
   } else {
-    const fittedSize = calculateFittedSize(
-      gameArea.width,
-      gameArea.height
-    );
+    const fittedSize = calculateFittedSize(gameArea.width, gameArea.height);
 
     stageWidth = fittedSize.width;
     stageHeight = fittedSize.height;
 
-    rotationStage.classList.remove('mobile-rotated');
+    rotationStage.classList.remove("mobile-rotated");
   }
 
   rotationStage.style.width = `${stageWidth}px`;
@@ -221,7 +195,7 @@ function updateGameLayout(): void {
 
       phaserGame.scale.refresh();
 
-      phaserGame.events.emit('webview-resized', {
+      phaserGame.events.emit("webview-resized", {
         rotated: shouldRotate,
 
         availableWidth: gameArea.width,
@@ -249,17 +223,11 @@ function initialiseGame(): void {
     updateGameLayout();
   });
 
-  window.addEventListener(
-    'resize',
-    updateGameLayout
-  );
+  window.addEventListener("resize", updateGameLayout);
 
-  window.addEventListener(
-    'orientationchange',
-    updateGameLayout
-  );
+  window.addEventListener("orientationchange", updateGameLayout);
 
-  const app = document.getElementById('app');
+  const app = document.getElementById("app");
 
   if (app) {
     const resizeObserver = new ResizeObserver(() => {
@@ -270,12 +238,8 @@ function initialiseGame(): void {
   }
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener(
-    'DOMContentLoaded',
-    initialiseGame,
-    { once: true }
-  );
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initialiseGame, { once: true });
 } else {
   initialiseGame();
 }

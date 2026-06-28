@@ -226,10 +226,6 @@ function showKingVictory(responseData: SharedKingVictoryPostResponse): void {
     playerName.textContent = `u/${username}`;
   }
 
-  /*
-   * Repurpose the large score card to display
-   * which daily King was defeated.
-   */
   if (scoreLabel) {
     scoreLabel.textContent = "";
   }
@@ -238,10 +234,6 @@ function showKingVictory(responseData: SharedKingVictoryPostResponse): void {
     scoreText.textContent = `${uppercaseDayLabel} KING`;
   }
 
-  /*
-   * The second large card displays the meaningful
-   * achievement: the defeated King's level.
-   */
   if (baseLabel) {
     baseLabel.textContent = "KING LEVEL";
   }
@@ -250,10 +242,6 @@ function showKingVictory(responseData: SharedKingVictoryPostResponse): void {
     baseText.textContent = `LEVEL ${kingLevel}`;
   }
 
-  /*
-   * Global rank is not relevant to an individual
-   * King victory post.
-   */
   if (rankText) {
     rankText.textContent = "";
     rankText.hidden = true;
@@ -267,7 +255,7 @@ function showKingVictory(responseData: SharedKingVictoryPostResponse): void {
 
   if (challengeText) {
     challengeText.textContent =
-      `I DEFEATED LEVEL ${kingLevel} ` + `${uppercaseDayLabel} KING`;
+      `CAN YOU DEFEAT LEVEL ${kingLevel} ` + `${uppercaseDayLabel} KING TOO?`;
   }
 
   if (pageTitle) {
