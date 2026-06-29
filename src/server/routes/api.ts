@@ -87,7 +87,7 @@ const PLAYER_SELECTED_RAIDER_KEY = "the-young-raider:players:selected-raider";
 const DEFAULT_RAIDER_CODE = 16;
 
 const VALID_RAIDER_CODES = new Set([
-  16, 17, 18, 19, 21, 23, 25, 27, 29, 31, 33,
+  16, 17, 18, 19, 21, 23, 25, 27, 29, 31, 33, 34, 35
 ]);
 
 const PLAYER_OWNED_RAIDERS_KEY = "the-young-raider:players:owned-raiders";
@@ -3097,18 +3097,6 @@ api.post("/tutorial-complete", async (c) => {
 
 api.get("/king-status", async (c) => {
   try {
-    const username = await reddit.getCurrentUsername();
-
-    if (!username) {
-      return c.json<ApiErrorResponse>(
-        {
-          status: "error",
-          message: "You must be logged in to view today's King.",
-        },
-        401,
-      );
-    }
-
     const configuration = getCurrentKingConfiguration();
 
     if (!configuration) {
@@ -3123,23 +3111,40 @@ api.get("/king-status", async (c) => {
 
     const gameDay = getGameDayInfo();
 
-    const dailyDefeatsField = getDailyKingDefeatsField(
-      username,
-      gameDay.dateKey,
-    );
+    const username = await reddit.getCurrentUsername();
 
-    const [cashValue, alreadyUnlocked, dailyDefeatsValue] = await Promise.all([
-      redis.hGet(PLAYER_CASH_KEY, username),
+    /*
+     * Public defaults for logged-out users.
+     */
+    let currentCash = 0;
+    let defeatsToday = 0;
+    let alreadyUnlocked = false;
 
-      playerOwnsRaider(username, configuration.unlockCharacterCode),
+    if (username) {
+      const dailyDefeatsField = getDailyKingDefeatsField(
+        username,
+        gameDay.dateKey,
+      );
 
-      redis.hGet(PLAYER_DAILY_KING_DEFEATS_KEY, dailyDefeatsField),
-    ]);
+      const [cashValue, ownedValue, dailyDefeatsValue] = await Promise.all([
+        redis.hGet(PLAYER_CASH_KEY, username),
 
-    const currentCash = parseStoredCash(cashValue);
+        playerOwnsRaider(username, configuration.unlockCharacterCode),
 
-    const defeatsToday = parseKingDefeatCount(dailyDefeatsValue);
+        redis.hGet(PLAYER_DAILY_KING_DEFEATS_KEY, dailyDefeatsField),
+      ]);
 
+      currentCash = parseStoredCash(cashValue);
+
+      alreadyUnlocked = ownedValue;
+
+      defeatsToday = parseKingDefeatCount(dailyDefeatsValue);
+    }
+
+    /*
+     * Logged-out users see Level 1 and its
+     * normal entry cost.
+     */
     const kingLevel = getKingLevelFromDefeats(defeatsToday);
 
     const entryCost = getKingEntryCost(kingLevel);
@@ -3167,7 +3172,8 @@ api.get("/king-status", async (c) => {
 
       currentCash,
 
-      canEnter: currentCash >= entryCost,
+      canEnter:
+        username !== null && username !== undefined && currentCash >= entryCost,
 
       alreadyUnlocked,
 
@@ -3182,6 +3188,7 @@ api.get("/king-status", async (c) => {
     return c.json<ApiErrorResponse>(
       {
         status: "error",
+
         message: `Unable to load King Battle: ${message}`,
       },
       500,
@@ -4090,23 +4097,18 @@ api.get("/community-status", async (c) => {
   try {
     const username = await reddit.getCurrentUsername();
 
-    if (!username) {
-      return c.json<ApiErrorResponse>(
-        {
-          status: "error",
-          message: "You must be logged in to view community progress.",
-        },
-        401,
+    const progress = await getCommunityProgress();
+
+    let selectedChallenge: CommunityChallengeType = DEFAULT_COMMUNITY_CHALLENGE;
+
+    if (username) {
+      const selectionValue = await redis.hGet(
+        PLAYER_COMMUNITY_CHALLENGE_KEY,
+        username,
       );
+
+      selectedChallenge = parseCommunityChallenge(selectionValue);
     }
-
-    const [selectionValue, progress] = await Promise.all([
-      redis.hGet(PLAYER_COMMUNITY_CHALLENGE_KEY, username),
-
-      getCommunityProgress(),
-    ]);
-
-    const selectedChallenge = parseCommunityChallenge(selectionValue);
 
     const rewards = calculateCommunityRewards(progress);
 
@@ -4121,7 +4123,9 @@ api.get("/community-status", async (c) => {
 
       targets: {
         damage: COMMUNITY_DAMAGE_TARGET,
+
         health: COMMUNITY_HEALTH_TARGET,
+
         gold: COMMUNITY_GOLD_TARGET,
       },
     });
@@ -4134,6 +4138,7 @@ api.get("/community-status", async (c) => {
     return c.json<ApiErrorResponse>(
       {
         status: "error",
+
         message: `Unable to load community progress: ${message}`,
       },
       500,

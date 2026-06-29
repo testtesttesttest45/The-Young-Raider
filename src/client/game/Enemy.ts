@@ -127,6 +127,20 @@ class Enemy {
 
   isKing: boolean;
   strengtheningEnabled: boolean;
+
+  private nextAIUpdateTime = 0;
+  private readonly aiUpdateInterval = 100;
+
+  private lastSpriteX = Number.NaN;
+  private lastSpriteY = Number.NaN;
+
+  private lastDetectionPercentage = -1;
+  private lastDetectionX = Number.NaN;
+  private lastDetectionY = Number.NaN;
+
+  private healthBarDirty = true;
+  private lastAIUpdateTime = 0;
+  private fireTween: Phaser.Tweens.Tween | null = null;
   constructor(
     scene: any,
     x: number,
@@ -250,6 +264,8 @@ class Enemy {
     this.isTreasureHunted = isTreasureHunterActive;
     this.isKing = isKing;
     this.strengtheningEnabled = strengtheningEnabled;
+    this.nextAIUpdateTime =
+      this.scene.time.now + Phaser.Math.Between(0, this.aiUpdateInterval);
   }
 
   startTimer(): void {
@@ -306,6 +322,8 @@ class Enemy {
     if (healthIncrease > 0) {
       textMessage += `\nMax HP +${Math.round(healthIncrease)}`;
     }
+
+    this.healthBarDirty = true;
 
     const strengthenedText = this.scene.add.text(
       this.sprite.x,
@@ -498,6 +516,7 @@ class Enemy {
       return;
     this.health -= damage;
     this.health = Math.max(this.health, 0);
+    this.healthBarDirty = true;
 
     // Enemy detects player if damage source is the player
     if (source !== "catastrophe") {
@@ -546,7 +565,7 @@ class Enemy {
     this.isAttacking = false;
     this.inCamp = false;
 
-    const refreshInterval = 150;
+    const refreshInterval = 300;
 
     const stopChasing = (): void => {
       if (this.moveTween) {
@@ -679,27 +698,48 @@ class Enemy {
     this.isMoving = false;
   }
 
-  updateEnemy(playerX: any, playerY: any, player: any, delta: any) {
+  updateEnemy(
+    playerX: number,
+    playerY: number,
+    player: any,
+    delta: number,
+  ): void {
     this.attacker = player;
-    if (this.isDead || this.attacker.isDead) return;
-    const distance = Phaser.Math.Distance.Between(
-      this.sprite.x,
-      this.sprite.y,
-      playerX,
-      playerY,
-    );
 
-    // Determine the direction to the player
-    const direction = this.determineDirectionToPoint(playerX, playerY);
-    const attackAnimationKey = `character${this.characterCode}Attack${direction}`;
+    if (
+      this.isDead ||
+      !this.sprite?.active ||
+      !this.attacker ||
+      this.attacker.isDead
+    ) {
+      return;
+    }
+
+    const differenceX = playerX - this.sprite.x;
+    const differenceY = playerY - this.sprite.y;
+
+    const distanceSquared =
+      differenceX * differenceX + differenceY * differenceY;
+
+    const attackRangeSquared = this.attackRange * this.attackRange;
+
+    const detectionRadiusSquared = this.detectionRadius * this.detectionRadius;
+
+    const isInsideAttackRange = distanceSquared <= attackRangeSquared;
+
+    const isInsideDetectionRadius = distanceSquared < detectionRadiusSquared;
+
+    /*
+     * Enraged enemies always pursue the player,
+     * even when the player is outside normal detection range.
+     */
     if (this.isEnraged) {
       this.hasPlayerBeenDetected = true;
-      // Keep the enemy alert and the detection bar full
       this.isAlert = true;
-      this.updateDetectionBar(1); // Full detection bar
 
-      // If the player is within attack range, attack; otherwise, move towards the player
-      if (distance <= this.attackRange && !this.isAttacking) {
+      this.updateDetectionBar(1);
+
+      if (isInsideAttackRange && !this.isAttacking) {
         this.isMoving = false;
         this.isChasingPlayer = false;
 
@@ -709,149 +749,168 @@ class Enemy {
         }
 
         this.attackPlayer(player);
-      } else if (distance > this.attackRange && !this.isMoving) {
+      } else if (!isInsideAttackRange && !this.isMoving && !this.isAttacking) {
         this.moveToPlayer(playerX, playerY);
       }
 
-      // During the enraged state, the alert timer does not decrease
       this.timeInAlert = this.alertTime;
+      this.timeOutOfDetection = 0;
 
-      // Check if the enrage duration has elapsed
       if (
         this.scene.activeGameTime - this.enrageStartTime >
         this.enrageDuration
       ) {
         this.disenrage();
       }
-    } else {
-      if (this.returningToCamp) return;
-      // Player is within detection radius or the enemy is attacking
-      if (
-        distance < this.detectionRadius ||
-        (distance <= this.attackRange && this.hasPlayerBeenDetected)
-      ) {
-        // Set player as detected if within detection radius for the first time
-        if (!this.hasPlayerBeenDetected && distance < this.detectionRadius) {
-          this.hasPlayerBeenDetected = true;
 
-          // Stop the current patrol route so combat movement can begin immediately.
-          this.stopPatrolMovementForCombat();
-        }
+      return;
+    }
 
-        this.isAlert = true;
+    if (this.returningToCamp) {
+      return;
+    }
+
+    /*
+     * Player is currently detectable, or remains within
+     * attack range after previously being detected.
+     */
+    if (
+      isInsideDetectionRadius ||
+      (isInsideAttackRange && this.hasPlayerBeenDetected)
+    ) {
+      if (!this.hasPlayerBeenDetected && isInsideDetectionRadius) {
+        this.hasPlayerBeenDetected = true;
+
         this.stopPatrolMovementForCombat();
-        this.timeOutOfDetection = 0; // Reset out-of-detection timer
-        this.updateDetectionBar(1); // full bar
-        if (distance <= this.attackRange && !this.isAttacking) {
-          this.isMoving = false;
-          this.isChasingPlayer = false;
+      }
 
-          if (this.moveTween) {
-            this.moveTween.stop();
-            this.moveTween = null;
-          }
+      this.isAlert = true;
 
-          this.attackPlayer(player);
-        } else if (distance > this.attackRange && !this.isMoving) {
-          this.moveToPlayer(playerX, playerY);
-        }
-        this.timeInAlert = 0;
-        this.timeOutOfDetection = 0;
-      } else {
-        // out of detection radius
-        if (!this.hasPlayerBeenDetected) {
-          return;
-        }
+      this.stopPatrolMovementForCombat();
 
-        // full bar for alertTime during grace period which drains over 3 sec
-        if (this.timeInAlert < this.alertTime) {
-          this.timeInAlert += Math.round(delta);
+      this.timeInAlert = 0;
+      this.timeOutOfDetection = 0;
 
-          this.updateDetectionBar(1);
+      this.updateDetectionBar(1);
 
-          if (distance <= this.attackRange && !this.isAttacking) {
-            this.isMoving = false;
-            this.isChasingPlayer = false;
-            if (this.moveTween) {
-              this.moveTween.stop();
-              this.moveTween = null;
-            }
-
-            this.attackPlayer(player);
-          } else if (
-            distance > this.attackRange &&
-            !this.isMoving &&
-            !this.isAttacking
-          ) {
-            this.moveToPlayer(playerX, playerY);
-          }
-
-          return;
-        }
-
-        // grace period over, start draining the bar over 3 sec, but enemy still chases the player
-        this.timeOutOfDetection += Math.round(delta);
-
-        const detectionPercentage = Math.max(
-          0,
-          1 - this.timeOutOfDetection / 3000,
-        );
-
-        this.updateDetectionBar(detectionPercentage);
-
-        if (this.timeOutOfDetection < 3000) {
-          if (distance <= this.attackRange && !this.isAttacking) {
-            this.isMoving = false;
-            this.isChasingPlayer = false;
-            if (this.moveTween) {
-              this.moveTween.stop();
-              this.moveTween = null;
-            }
-
-            this.attackPlayer(player);
-          } else if (
-            distance > this.attackRange &&
-            !this.isMoving &&
-            !this.isAttacking
-          ) {
-            this.moveToPlayer(playerX, playerY);
-          }
-
-          return;
-        }
-
-        // bar fully drained, reset detection state and return to camp or patrol
-        this.hasPlayerBeenDetected = false;
-        this.isAlert = false;
-
-        this.timeInAlert = 0;
-        this.timeOutOfDetection = 0;
-
-        this.detectionBar.clear();
+      if (isInsideAttackRange && !this.isAttacking) {
+        this.isMoving = false;
+        this.isChasingPlayer = false;
 
         if (this.moveTween) {
           this.moveTween.stop();
           this.moveTween = null;
         }
 
+        this.attackPlayer(player);
+      } else if (!isInsideAttackRange && !this.isMoving && !this.isAttacking) {
+        this.moveToPlayer(playerX, playerY);
+      }
+
+      return;
+    }
+
+    /*
+     * Nothing else is necessary when the player was
+     * never detected.
+     */
+    if (!this.hasPlayerBeenDetected) {
+      return;
+    }
+
+    /*
+     * Keep the bar full during the alert grace period.
+     */
+    if (this.timeInAlert < this.alertTime) {
+      this.timeInAlert += Math.round(delta);
+      this.isAlert = true;
+
+      this.updateDetectionBar(1);
+
+      if (isInsideAttackRange && !this.isAttacking) {
         this.isMoving = false;
-        this.isAttacking = false;
         this.isChasingPlayer = false;
 
-        if (this.patrolling) {
-          this.returningToCamp = false;
-          this.isMoving = false;
-          this.isChasingPlayer = false;
-
-          this.nextPatrolTime =
-            this.scene.time.now + Phaser.Math.Between(300, 900);
-
-          this.playEnemyAnimation("Idle", this.lastDirection || "south", true);
-        } else {
-          // normal enemies return to camp
-          this.returnToCamp();
+        if (this.moveTween) {
+          this.moveTween.stop();
+          this.moveTween = null;
         }
+
+        this.attackPlayer(player);
+      } else if (!isInsideAttackRange && !this.isMoving && !this.isAttacking) {
+        this.moveToPlayer(playerX, playerY);
       }
+
+      return;
+    }
+
+    /*
+     * Grace period is finished. isAlert must become false,
+     * otherwise update() will keep displaying a full bar.
+     */
+    this.isAlert = false;
+
+    this.timeOutOfDetection += Math.round(delta);
+
+    const detectionPercentage = Phaser.Math.Clamp(
+      1 - this.timeOutOfDetection / 3000,
+      0,
+      1,
+    );
+
+    this.updateDetectionBar(detectionPercentage);
+
+    /*
+     * Enemy continues pursuing while the bar drains.
+     */
+    if (this.timeOutOfDetection < 3000) {
+      if (isInsideAttackRange && !this.isAttacking) {
+        this.isMoving = false;
+        this.isChasingPlayer = false;
+
+        if (this.moveTween) {
+          this.moveTween.stop();
+          this.moveTween = null;
+        }
+
+        this.attackPlayer(player);
+      } else if (!isInsideAttackRange && !this.isMoving && !this.isAttacking) {
+        this.moveToPlayer(playerX, playerY);
+      }
+
+      return;
+    }
+
+    /*
+     * Detection bar has completely drained.
+     */
+    this.hasPlayerBeenDetected = false;
+    this.isAlert = false;
+
+    this.timeInAlert = 0;
+    this.timeOutOfDetection = 0;
+
+    this.detectionBar?.clear();
+
+    this.lastDetectionPercentage = -1;
+
+    if (this.moveTween) {
+      this.moveTween.stop();
+      this.moveTween = null;
+    }
+
+    this.isMoving = false;
+    this.isAttacking = false;
+    this.isChasingPlayer = false;
+
+    if (this.patrolling) {
+      this.returningToCamp = false;
+
+      this.nextPatrolTime = this.scene.time.now + Phaser.Math.Between(300, 900);
+
+      this.playEnemyAnimation("Idle", this.lastDirection || "south", true);
+    } else {
+      this.returnToCamp();
     }
   }
 
@@ -1057,18 +1116,21 @@ class Enemy {
       duration: duration,
       ease: "Linear",
       onUpdate: () => {
-        // Check if projectile is close to the player for hit detection
-        if (
-          !projectile.hit &&
-          Phaser.Math.Distance.Between(
-            projectile.x,
-            projectile.y,
-            player.getPosition().x,
-            player.getPosition().y,
-          ) < 10
-        ) {
+        if (projectile.hit || !projectile.active) {
+          return;
+        }
+
+        const playerX = player.sprite?.x ?? player.getPosition().x;
+        const playerY = player.sprite?.y ?? player.getPosition().y;
+
+        const differenceX = projectile.x - playerX;
+        const differenceY = projectile.y - playerY;
+
+        if (differenceX * differenceX + differenceY * differenceY < 100) {
           audioManager.playSound("sfx-enemy-hit-player", 0.6);
+
           player.takeDamage(this.damage, this);
+
           projectile.hit = true;
           projectile.destroy();
         }
@@ -1243,6 +1305,11 @@ class Enemy {
   }
 
   die(causedByBaseDestruction = false) {
+    if (this.fireTween) {
+      this.fireTween.stop();
+      this.fireTween.remove();
+      this.fireTween = null;
+    }
     if (this.fireTimerEvent) this.fireTimerEvent.destroy();
     if (this.isDead) return;
     if (this.scene.player.targetedEnemy === this) {
@@ -1279,11 +1346,21 @@ class Enemy {
     this.sprite.stop();
 
     this.sprite.play(`character${this.characterCode}Death`, true);
-    if (this.isKing) {
-      this.sprite.once("animationcomplete", () => {
-        this.scene.handleKingDefeated?.(this);
-      });
-    }
+
+    this.sprite.once(
+      "animationcomplete",
+      (animation: Phaser.Animations.Animation) => {
+        if (animation.key !== `character${this.characterCode}Death`) {
+          return;
+        }
+
+        if (this.isKing) {
+          this.scene.handleKingDefeated?.(this);
+        }
+
+        this.sprite.destroy();
+      },
+    );
 
     this.sprite.removeInteractive();
     this.sprite.removeInteractive();
@@ -1311,7 +1388,7 @@ class Enemy {
       let goldX = this.sprite.x + Math.random() * 100 - 50; // random between -50 and 50
       let goldY = this.sprite.y + Math.random() * 100 - 50;
       let gold = this.scene.add.sprite(goldX, goldY, "gold");
-      gold.setScale(0.5);
+      gold.setScale(0.25);
       // gold.setData('value', this.goldValue);
       gold.setData(
         "value",
@@ -1335,6 +1412,7 @@ class Enemy {
         this.sprite.y,
         "cash",
       );
+      cash.setScale(0.25);
       cash.setData("value", 1);
       this.scene.time.delayedCall(
         500,
@@ -1347,83 +1425,54 @@ class Enemy {
     }
   }
 
-  initializeFire() {
-    this.fireWidth = 25;
-    this.fireHeight = 25;
-    this.fireArray = new Array(this.fireWidth * this.fireHeight).fill(0);
-    this.firePixelSize = 1;
-    this.fireGradient = chroma
-      .scale(["#000000", "#000000", "#ffff00", "#ff8700", "#FF0000"])
-      .domain([0, 10, 20, 50, 100]);
+  public destroy(): void {
+    if (this.fireTween) {
+      this.fireTween.stop();
+      this.fireTween.remove();
+      this.fireTween = null;
+    }
+
+    if (this.moveTween) {
+      this.moveTween.stop();
+      this.moveTween = null;
+    }
+
+    this.attackEvent?.destroy?.();
+
+    this.sprite?.off?.();
+    this.sprite?.destroy?.();
+
+    this.healthBar?.destroy?.();
+    this.detectionBar?.destroy?.();
+    this.customSquareContainer?.destroy?.();
+    this.strengthenedSquareContainer?.destroy?.();
+
+    this.attackRangeArc?.destroy?.();
+    this.attackRangeRect?.destroy?.();
+
+    this.attackRangeArc = null;
+    this.attackRangeRect = null;
   }
 
-  fireEffect() {
-    if (this.isDead) return;
-    if (!this.fireGraphics) {
-      this.fireGraphics = new Phaser.GameObjects.Graphics(this.scene);
-
-      this.scene.add.existing(this.fireGraphics);
-      this.initializeFire();
-      this.fireGraphics.setPosition(0, 0);
-    }
-    if (!this.fireTimerEvent) {
-      this.fireTimerEvent = this.scene.time.addEvent({
-        callback: () => {
-          const updateFire = () => {
-            for (let x = 0; x < this.fireWidth; x++) {
-              this.fireArray[(this.fireHeight - 1) * this.fireWidth + x] =
-                Math.floor(Math.random() * 255);
-            }
-
-            for (let y = 0; y < this.fireHeight - 1; y++) {
-              for (let x = 0; x < this.fireWidth; x++) {
-                let c = 0;
-                c +=
-                  this.fireArray[
-                    Math.max(y + 1, 0) * this.fireWidth + Math.max(x - 1, 0)
-                  ];
-                c += this.fireArray[Math.max(y + 1, 0) * this.fireWidth + x];
-                c +=
-                  this.fireArray[
-                    Math.max(y + 1, 0) * this.fireWidth +
-                      Math.min(x + 1, this.fireWidth - 1)
-                  ];
-                c +=
-                  this.fireArray[
-                    Math.min(y + 2, this.fireHeight - 1) * this.fireWidth + x
-                  ];
-                this.fireArray[y * this.fireWidth + x] = c / 4.1;
-              }
-            }
-
-            this.fireGraphics.clear();
-            for (let y = 0; y < this.fireHeight; y++) {
-              for (let x = 0; x < this.fireWidth; x++) {
-                const colorValue =
-                  (this.fireArray[y * this.fireWidth + x] * 100.0) / 255;
-                const color = this.fireGradient(colorValue).hex();
-                this.fireGraphics.fillStyle(
-                  Phaser.Display.Color.HexStringToColor(color).color,
-                  1,
-                );
-                this.fireGraphics.fillRect(
-                  x * this.firePixelSize,
-                  y * this.firePixelSize,
-                  this.firePixelSize,
-                  this.firePixelSize,
-                );
-              }
-            }
-          };
-          updateFire();
-        },
-        callbackScope: this,
-        loop: true,
-        delay: 75,
-      });
+  fireEffect(): Phaser.GameObjects.Arc {
+    if (this.fireGraphics?.active) {
+      return this.fireGraphics;
     }
 
-    return this.fireGraphics;
+    const glow = this.scene.add.circle(0, 0, 14, 0xff5500, 0.8);
+
+    this.fireGraphics = glow;
+
+    this.fireTween = this.scene.tweens.add({
+      targets: glow,
+      scale: 1.2,
+      alpha: 0.45,
+      duration: 300,
+      yoyo: true,
+      repeat: -1,
+    });
+
+    return glow;
   }
 
   private getBlueSquareTextureKey(): string {
@@ -1530,11 +1579,6 @@ class Enemy {
   }
 
   createHealthBar(): void {
-    /*
-     * Health bar:
-     * use two Rectangle objects instead of a Graphics
-     * object that clears and redraws constantly.
-     */
     const healthBackground = this.scene.add.rectangle(
       0,
       0,
@@ -1559,17 +1603,8 @@ class Enemy {
 
     this.healthBar.setDepth(1);
 
-    /*
-     * Store the fill rectangle on the container.
-     * This avoids adding another class property.
-     */
     this.healthBar.setData("fill", healthFill);
 
-    /*
-     * Base-level badge:
-     * keep the Container because enrage code needs
-     * remove(), addAt(), exists() and bringToTop().
-     */
     this.customSquareContainer = this.scene.add.container(0, 0);
 
     this.customSquare = this.scene.add.image(
@@ -1661,42 +1696,46 @@ class Enemy {
     }
 
     if (!this.hasPlayerBeenDetected && !this.tutorialPursuitBarActive) {
-      this.detectionBar.clear();
+      if (this.lastDetectionPercentage !== -1) {
+        this.detectionBar.clear();
+        this.lastDetectionPercentage = -1;
+      }
+
       return;
     }
 
     const clampedPercentage = Phaser.Math.Clamp(percentage, 0, 1);
 
     const barX = this.sprite.x - 30;
-
-    /*
-     * Health bar starts at topY and is 7px tall.
-     * Detection bar starts 9px below topY, leaving
-     * a small 2px gap beneath the health bar.
-     */
     const topY = this.sprite.y - this.sprite.displayHeight / 2;
-
     const barY = topY + 9;
 
-    this.detectionBar.clear();
+    const positionChanged =
+      barX !== this.lastDetectionX || barY !== this.lastDetectionY;
 
+    const percentageChanged =
+      Math.abs(clampedPercentage - this.lastDetectionPercentage) >= 0.02;
+
+    if (!positionChanged && !percentageChanged) {
+      return;
+    }
+
+    this.lastDetectionX = barX;
+    this.lastDetectionY = barY;
+    this.lastDetectionPercentage = clampedPercentage;
+
+    this.detectionBar.clear();
     this.detectionBar.setPosition(barX, barY);
 
-    // Remaining/background portion.
-    this.detectionBar.fillStyle(0xffffff, 0.4);
+    if (clampedPercentage <= 0) {
+      return;
+    }
 
+    this.detectionBar.fillStyle(0xffffff, 0.4);
     this.detectionBar.fillRect(0, 0, 60, 5);
 
-    // Current detection amount.
-    if (clampedPercentage > 0) {
-      this.detectionBar.fillStyle(0xffffff, 1);
-
-      this.detectionBar.fillRect(0, 0, 60 * clampedPercentage, 5);
-    }
-
-    if (clampedPercentage <= 0) {
-      this.detectionBar.clear();
-    }
+    this.detectionBar.fillStyle(0xffffff, 1);
+    this.detectionBar.fillRect(0, 0, 60 * clampedPercentage, 5);
   }
 
   stopAttackingPlayer(): void {
@@ -1781,9 +1820,16 @@ class Enemy {
     });
   }
 
-  heal(amount: any) {
+  heal(amount: number): void {
+    const previousHealth = this.health;
+
     this.health = Math.min(this.health + amount, this.maxHealth);
-    this.updateHealthBar();
+
+    if (this.health !== previousHealth) {
+      this.healthBarDirty = true;
+      this.updateHealthBar();
+    }
+
     this.createHealingText(amount);
   }
 
@@ -1822,7 +1868,7 @@ class Enemy {
 
       this.fireGraphics = this.fireEffect();
 
-      this.fireGraphics.setPosition(-10, -10);
+      this.fireGraphics.setPosition(0, 0);
 
       this.customSquareContainer.addAt(this.fireGraphics, 0);
     } else {
@@ -1832,6 +1878,11 @@ class Enemy {
   }
 
   disenrage() {
+    if (this.fireTween) {
+      this.fireTween.stop();
+      this.fireTween.remove();
+      this.fireTween = null;
+    }
     this.isEnraged = false;
 
     this.damage = Math.round(this.damage / 2);
@@ -1965,18 +2016,27 @@ class Enemy {
     this.moveTween = patrolTween;
   }
 
-  update(time: any, delta: any) {
-    if (this.isDead) {
+  update(time: number, delta: number): void {
+    if (this.isDead || !this.sprite?.active) {
       return;
     }
-    if (this.player && !this.player.isDead) {
-      const playerPos = this.player.getPosition();
 
-      this.updateEnemy(playerPos.x, playerPos.y, this.player, delta);
+    const spriteMoved =
+      this.sprite.x !== this.lastSpriteX || this.sprite.y !== this.lastSpriteY;
+
+    if (spriteMoved || this.healthBarDirty) {
+      this.updateHealthBar();
+
+      this.lastSpriteX = this.sprite.x;
+      this.lastSpriteY = this.sprite.y;
+      this.healthBarDirty = false;
     }
-    if (this.isDead) return;
 
-    this.updateHealthBar();
+    /*
+     * Keep the detection bar following the enemy visually.
+     * The optimized updateDetectionBar() will avoid redrawing
+     * when the position and percentage have not changed.
+     */
     if (this.hasPlayerBeenDetected || this.tutorialPursuitBarActive) {
       const detectionPercentage =
         this.isAlert || this.isEnraged || this.timeInAlert < this.alertTime
@@ -1985,10 +2045,66 @@ class Enemy {
 
       this.updateDetectionBar(detectionPercentage);
     }
-    this.updatePatrol(time, delta);
+
+    const camera = this.scene.cameras.main;
+    const margin = 250;
+
+    const isNearCamera =
+      this.sprite.x >= camera.worldView.x - margin &&
+      this.sprite.x <= camera.worldView.right + margin &&
+      this.sprite.y >= camera.worldView.y - margin &&
+      this.sprite.y <= camera.worldView.bottom + margin;
+
+    /*
+     * Nearby enemies think 10 times per second.
+     * Far-away enemies think twice per second.
+     */
+    const currentAIInterval = isNearCamera ? 100 : 500;
+
+    if (time < this.nextAIUpdateTime) {
+      return;
+    }
+
+    const aiDelta =
+      this.lastAIUpdateTime > 0
+        ? Math.max(1, time - this.lastAIUpdateTime)
+        : currentAIInterval;
+
+    this.lastAIUpdateTime = time;
+
+    /*
+     * Small random offset prevents many enemies from updating
+     * on exactly the same frame.
+     */
+    this.nextAIUpdateTime =
+      time + currentAIInterval + Phaser.Math.Between(0, 20);
+
+    if (this.player && !this.player.isDead) {
+      let playerX: number;
+      let playerY: number;
+
+      if (this.player.sprite?.active) {
+        playerX = this.player.sprite.x;
+        playerY = this.player.sprite.y;
+      } else {
+        const playerPosition = this.player.getPosition();
+
+        playerX = playerPosition.x;
+        playerY = playerPosition.y;
+      }
+
+      this.updateEnemy(playerX, playerY, this.player, aiDelta);
+    }
+
+    if (this.isDead) {
+      return;
+    }
+
+    this.updatePatrol(time, aiDelta);
     this.updateIdleDirection(time);
 
     const wasImmuneToStorm = this.immuneToStorm;
+
     this.immuneToStorm =
       this.inCamp ||
       (this.patrolling && !this.hasPlayerBeenDetected) ||
@@ -1999,14 +2115,17 @@ class Enemy {
     }
 
     if (this.originalCamp) {
-      const distanceFromCamp = Phaser.Math.Distance.Between(
-        this.sprite.x,
-        this.sprite.y,
-        this.originalCamp.x,
-        this.originalCamp.y,
-      );
+      const differenceX = this.sprite.x - this.originalCamp.x;
 
-      if (distanceFromCamp > this.originalCamp.radius) {
+      const differenceY = this.sprite.y - this.originalCamp.y;
+
+      const distanceSquared =
+        differenceX * differenceX + differenceY * differenceY;
+
+      const campRadiusSquared =
+        this.originalCamp.radius * this.originalCamp.radius;
+
+      if (distanceSquared > campRadiusSquared) {
         this.inCamp = false;
       } else if (!this.isMoving && !this.isAttacking) {
         this.inCamp = true;
@@ -2014,16 +2133,18 @@ class Enemy {
         this.inCamp = false;
       }
 
-      if (this.inCamp && this.health < this.maxHealth) {
-        if (time - this.lastHealTime > 1000) {
-          // Heal every 1 second
-          const healPercentage = 0.05; // 5% of max health per second
-          let healAmount = Math.round(this.maxHealth * healPercentage);
+      if (
+        this.inCamp &&
+        this.health < this.maxHealth &&
+        time - this.lastHealTime > 1000
+      ) {
+        const healAmount = Math.min(
+          Math.round(this.maxHealth * 0.05),
+          this.maxHealth - this.health,
+        );
 
-          healAmount = Math.min(healAmount, this.maxHealth - this.health);
-          this.heal(healAmount);
-          this.lastHealTime = time;
-        }
+        this.heal(healAmount);
+        this.lastHealTime = time;
       }
     }
 
@@ -2190,7 +2311,7 @@ class Enemy {
     this.fireGraphics = this.fireEffect();
 
     if (this.fireGraphics) {
-      this.fireGraphics.setPosition(-10, -10);
+      this.fireGraphics.setPosition(0, 0);
 
       if (!this.customSquareContainer.exists(this.fireGraphics)) {
         this.customSquareContainer.addAt(this.fireGraphics, 0);
@@ -2206,10 +2327,10 @@ class Enemy {
 
     this.tutorialEnrageEffectActive = false;
 
-    if (this.fireTimerEvent) {
-      this.fireTimerEvent.destroy();
-
-      this.fireTimerEvent = null;
+    if (this.fireTween) {
+      this.fireTween.stop();
+      this.fireTween.remove();
+      this.fireTween = null;
     }
 
     if (this.fireGraphics) {
@@ -2237,7 +2358,7 @@ class Enemy {
 
     this.tutorialPursuitBarActive = true;
 
-   this.updateDetectionBar(0.68);
+    this.updateDetectionBar(0.68);
   }
   public hideTutorialPursuitBar(): void {
     if (!this.tutorialPursuitBarActive) {

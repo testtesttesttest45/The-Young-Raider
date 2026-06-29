@@ -270,7 +270,7 @@ export class Leaderboard extends Scene {
     const scoreX = this.centerX + 315;
 
     const headerStyle: Phaser.Types.GameObjects.Text.TextStyle = {
-      font: "bold 13px Orbitron",
+      font: "bold 14px Orbitron",
       color: "#82e6ff",
     };
 
@@ -711,7 +711,7 @@ export class Leaderboard extends Scene {
         this.centerY + this.panelHeight / 2 - 86,
         personalText,
         {
-          font: "12px Orbitron",
+          font: "14px Orbitron",
 
           color: this.username ? "#ffd84a" : "#ffb0b0",
 
@@ -750,7 +750,7 @@ export class Leaderboard extends Scene {
 
         stroke: "#000000",
 
-        strokeThickness: 3,
+        strokeThickness: 1,
       })
       .setOrigin(0.5)
       .setInteractive({
@@ -913,7 +913,7 @@ export class Leaderboard extends Scene {
 
     this.shareStatusText = this.add
       .text(this.centerX, messageY, message, {
-        font: "bold 12px Orbitron",
+        font: "bold 14px Orbitron",
 
         color: success ? "#72e7a3" : "#ff8b8b",
 

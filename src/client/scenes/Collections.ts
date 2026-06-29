@@ -80,6 +80,7 @@ export class Collections extends Scene {
   } | null = null;
 
   private actionInProgress = false;
+  private isLoggedIn = false;
 
   constructor() {
     super("Collections");
@@ -123,6 +124,7 @@ export class Collections extends Scene {
 
     this.actionButton = null;
     this.actionInProgress = false;
+    this.isLoggedIn = false;
   }
 
   async create(): Promise<void> {
@@ -395,7 +397,7 @@ export class Collections extends Scene {
         cardY + 66,
         "CHOOSE THE RAIDER WHO WILL ENTER YOUR NEXT BATTLE",
         {
-          font: "bold 9px Orbitron",
+          font: "bold 14px Orbitron",
 
           color: "#a9efff",
 
@@ -435,7 +437,7 @@ export class Collections extends Scene {
 
     const label = this.add
       .text(0, 0, "‹  BACK", {
-        font: "bold 13px Orbitron",
+        font: "bold 14px Orbitron",
 
         color: "#ffffff",
 
@@ -509,7 +511,7 @@ export class Collections extends Scene {
 
     const title = this.add
       .text(panelX + 20, panelY + 22, "AVAILABLE RAIDERS", {
-        font: "bold 13px Orbitron",
+        font: "bold 14px Orbitron",
         color: "#a9efff",
         stroke: "#000000",
         strokeThickness: 2,
@@ -552,9 +554,71 @@ export class Collections extends Scene {
 
     this.cameras.main.ignore(this.gridLayer);
 
-    const entries = Object.entries(characterMap).filter(([, character]) => {
-      return character.type === "raider";
-    }) as CharacterEntry[];
+    const unlockTypeOrder = {
+      free: 0,
+      highscore: 1,
+      cash: 2,
+      king: 3,
+    } as const;
+
+    const kingDayOrder: Record<KingDay, number> = {
+      monday: 0,
+      tuesday: 1,
+      wednesday: 2,
+      thursday: 3,
+      friday: 4,
+      saturday: 5,
+      sunday: 6,
+    };
+
+    const entries = (
+      Object.entries(characterMap).filter(([, character]) => {
+        return character.type === "raider";
+      }) as CharacterEntry[]
+    ).sort(([firstId], [secondId]) => {
+      const firstCode = Number(firstId);
+      const secondCode = Number(secondId);
+
+      const firstState = this.raiderStates.get(firstCode);
+      const secondState = this.raiderStates.get(secondCode);
+
+      const firstType =
+        firstState?.unlockType ?? (firstCode === 16 ? "free" : "cash");
+
+      const secondType =
+        secondState?.unlockType ?? (secondCode === 16 ? "free" : "cash");
+
+      const typeDifference =
+        unlockTypeOrder[firstType] - unlockTypeOrder[secondType];
+
+      if (typeDifference !== 0) {
+        return typeDifference;
+      }
+
+      if (firstType === "king" && secondType === "king") {
+        const firstDayOrder = firstState?.kingDay
+          ? kingDayOrder[firstState.kingDay]
+          : Number.MAX_SAFE_INTEGER;
+
+        const secondDayOrder = secondState?.kingDay
+          ? kingDayOrder[secondState.kingDay]
+          : Number.MAX_SAFE_INTEGER;
+
+        if (firstDayOrder !== secondDayOrder) {
+          return firstDayOrder - secondDayOrder;
+        }
+      }
+
+      const firstRequirement = firstState?.requirementAmount ?? 0;
+
+      const secondRequirement = secondState?.requirementAmount ?? 0;
+
+      if (firstRequirement !== secondRequirement) {
+        return firstRequirement - secondRequirement;
+      }
+
+      return firstCode - secondCode;
+    });
 
     const columns = this.getGridColumns(this.gridViewportWidth);
 
@@ -681,7 +745,7 @@ export class Collections extends Scene {
 
     const name = this.add
       .text(width / 2, 99, character.name, {
-        font: "bold 9px Orbitron",
+        font: "bold 14px Orbitron",
 
         color: "#ffffff",
 
@@ -699,7 +763,7 @@ export class Collections extends Scene {
 
     const statusBadge = this.add
       .text(width / 2, 116, "", {
-        font: "bold 7px Orbitron",
+        font: "bold 14px Orbitron",
         color: "#ffffff",
         stroke: "#000000",
         strokeThickness: 2,
@@ -878,7 +942,7 @@ export class Collections extends Scene {
 
     this.add
       .text(panelX + 20, panelY + 22, "RAIDER PREVIEW", {
-        font: "bold 13px Orbitron",
+        font: "bold 14px Orbitron",
 
         color: "#a9efff",
 
@@ -984,7 +1048,7 @@ export class Collections extends Scene {
 
     this.descriptionText = this.add
       .text(centerX, panelY + panelHeight * 0.6, character.description, {
-        font: "14px Arial",
+        font: "16px Arial",
 
         color: "#b9cfda",
 
@@ -1005,7 +1069,7 @@ export class Collections extends Scene {
 
     this.selectedLabel = this.add
       .text(centerX, panelY + panelHeight - 103, "", {
-        font: "bold 10px Orbitron",
+        font: "bold 14px Orbitron",
 
         color: "#8cffad",
 
@@ -1131,7 +1195,7 @@ export class Collections extends Scene {
       ) {
         throw new Error("Invalid Raider collection response.");
       }
-
+      this.isLoggedIn = true;
       this.equippedCharacter = data.selectedRaider;
 
       this.selectedCharacter = data.selectedRaider;
@@ -1146,6 +1210,7 @@ export class Collections extends Scene {
         this.raiderStates.set(raider.characterCode, raider);
       });
     } catch (error) {
+      this.isLoggedIn = false;
       console.error("[Collections] Failed to load collection:", error);
 
       this.equippedCharacter = 16;
@@ -1242,13 +1307,26 @@ export class Collections extends Scene {
     const isOwned = this.selectedCharacter === 16 || state?.owned === true;
 
     let label = "LOCKED";
-    let subtitle = "REQUIREMENT NOT MET";
+
+    let subtitle = this.isLoggedIn
+      ? "REQUIREMENT NOT MET"
+      : "LOGIN TO CHECK REQUIREMENT";
+
     let enabled = false;
     let topColour = 0x3b4950;
     let bottomColour = 0x202b30;
     let borderColour = 0x71808a;
 
-    if (this.actionInProgress) {
+    if (!this.isLoggedIn) {
+      label = "LOCKED";
+      subtitle = "LOGIN TO CHECK REQUIREMENT";
+
+      enabled = false;
+
+      topColour = 0x3b4950;
+      bottomColour = 0x202b30;
+      borderColour = 0x71808a;
+    } else if (this.actionInProgress) {
       label = "PLEASE WAIT...";
       subtitle = "UPDATING COLLECTION";
     } else if (isEquipped) {
@@ -1326,6 +1404,11 @@ export class Collections extends Scene {
 
     const state = this.raiderStates.get(this.selectedCharacter);
     const isOwned = this.selectedCharacter === 16 || state?.owned === true;
+    if (!this.isLoggedIn) {
+      this.selectedLabel?.setText("LOGIN TO CHECK REQUIREMENT").setColor("#9ba8ae");
+
+      return;
+    }
 
     if (this.equippedCharacter === this.selectedCharacter) {
       return;
@@ -1479,7 +1562,7 @@ export class Collections extends Scene {
 
     const subtitle = this.add
       .text(0, 16, "USE IN YOUR NEXT RUN", {
-        font: "bold 8px Orbitron",
+        font: "bold 14px Orbitron",
         color: "#d9ffe5",
         stroke: "#000000",
         strokeThickness: 2,
@@ -1801,7 +1884,7 @@ export class Collections extends Scene {
         footerY,
         "SCROLL OR DRAG INSIDE AVAILABLE RAIDERS TO VIEW MORE",
         {
-          font: "9px Orbitron",
+          font: "14px Orbitron",
 
           color: "#879ca8",
 

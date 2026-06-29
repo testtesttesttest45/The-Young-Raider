@@ -93,6 +93,8 @@ export class Game extends Scene {
   communityDamageBonus = 0;
   communityHealthBonus = 0;
   communityGoldBonus = 0;
+  private nextStrengthTimerUIUpdate = 0;
+  private nextBattleTimerUIUpdate = 0;
   constructor() {
     super("Game");
   }
@@ -218,11 +220,14 @@ export class Game extends Scene {
     this.isWinterFrostActive = false;
     this.isTreasureHunterActive = false;
 
+    this.nextBattleTimerUIUpdate = 0;
+    this.nextStrengthTimerUIUpdate = 0;
+
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
 
     // prevent page blank while loading raider assets
     this.createWorldBackground();
-    
+
     this.createLoadingOverlay();
 
     void this.initializeGame(currentInitialization);
@@ -447,7 +452,7 @@ export class Game extends Scene {
         throw new Error("Unexpected selected-Raider response.");
       }
 
-      const validRaiderCodes = [16, 17, 18, 19, 21, 23, 25, 27, 29, 31, 33];
+      const validRaiderCodes = [16, 17, 18, 19, 21, 23, 25, 27, 29, 31, 33, 34, 35];
 
       if (!validRaiderCodes.includes(data.characterCode)) {
         throw new Error(
@@ -512,7 +517,8 @@ export class Game extends Scene {
     ) {
       return;
     }
-    const playerDead = this.player?.isDead === true;
+
+    const playerDead = this.player.isDead === true;
 
     const battleUI = this.scene.get("BattleUI") as any;
 
@@ -524,11 +530,10 @@ export class Game extends Scene {
 
       battleUI?.pauseMultiplier?.();
 
-      this.controls?.onPlayerDeath();
+      this.controls.onPlayerDeath();
 
-      if (this.player?.currentTween) {
+      if (this.player.currentTween) {
         this.player.currentTween.stop();
-
         this.player.currentTween = null;
       }
     }
@@ -537,44 +542,67 @@ export class Game extends Scene {
       this.activeGameTime += delta;
     }
 
-    this.controls?.update(time, delta);
-
-    this.player?.update?.(time, delta);
+    this.controls.update(time, delta);
+    this.player.update?.(time, delta);
 
     const gameplayEnded = this.isGameOver || playerDead;
-
     const gameplayRunning = !gameplayEnded && !this.isGamePaused;
 
     if (gameplayRunning) {
-      this.enemies.forEach((enemy) => {
+      for (
+        let enemyIndex = this.enemies.length - 1;
+        enemyIndex >= 0;
+        enemyIndex--
+      ) {
+        const enemy = this.enemies[enemyIndex];
+
+        if (!enemy || enemy.isDead) {
+          this.enemies.splice(enemyIndex, 1);
+          continue;
+        }
+
         enemy.update?.(time, delta);
-      });
+      }
 
       if (this.gameMode === "normal") {
         this.base?.update?.(time, delta);
       }
 
-      this.catastrophe?.update?.(time, delta);
+      this.catastrophe.update?.(time, delta);
     }
 
-    if (battleUI && gameplayRunning) {
+    if (!battleUI || !gameplayRunning) {
+      return;
+    }
+
+    if (time >= this.nextBattleTimerUIUpdate) {
+      this.nextBattleTimerUIUpdate = time + 100;
+
       battleUI.updateTimer(this.catastrophe.getTimeUntilNextStorm());
+    }
 
-      if (this.gameMode === "normal") {
-        const aliveEnemies = this.enemies.filter((enemy) => !enemy.isDead);
+    if (this.gameMode === "normal" && time >= this.nextStrengthTimerUIUpdate) {
+      this.nextStrengthTimerUIUpdate = time + 200;
 
-        if (aliveEnemies.length > 0) {
-          const highestLevelEnemy = aliveEnemies.reduce(
-            (firstEnemy, secondEnemy) =>
-              firstEnemy.strengthenLevel > secondEnemy.strengthenLevel
-                ? firstEnemy
-                : secondEnemy,
-          );
+      let highestLevelEnemy: Enemy | null = null;
 
-          battleUI.updateStrengthenTimer(
-            highestLevelEnemy.getTimeUntilNextStrengthen(),
-          );
+      for (const enemy of this.enemies) {
+        if (!enemy || enemy.isDead) {
+          continue;
         }
+
+        if (
+          !highestLevelEnemy ||
+          enemy.strengthenLevel > highestLevelEnemy.strengthenLevel
+        ) {
+          highestLevelEnemy = enemy;
+        }
+      }
+
+      if (highestLevelEnemy) {
+        battleUI.updateStrengthenTimer(
+          highestLevelEnemy.getTimeUntilNextStrengthen(),
+        );
       }
     }
   }
@@ -813,8 +841,6 @@ export class Game extends Scene {
     if (this.gameMode === "king") {
       return;
     }
-    // remove dead enemies from array before creating new ones to avoid memory leaks and performance issues
-    this.enemies = this.enemies.filter((enemy) => !enemy.isDead);
 
     this.createLevelEnemies(baseLevel);
   }
@@ -834,21 +860,7 @@ export class Game extends Scene {
     this.scale.off("resize", this.handleResize, this);
 
     this.enemies.forEach((enemy) => {
-      enemy.moveTween?.stop();
-
-      enemy.attackEvent?.destroy();
-
-      enemy.fireTimerEvent?.destroy();
-
-      enemy.sprite?.destroy();
-
-      enemy.healthBar?.destroy();
-
-      enemy.detectionBar?.destroy();
-
-      enemy.customSquareContainer?.destroy();
-
-      enemy.strengthenedSquareContainer?.destroy();
+      enemy.destroy?.();
     });
 
     this.enemies = [];

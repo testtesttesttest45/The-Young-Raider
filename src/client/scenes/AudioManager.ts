@@ -42,10 +42,7 @@ class AudioManager {
       return;
     }
 
-    /*
-     * Do not restart the same music when moving from
-     * Main Menu -> normal match -> King match.
-     */
+    // dont restart same music if already playing
     if (this.currentMusicKey === key && this.music && this.music.isPlaying) {
       return;
     }

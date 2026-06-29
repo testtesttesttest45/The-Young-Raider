@@ -199,7 +199,7 @@ class Base {
     this.customSquareText = this.scene.add
       .text(0, 0, `${this.baseLevel}`, {
         fontFamily: "Orbitron",
-        fontSize: "11px",
+        fontSize: "12px",
         color: "#ffffff",
       })
       .setOrigin(0.5);
@@ -214,7 +214,7 @@ class Base {
       this.healthText = this.scene.add
         .text(0, 0, "", {
           fontFamily: "Orbitron",
-          fontSize: "11px",
+          fontSize: "12px",
           color: "#ffffff",
 
           stroke: "#000000",
@@ -397,7 +397,7 @@ class Base {
       let goldX = this.sprite.x + Math.random() * 100 - 50; // random between -50 and 50
       let goldY = this.sprite.y + Math.random() * 100 - 50;
       let gold = this.scene.add.sprite(goldX, goldY, "gold");
-      gold.setScale(0.5);
+      gold.setScale(0.1);
       gold.setData("value", this.goldValue);
       this.scene.time.delayedCall(
         500,

@@ -140,6 +140,10 @@ export class MainMenu extends Scene {
   private currentActionWidth = ACTION_WIDTH;
   private currentActionHeight = ACTION_HEIGHT;
 
+  private dailyRewardAmountText: GameObjects.Text | null = null;
+  private dailyRewardCashIcon: GameObjects.Image | null = null;
+  private cashRequestIcon: GameObjects.Image | null = null;
+
   private communityContainer: GameObjects.Container | null = null;
 
   private communitySelectionModal: GameObjects.Container | null = null;
@@ -173,6 +177,8 @@ export class MainMenu extends Scene {
     health: 1_000_000,
     gold: 1_000,
   };
+
+  private isLoggedIn = false;
 
   constructor() {
     super("MainMenu");
@@ -238,6 +244,10 @@ export class MainMenu extends Scene {
     this.communitySaveButton = null;
     this.communitySaveButtonText = null;
     this.communityCardsContainer = null;
+    this.isLoggedIn = false;
+    this.dailyRewardAmountText = null;
+    this.dailyRewardCashIcon = null;
+    this.cashRequestIcon = null;
   }
 
   async create(): Promise<void> {
@@ -272,9 +282,11 @@ export class MainMenu extends Scene {
       this.dailyRewardCountdownEvent = null;
     });
 
-    void this.loadPlayerProfile();
-
-    await Promise.all([this.loadKingStatus(), this.loadCommunityStatus()]);
+    await Promise.all([
+      this.loadPlayerProfile(),
+      this.loadKingStatus(),
+      this.loadCommunityStatus(),
+    ]);
 
     if (!this.sys.isActive() || !this.layout) {
       return;
@@ -494,7 +506,7 @@ export class MainMenu extends Scene {
         headerY - (compact ? 24 : 33),
         "SURVIVE  •  GROW  •  CONQUER",
         {
-          font: `bold ${mobile ? 8 : 9}px Orbitron`,
+          font: `bold 14px Orbitron`,
 
           color: TEXT.accent,
 
@@ -505,7 +517,7 @@ export class MainMenu extends Scene {
 
     const title = this.add
       .text(centerX, headerY, "THE YOUNG RAIDER", {
-        font: `bold ${compact ? 27 : mobile ? 31 : 36}px Orbitron`,
+        font: `bold 34px Orbitron`,
 
         color: TEXT.bright,
 
@@ -527,7 +539,7 @@ export class MainMenu extends Scene {
           ? "Survive, conquer and climb the ranks."
           : "Destroy bases, survive disasters and climb the global ranks.",
         {
-          font: `${mobile ? 10 : 12}px Orbitron`,
+          font: `14px Orbitron`,
 
           color: TEXT.muted,
 
@@ -574,44 +586,13 @@ export class MainMenu extends Scene {
 
     const headerLabel = this.add
       .text(centerX - profileWidth / 2 + 18, headerY, "RAIDER PROFILE", {
-        font: `bold ${mobile ? 10 : 11}px Orbitron`,
+        font: `bold 14px Orbitron`,
 
         color: TEXT.accent,
 
         letterSpacing: mobile ? 1 : 2,
       })
       .setOrigin(0, 0.5);
-
-    const onlinePill = this.addRoundedRect(
-      centerX + profileWidth / 2 - 49,
-      headerY,
-      62,
-      18,
-      9,
-      COLORS.green,
-      0.12,
-      COLORS.green,
-      0.4,
-      1,
-    );
-
-    const onlineDot = this.add.circle(
-      centerX + profileWidth / 2 - 70,
-      headerY,
-      3.5,
-      0x69ff9c,
-      1,
-    );
-
-    const onlineText = this.add
-      .text(centerX + profileWidth / 2 - 21, headerY, "ONLINE", {
-        font: "bold 7px Orbitron",
-
-        color: TEXT.green,
-
-        letterSpacing: 1,
-      })
-      .setOrigin(1, 0.5);
 
     const divider = this.add.rectangle(
       centerX,
@@ -622,22 +603,9 @@ export class MainMenu extends Scene {
       0.07,
     );
 
-    this.tweens.add({
-      targets: onlineDot,
-
-      alpha: {
-        from: 0.35,
-        to: 1,
-      },
-
-      duration: 1000,
-      yoyo: true,
-      repeat: -1,
-    });
-
     this.profileStatusText = this.add
       .text(centerX, profileY + 10, "Loading Raider profile...", {
-        font: `${mobile ? 12 : 13}px Orbitron`,
+        font: `14px Orbitron`,
 
         color: TEXT.primary,
       })
@@ -647,9 +615,6 @@ export class MainMenu extends Scene {
       shadow,
       panel,
       headerLabel,
-      onlinePill,
-      onlineDot,
-      onlineText,
       divider,
       this.profileStatusText,
     ]);
@@ -859,13 +824,11 @@ export class MainMenu extends Scene {
       0.045,
     );
 
-    const titleSize = options.height >= 48 ? 15 : 12;
-
     const subtitleSize = options.width < 190 ? 5 : 6;
 
     const titleText = this.add
       .text(0, options.height >= 48 ? -6 : -5, options.title, {
-        font: `bold ${titleSize}px Orbitron`,
+        font: `bold 14px Orbitron`,
         color: TEXT.bright,
         stroke: "#03121b",
         strokeThickness: 2,
@@ -876,7 +839,7 @@ export class MainMenu extends Scene {
 
     const subtitleText = this.add
       .text(0, options.height >= 48 ? 13 : 11, options.subtitle, {
-        font: `bold ${subtitleSize}px Orbitron`,
+        font: `bold 14px Orbitron`,
         color: "#cfe6ef",
         letterSpacing: 1,
         align: "center",
@@ -1041,23 +1004,29 @@ export class MainMenu extends Scene {
 
     const heading = this.add
       .text(leftX, -height / 2 + 17, "COMMUNITY", {
-        font: `bold ${narrow ? 7 : 8}px Orbitron`,
+        font: `bold 14px Orbitron`,
         color: TEXT.muted,
         letterSpacing: 1,
       })
       .setOrigin(0, 0.5);
 
     const editText = this.add
-      .text(rightX, -height / 2 + 17, "CHANGE", {
-        font: `bold ${narrow ? 6 : 7}px Orbitron`,
-        color: TEXT.accent,
-        letterSpacing: 1,
-      })
+      .text(
+        rightX,
+        -height / 2 + 17,
+        this.isLoggedIn ? "CHANGE" : "LOGIN TO CHANGE",
+        {
+          font: `bold 14px Orbitron`,
+          color: this.isLoggedIn ? TEXT.accent : TEXT.muted,
+
+          letterSpacing: 1,
+        },
+      )
       .setOrigin(1, 0.5);
 
     const challengeText = this.add
       .text(leftX, -height / 2 + 38, challengeLabel, {
-        font: `bold ${narrow ? 11 : 14}px Orbitron`,
+        font: `bold 14px Orbitron`,
         color: TEXT.bright,
         stroke: "#000000",
         strokeThickness: 2,
@@ -1066,7 +1035,7 @@ export class MainMenu extends Scene {
 
     const rewardText = this.add
       .text(rightX, -height / 2 + 38, rewardValue, {
-        font: `bold ${narrow ? 8 : 10}px Orbitron`,
+        font: `bold 14px Orbitron`,
         color:
           challenge === "gold"
             ? TEXT.gold
@@ -1082,7 +1051,7 @@ export class MainMenu extends Scene {
         height / 2 - 28,
         `${progress.toLocaleString()} / ${target.toLocaleString()}`,
         {
-          font: `bold ${narrow ? 6 : 7}px Orbitron`,
+          font: `bold 14px Orbitron`,
           color: "#d7e6ec",
         },
       )
@@ -1094,7 +1063,7 @@ export class MainMenu extends Scene {
         height / 2 - 28,
         `${Math.floor(progressPercentage * 100)}%`,
         {
-          font: `bold ${narrow ? 6 : 7}px Orbitron`,
+          font: `bold 14px Orbitron`,
           color: TEXT.primary,
         },
       )
@@ -1117,11 +1086,13 @@ export class MainMenu extends Scene {
       .rectangle(leftX, barY, fillWidth, 7, borderColor, 1)
       .setOrigin(0, 0.5);
 
-    const hit = this.add
-      .rectangle(0, 0, width, height, 0xffffff, 0)
-      .setInteractive({
+    const hit = this.add.rectangle(0, 0, width, height, 0xffffff, 0);
+
+    if (this.isLoggedIn) {
+      hit.setInteractive({
         useHandCursor: true,
       });
+    }
 
     container.add([
       shadow,
@@ -1137,37 +1108,39 @@ export class MainMenu extends Scene {
       hit,
     ]);
 
-    audioManager.addButtonSound(hit);
+    if (this.isLoggedIn) {
+      audioManager.addButtonSound(hit);
 
-    let pressed = false;
+      let pressed = false;
 
-    hit.on("pointerover", () => {
-      container.setScale(1.012);
-    });
+      hit.on("pointerover", () => {
+        container.setScale(1.012);
+      });
 
-    hit.on("pointerout", () => {
-      pressed = false;
+      hit.on("pointerout", () => {
+        pressed = false;
 
-      container.setScale(1);
-    });
+        container.setScale(1);
+      });
 
-    hit.on("pointerdown", () => {
-      pressed = true;
+      hit.on("pointerdown", () => {
+        pressed = true;
 
-      container.setScale(0.985);
-    });
+        container.setScale(0.985);
+      });
 
-    hit.on("pointerup", () => {
-      container.setScale(1);
+      hit.on("pointerup", () => {
+        container.setScale(1);
 
-      if (!pressed) {
-        return;
-      }
+        if (!pressed) {
+          return;
+        }
 
-      pressed = false;
+        pressed = false;
 
-      this.openCommunitySelectionModal();
-    });
+        this.openCommunitySelectionModal();
+      });
+    }
 
     return container;
   }
@@ -1225,7 +1198,7 @@ export class MainMenu extends Scene {
 
     const title = this.add
       .text(panelX, titleY, "COMMUNITY CHALLENGE", {
-        font: `bold ${mobile ? 17 : 22}px Orbitron`,
+        font: `bold 20px Orbitron`,
         color: TEXT.bright,
         stroke: "#02090e",
         strokeThickness: 4,
@@ -1242,7 +1215,7 @@ export class MainMenu extends Scene {
           "Only improvements over your personal best add score.",
         ],
         {
-          font: `${mobile ? 8 : 10}px Orbitron`,
+          font: `14px Orbitron`,
           color: TEXT.muted,
           align: "center",
           lineSpacing: 6,
@@ -1293,7 +1266,7 @@ export class MainMenu extends Scene {
 
     const closeText = this.add
       .text(panelX, panelY + panelHeight / 2 - 28, "CANCEL", {
-        font: `bold ${mobile ? 9 : 10}px Orbitron`,
+        font: `bold 14px Orbitron`,
         color: TEXT.muted,
         letterSpacing: 1,
       })
@@ -1408,7 +1381,7 @@ export class MainMenu extends Scene {
 
     const footer = this.add
       .text(centerX, footerY + 5, "EVERY RUN IS ANOTHER CHANCE", {
-        font: `${mobile ? 7 : 8}px Orbitron`,
+        font: `14px Orbitron`,
 
         color: TEXT.muted,
 
@@ -1471,7 +1444,7 @@ export class MainMenu extends Scene {
 
     const title = this.add
       .text(contentX, -height * 0.3, challenge.title, {
-        font: `bold ${mobile ? 11 : 14}px Orbitron`,
+        font: `bold 14px Orbitron`,
         color: TEXT.bright,
         letterSpacing: 1,
       })
@@ -1483,7 +1456,7 @@ export class MainMenu extends Scene {
         -height * 0.3,
         savedSelection ? "CURRENT" : selected ? "SELECTED" : "",
         {
-          font: `bold ${mobile ? 6 : 7}px Orbitron`,
+          font: `bold 14px Orbitron`,
           color: savedSelection ? TEXT.green : TEXT.accent,
           letterSpacing: 1,
         },
@@ -1492,14 +1465,14 @@ export class MainMenu extends Scene {
 
     const description = this.add
       .text(contentX, -height * 0.03, challenge.description, {
-        font: `${mobile ? 7 : 9}px Orbitron`,
+        font: `14px Orbitron`,
         color: "#d7e6ec",
       })
       .setOrigin(0, 0.5);
 
     const milestone = this.add
       .text(contentX, height * 0.21, challenge.milestone, {
-        font: `bold ${mobile ? 6 : 8}px Orbitron`,
+        font: `bold 14px Orbitron`,
         color: Phaser.Display.Color.IntegerToColor(challenge.color).rgba,
         wordWrap: {
           width: width - (mobile ? 72 : 90),
@@ -1509,7 +1482,7 @@ export class MainMenu extends Scene {
 
     const maximum = this.add
       .text(width / 2 - 15, height * 0.36, challenge.maximum, {
-        font: `bold ${mobile ? 5 : 6}px Orbitron`,
+        font: `bold 14px Orbitron`,
         color: TEXT.muted,
       })
       .setOrigin(1, 0.5);
@@ -1596,7 +1569,7 @@ export class MainMenu extends Scene {
 
     this.communitySaveButtonText = this.add
       .text(0, 0, "SAVE SELECTION", {
-        font: "bold 13px Orbitron",
+        font: "bold 14px Orbitron",
         color: TEXT.bright,
         letterSpacing: 1,
       })
@@ -1770,13 +1743,30 @@ export class MainMenu extends Scene {
       return;
     }
 
+    const {
+      centerX,
+      todayKingY,
+      communityY,
+      communityWidth,
+      communityHeight,
+      mobile,
+    } = this.layout;
+
+    const featureGap = mobile ? 8 : 12;
+
+    const featuresShareRow = todayKingY === communityY;
+
+    const communityX = featuresShareRow
+      ? centerX + featureGap / 2 + communityWidth / 2
+      : centerX;
+
     this.communityContainer?.destroy(true);
 
     this.communityContainer = this.createCommunityPanel(
-      this.layout.centerX,
-      this.layout.communityY,
-      this.layout.communityWidth,
-      this.layout.communityHeight,
+      communityX,
+      communityY,
+      communityWidth,
+      communityHeight,
     );
 
     this.mainCard?.add(this.communityContainer);
@@ -1799,9 +1789,10 @@ export class MainMenu extends Scene {
       if (profile.type !== "player-profile") {
         throw new Error("Unexpected server response.");
       }
-
+      this.isLoggedIn = true;
       this.renderPlayerProfile(profile);
     } catch (error) {
+      this.isLoggedIn = false;
       console.error("[MainMenu] Failed to load profile:", error);
 
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -1992,7 +1983,7 @@ export class MainMenu extends Scene {
 
     const usernameLabel = this.add
       .text(usernameTextX, topRowY - 10, "RAIDER", {
-        font: "bold 9px Orbitron",
+        font: "bold 14px Orbitron",
 
         color: TEXT.muted,
 
@@ -2002,7 +1993,7 @@ export class MainMenu extends Scene {
 
     const username = this.add
       .text(usernameTextX, topRowY + 8, `u/${profile.username}`, {
-        font: "bold 13px Orbitron",
+        font: "bold 14px Orbitron",
 
         color: TEXT.primary,
       })
@@ -2032,7 +2023,7 @@ export class MainMenu extends Scene {
 
     const cashLabel = this.add
       .text(walletX - 38, topRowY - 10, "WALLET", {
-        font: "bold 9px Orbitron",
+        font: "bold 14px Orbitron",
 
         color: TEXT.muted,
 
@@ -2067,16 +2058,24 @@ export class MainMenu extends Scene {
     );
 
     this.dailyRewardButtonText = this.add
-      .text(0, 0, "DAILY REWARD\nCLAIM +5 CASH", {
-        font: "bold 11px Orbitron",
-
+      .text(0, -8, "DAILY REWARD", {
+        font: "bold 14px Orbitron",
         color: TEXT.bright,
-
         align: "center",
-
-        lineSpacing: 5,
       })
       .setOrigin(0.5);
+
+    this.dailyRewardCashIcon = this.add
+      .image(-31, 11, "cash")
+      .setDisplaySize(18, 18)
+      .setOrigin(0.5);
+
+    this.dailyRewardAmountText = this.add
+      .text(-18, 11, "CLAIM +5", {
+        font: "bold 14px Orbitron",
+        color: TEXT.bright,
+      })
+      .setOrigin(0, 0.5);
 
     this.dailyRewardButtonHit = this.add
       .rectangle(0, 0, ACTION_WIDTH, ACTION_HEIGHT, 0xffffff, 0)
@@ -2085,6 +2084,8 @@ export class MainMenu extends Scene {
     this.dailyRewardButton.add([
       this.dailyRewardButtonGfx,
       this.dailyRewardButtonText,
+      this.dailyRewardCashIcon,
+      this.dailyRewardAmountText,
       this.dailyRewardButtonHit,
     ]);
 
@@ -2107,15 +2108,17 @@ export class MainMenu extends Scene {
     );
 
     this.cashRequestButtonText = this.add
-      .text(0, 0, "REQUEST CASH\nCREATE POST", {
-        font: "bold 11px Orbitron",
-
+      .text(7, 0, "REQUEST\nFROM COMMUNITY", {
+        font: "bold 14px Orbitron",
         color: TEXT.bright,
-
         align: "center",
-
-        lineSpacing: 5,
+        lineSpacing: 4,
       })
+      .setOrigin(0.5);
+
+    this.cashRequestIcon = this.add
+      .image(-48, 0, "cash")
+      .setDisplaySize(24, 24)
       .setOrigin(0.5);
 
     this.cashRequestButtonHit = this.add
@@ -2124,6 +2127,7 @@ export class MainMenu extends Scene {
 
     this.cashRequestButton.add([
       this.cashRequestButtonGfx,
+      this.cashRequestIcon,
       this.cashRequestButtonText,
       this.cashRequestButtonHit,
     ]);
@@ -2224,7 +2228,7 @@ export class MainMenu extends Scene {
 
     const usernameLabel = this.add
       .text(contentLeft + 10, firstRowY - 9, "RAIDER", {
-        font: "bold 7px Orbitron",
+        font: "bold 14px Orbitron",
         color: TEXT.muted,
         letterSpacing: 1,
       })
@@ -2232,7 +2236,7 @@ export class MainMenu extends Scene {
 
     const usernameText = this.add
       .text(contentLeft + 10, firstRowY + 8, `u/${profile.username}`, {
-        font: "bold 10px Orbitron",
+        font: "bold 14px Orbitron",
         color: TEXT.primary,
       })
       .setOrigin(0, 0.5);
@@ -2261,7 +2265,7 @@ export class MainMenu extends Scene {
 
     const cashLabel = this.add
       .text(walletX - halfWidth / 2 + 42, firstRowY - 9, "WALLET", {
-        font: "bold 7px Orbitron",
+        font: "bold 14px Orbitron",
         color: TEXT.muted,
         letterSpacing: 1,
       })
@@ -2273,7 +2277,7 @@ export class MainMenu extends Scene {
         firstRowY + 8,
         profile.cash.toLocaleString(),
         {
-          font: "bold 11px Orbitron",
+          font: "bold 14px Orbitron",
           color: TEXT.green,
         },
       )
@@ -2305,13 +2309,24 @@ export class MainMenu extends Scene {
     );
 
     this.dailyRewardButtonText = this.add
-      .text(0, 0, "DAILY REWARD\nCLAIM +5 CASH", {
-        font: "bold 8px Orbitron",
+      .text(0, -7, "DAILY REWARD", {
+        font: "bold 14px Orbitron",
         color: TEXT.bright,
         align: "center",
-        lineSpacing: 3,
       })
       .setOrigin(0.5);
+
+    const dailyRewardCashIcon = this.add
+      .image(-20, 9, "cash")
+      .setDisplaySize(15, 15)
+      .setOrigin(0.5);
+
+    const dailyRewardAmountText = this.add
+      .text(-9, 9, "CLAIM +5", {
+        font: "bold 14px Orbitron",
+        color: TEXT.bright,
+      })
+      .setOrigin(0, 0.5);
 
     this.dailyRewardButtonHit = this.add
       .rectangle(
@@ -2327,6 +2342,8 @@ export class MainMenu extends Scene {
     this.dailyRewardButton.add([
       this.dailyRewardButtonGfx,
       this.dailyRewardButtonText,
+      dailyRewardCashIcon,
+      dailyRewardAmountText,
       this.dailyRewardButtonHit,
     ]);
 
@@ -2346,7 +2363,7 @@ export class MainMenu extends Scene {
 
     this.cashRequestButtonText = this.add
       .text(0, 0, "REQUEST CASH\nCREATE POST", {
-        font: "bold 8px Orbitron",
+        font: "bold 14px Orbitron",
         color: TEXT.bright,
         align: "center",
         lineSpacing: 3,
@@ -2452,7 +2469,7 @@ export class MainMenu extends Scene {
 
     const labelText = this.add
       .text(0, -11, label, {
-        font: "bold 6px Orbitron",
+        font: "bold 14px Orbitron",
         color: TEXT.muted,
         letterSpacing: 1,
       })
@@ -2460,7 +2477,7 @@ export class MainMenu extends Scene {
 
     const valueText = this.add
       .text(0, 9, value, {
-        font: "bold 12px Orbitron",
+        font: "bold 14px Orbitron",
         color: valueColor,
         stroke: "#03121b",
         strokeThickness: 2,
@@ -2553,7 +2570,7 @@ export class MainMenu extends Scene {
 
     const labelText = this.add
       .text(0, -14, label, {
-        font: "bold 8px Orbitron",
+        font: "bold 14px Orbitron",
 
         color: TEXT.muted,
 
@@ -2593,6 +2610,7 @@ export class MainMenu extends Scene {
   }
 
   private updateCashRequestButton(): void {
+    const icon = this.cashRequestIcon;
     const button = this.cashRequestButton;
 
     const graphics = this.cashRequestButtonGfx;
@@ -2601,7 +2619,7 @@ export class MainMenu extends Scene {
 
     const text = this.cashRequestButtonText;
 
-    if (!button || !graphics || !hit || !text) {
+    if (!button || !graphics || !hit || !text || !icon) {
       return;
     }
 
@@ -2616,11 +2634,16 @@ export class MainMenu extends Scene {
     text.setAlpha(1).setColor(TEXT.bright);
 
     if (remainingMs > 0) {
-      text.setText(
-        ["REQUEST CASH", this.formatCashRequestCountdown(remainingMs)].join(
-          "\n",
-        ),
-      );
+      icon.setVisible(false);
+
+      text
+        .setText(
+          ["REQUEST AGAIN", this.formatCashRequestCountdown(remainingMs)].join(
+            "\n",
+          ),
+        )
+        .setPosition(0, 0)
+        .setOrigin(0.5);
 
       this.drawActionButton(graphics, 0x1d2c34, 0x78a7b5, 0.8);
 
@@ -2631,7 +2654,9 @@ export class MainMenu extends Scene {
 
     this.cashRequestAvailableAt = 0;
 
-    text.setText("REQUEST CASH\nCREATE POST");
+    icon.setVisible(true);
+
+    text.setText("REQUEST\nFROM COMMUNITY").setPosition(7, 0).setOrigin(0.5);
 
     this.drawActionButton(graphics, COLORS.greenFill, COLORS.greenStroke, 0.75);
 
@@ -2687,7 +2712,9 @@ export class MainMenu extends Scene {
 
       button.setAlpha(0.65);
 
-      text.setText("CREATING...");
+      this.cashRequestIcon?.setVisible(false);
+
+      text.setText("CREATING\nREQUEST...").setPosition(0, 0).setOrigin(0.5);
 
       void this.createCashRequest().then((nextRequestAvailableAt) => {
         if (!button.active) {
@@ -2738,7 +2765,7 @@ export class MainMenu extends Scene {
     this.cashRequestStatusText?.destroy();
     this.cashRequestStatusText = this.add
       .text(this.scale.width / 2, this.scale.height * 0.285, message, {
-        font: "bold 11px Orbitron",
+        font: "bold 14px Orbitron",
         color: success ? TEXT.green : "#ff9999",
         backgroundColor: success ? "#103a27" : "#3d1820",
         padding: { x: 16, y: 9 },
@@ -2832,14 +2859,20 @@ export class MainMenu extends Scene {
 
   private updateDailyRewardButton(): void {
     const button = this.dailyRewardButton;
-
     const graphics = this.dailyRewardButtonGfx;
-
     const hit = this.dailyRewardButtonHit;
+    const titleText = this.dailyRewardButtonText;
+    const amountText = this.dailyRewardAmountText;
+    const cashIcon = this.dailyRewardCashIcon;
 
-    const text = this.dailyRewardButtonText;
-
-    if (!button || !graphics || !hit || !text) {
+    if (
+      !button ||
+      !graphics ||
+      !hit ||
+      !titleText ||
+      !amountText ||
+      !cashIcon
+    ) {
       return;
     }
 
@@ -2849,36 +2882,46 @@ export class MainMenu extends Scene {
 
     button.setAlpha(1);
 
-    text.setAlpha(1).setColor(TEXT.bright);
+    titleText.setText("DAILY REWARD").setAlpha(1).setColor(TEXT.bright);
+
+    amountText.setAlpha(1).setColor(TEXT.bright);
+
+    cashIcon.setAlpha(1);
 
     if (this.dailyRewardCanClaim) {
-      text.setText("DAILY REWARD\nCLAIM +5 CASH");
+      amountText.setText("CLAIM +5").setPosition(-18, 11).setOrigin(0, 0.5);
+
+      cashIcon.setVisible(true).setPosition(-31, 11);
 
       this.drawActionButton(graphics, COLORS.goldFill, COLORS.goldStroke, 0.9);
 
-      hit.setInteractive({ useHandCursor: true });
+      hit.setInteractive({
+        useHandCursor: true,
+      });
 
       return;
     }
 
     const remainingMs = Math.max(0, this.dailyRewardNextResetAt - Date.now());
 
+    cashIcon.setVisible(false);
+
     if (remainingMs <= 0) {
-      text.setText("DAILY REWARD\nCHECKING...");
+      amountText.setText("CHECKING...").setPosition(0, 11).setOrigin(0.5);
 
       this.drawActionButton(graphics, 0x33301c, 0xb8a66a, 0.8);
 
       hit.disableInteractive();
 
-      //has the server whether the new UTC day begun?
-      void this.loadPlayerProfile(); // void to avoid unhandled promise warning
+      void this.loadPlayerProfile();
 
       return;
     }
 
-    text.setText(
-      ["DAILY REWARD", this.formatCashRequestCountdown(remainingMs)].join("\n"),
-    );
+    amountText
+      .setText(this.formatCashRequestCountdown(remainingMs))
+      .setPosition(0, 11)
+      .setOrigin(0.5);
 
     this.drawActionButton(graphics, 0x33301c, 0xb8a66a, 0.8);
 
@@ -2889,44 +2932,73 @@ export class MainMenu extends Scene {
     const button = this.dailyRewardButton;
     const graphics = this.dailyRewardButtonGfx;
     const hit = this.dailyRewardButtonHit;
-    const text = this.dailyRewardButtonText;
-    if (!button || !graphics || !hit || !text) {
+    const titleText = this.dailyRewardButtonText;
+    const amountText = this.dailyRewardAmountText;
+    const cashIcon = this.dailyRewardCashIcon;
+
+    if (
+      !button ||
+      !graphics ||
+      !hit ||
+      !titleText ||
+      !amountText ||
+      !cashIcon
+    ) {
       return;
     }
+
     hit.on("pointerover", () => {
       if (!this.dailyRewardCanClaim) {
         return;
       }
+
       button.setScale(1.04);
     });
+
     hit.on("pointerout", () => {
       button.setScale(1);
     });
+
     hit.on("pointerdown", () => {
       if (!this.dailyRewardCanClaim) {
         return;
       }
+
       button.setScale(0.96);
     });
+
     hit.on("pointerup", () => {
       button.setScale(1);
+
       if (!this.dailyRewardCanClaim || button.getData("claiming")) {
         return;
       }
+
       button.setData("claiming", true);
+
       hit.disableInteractive();
+
       button.setAlpha(0.65);
-      text.setText("CLAIMING...");
+
+      titleText.setText("DAILY REWARD");
+
+      amountText.setText("CLAIMING...").setPosition(0, 11).setOrigin(0.5);
+
+      cashIcon.setVisible(false);
+
       void this.claimDailyReward().then((success) => {
         if (!button.active) {
           return;
         }
+
         button.setData("claiming", false);
+
         if (!success) {
           this.updateDailyRewardButton();
         }
       });
     });
+
     this.updateDailyRewardButton();
   }
 
@@ -3137,7 +3209,7 @@ export class MainMenu extends Scene {
       .setDisplaySize(iconRadius * 1.68, iconRadius * 1.68);
     const titleText = this.add
       .text(textX, -22, "TODAY'S KING", {
-        font: `bold ${mobile ? 8 : 10}px Orbitron`,
+        font: `bold 14px Orbitron`,
 
         color: "#ffd37a",
 
@@ -3151,7 +3223,7 @@ export class MainMenu extends Scene {
 
     const kingNameText = this.add
       .text(textX, 1, this.currentKingName, {
-        font: `bold ${mobile ? 14 : 17}px Orbitron`,
+        font: `bold 17px Orbitron`,
 
         color: "#ffffff",
 
@@ -3167,7 +3239,7 @@ export class MainMenu extends Scene {
         25,
         `DEFEAT TO UNLOCK ${this.currentKingRewardName.toUpperCase()}`,
         {
-          font: `bold ${mobile ? 6 : 8}px Orbitron`,
+          font: `bold  14px Orbitron`,
 
           color: "#ffcf86",
 

@@ -124,12 +124,12 @@ export const RAIDER_UNLOCK_REQUIREMENTS: Record<
 
   17: {
     type: "highscore",
-    amount: 1_000,
+    amount: 20_000,
   },
 
   18: {
     type: "cash",
-    amount: 1000,
+    amount: 500,
   },
 
   19: {
@@ -177,6 +177,16 @@ export const RAIDER_UNLOCK_REQUIREMENTS: Record<
   33: {
     type: "cash",
     amount: 350,
+  },
+
+  34: {
+    type: "highscore",
+    amount: 40_000,
+  },
+
+  35: {
+    type: "highscore",
+    amount: 60_000,
   },
 };
 

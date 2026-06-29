@@ -385,7 +385,6 @@ export class Preloader extends Scene {
 
     this.load.image("catastrophe", "images/catastrophe.png");
     this.load.image("strengthen", "images/strengthen.png");
-    this.load.image("player", "images/player.png");
     this.load.image("gold", "images/gold.png");
     this.load.image("cash", "images/cash.png");
 

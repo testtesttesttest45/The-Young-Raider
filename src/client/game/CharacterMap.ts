@@ -1513,5 +1513,43 @@ const characterMap: Record<number, CharacterDefinition> = {
     description:
       "A playful and unpredictable Raider, the Jester Raider uses tricks and illusions to outsmart enemies.",
   },
+  34: {
+    type: "raider",
+    ...RAIDER_STATS,
+    spritesheetKey: "raider12_idle",
+    movingSpritesheetKey: "raider12_move",
+    attackSpritesheetKey: "raider12_attack",
+    deathSpritesheetKey: "raider12_die",
+    slashSpritesheetKey: "raider12_slash",
+    dashSlashSpritesheetKey: "raider12_dash",
+    shieldSpritesheetKey: "raider12_shield",
+    shieldMoveSpritesheetKey: "raider12_shield_move",
+    name: "Samurai Raider",
+    cost: 100,
+    tier: "hard",
+    icon: "raider12Icon",
+    idle: "raider12Idle",
+    description:
+      "A disciplined and skilled Raider, the Samurai Raider wields a katana and follows a strict code of honor.",
+  },
+  35: {
+    type: "raider",
+    ...RAIDER_STATS,
+    spritesheetKey: "raider13_idle",
+    movingSpritesheetKey: "raider13_move",
+    attackSpritesheetKey: "raider13_attack",
+    deathSpritesheetKey: "raider13_die",
+    slashSpritesheetKey: "raider13_slash",
+    dashSlashSpritesheetKey: "raider13_dash",
+    shieldSpritesheetKey: "raider13_shield",
+    shieldMoveSpritesheetKey: "raider13_shield_move",
+    name: "Ninja Raider",
+    cost: 100,
+    tier: "hard",
+    icon: "raider13Icon",
+    idle: "raider13Idle",
+    description:
+      "Silent and swift, the Ninja Raider strikes from the shadows and disappears just as quickly.",
+  },
 };
 export default characterMap;

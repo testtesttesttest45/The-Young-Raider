@@ -109,9 +109,6 @@ export default class BattleShop {
       "Elixir of Life": 0,
       "Winter Frost": 0,
       "Treasure Hunter": 0,
-      "Forbidden Excalibur": 0,
-      "Soul of the Phoenix": 0,
-      "Cosmic Scimitar": 0,
     };
 
     this.purchaseCountText = null;
@@ -141,9 +138,6 @@ export default class BattleShop {
       "Elixir of Life": 0,
       "Winter Frost": 0,
       "Treasure Hunter": 0,
-      "Forbidden Excalibur": 0,
-      "Soul of the Phoenix": 0,
-      "Cosmic Scimitar": 0,
     };
 
     this.purchaseCountText = null;
@@ -321,7 +315,7 @@ export default class BattleShop {
 
     const goldIcon = this.ui.add
       .image(modalX + 26, modalY + headerHeight / 2, "gold")
-      .setScale(0.42)
+      .setScale(0.25)
       .setOrigin(0.5);
 
     this.goldTextShop = this.ui.add
@@ -471,24 +465,6 @@ export default class BattleShop {
         description: "Every Gold drop is worth twice as much",
         cost: 4000,
         icon: "treasureFinder",
-      },
-      {
-        name: "Forbidden Excalibur",
-        description: "Double damage and health for the next 5 bases",
-        cost: 9999,
-        icon: "sword2",
-      },
-      {
-        name: "Soul of the Phoenix",
-        description: "Revive once after being defeated",
-        cost: 9999,
-        icon: "attackSpeed2",
-      },
-      {
-        name: "Cosmic Scimitar",
-        description: "Gain damage and health after each destroyed base",
-        cost: 9999,
-        icon: "sword2",
       },
     ];
     const columnGap = 16;
@@ -927,7 +903,7 @@ export default class BattleShop {
         .lineStyle(1, 0x3c6682, 0.85)
         .strokeRoundedRect(startX, itemY, itemWidth, itemHeight, 10);
 
-      const iconScale = upgrade.icon === "cash" ? 0.46 : 0.36;
+      const iconScale = 0.25;
 
       const icon = this.ui.add
         .image(startX + 31, itemY + 34, upgrade.icon)
@@ -975,12 +951,12 @@ export default class BattleShop {
       } else {
         buyButton = this.ui.add
           .text(startX + itemWidth - 14, itemY + itemHeight - 25, "BUY", {
-            font: "bold 13px Orbitron",
+            font: "bold 15px Orbitron",
             color: "#ffffff",
             backgroundColor: "#247f4c",
             padding: {
-              x: 9,
-              y: 4,
+              x: 14,
+              y: 7,
             },
           })
           .setOrigin(1, 0.5)
@@ -990,6 +966,24 @@ export default class BattleShop {
 
         let buyButtonPressed = false;
 
+        buyButton.on("pointerover", () => {
+          buyButton.setStyle({
+            backgroundColor: "#2f9e62",
+          });
+
+          buyButton.setScale(1.04);
+        });
+
+        buyButton.on("pointerout", () => {
+          buyButtonPressed = false;
+
+          buyButton.setStyle({
+            backgroundColor: "#247f4c",
+          });
+
+          buyButton.setScale(1);
+        });
+
         buyButton.on(
           "pointerdown",
           (
@@ -998,13 +992,13 @@ export default class BattleShop {
             _localY: number,
             event: Phaser.Types.Input.EventData,
           ) => {
+            event.stopPropagation();
+
             buyButtonPressed = true;
+
+            buyButton.setScale(0.96);
           },
         );
-
-        buyButton.on("pointerout", () => {
-          buyButtonPressed = false;
-        });
 
         buyButton.on(
           "pointerup",
@@ -1015,6 +1009,8 @@ export default class BattleShop {
             event: Phaser.Types.Input.EventData,
           ) => {
             event.stopPropagation();
+
+            buyButton.setScale(1);
 
             if (!buyButtonPressed || this.shopWasDragged) {
               buyButtonPressed = false;
@@ -1029,6 +1025,8 @@ export default class BattleShop {
 
         buyButton.on("pointerupoutside", () => {
           buyButtonPressed = false;
+
+          buyButton.setScale(1);
         });
       }
 
@@ -1042,11 +1040,16 @@ export default class BattleShop {
         buyButton,
       ]);
 
-      if (upgrade.name === "Penknife") {
+      if (upgrade.name === "Penknife" && upgrade.cost !== 9999) {
         this.penknifeBulkBuyButton = this.ui.add
-          .text(startX + itemWidth - 72, itemY + itemHeight - 25, "BULK", {
-            font: "bold 11px Orbitron",
-            color: "#8ac7ff",
+          .text(startX + itemWidth - 88, itemY + itemHeight - 25, "BULK BUY", {
+            font: "bold 13px Orbitron",
+            color: "#ffffff",
+            backgroundColor: "#24577f",
+            padding: {
+              x: 12,
+              y: 7,
+            },
           })
           .setOrigin(1, 0.5)
           .setInteractive({
@@ -1054,6 +1057,24 @@ export default class BattleShop {
           });
 
         let bulkButtonPressed = false;
+
+        this.penknifeBulkBuyButton.on("pointerover", () => {
+          this.penknifeBulkBuyButton
+            ?.setStyle({
+              backgroundColor: "#3277aa",
+            })
+            .setScale(1.04);
+        });
+
+        this.penknifeBulkBuyButton.on("pointerout", () => {
+          bulkButtonPressed = false;
+
+          this.penknifeBulkBuyButton
+            ?.setStyle({
+              backgroundColor: "#24577f",
+            })
+            .setScale(1);
+        });
 
         this.penknifeBulkBuyButton.on(
           "pointerdown",
@@ -1063,13 +1084,13 @@ export default class BattleShop {
             _localY: number,
             event: Phaser.Types.Input.EventData,
           ) => {
+            event.stopPropagation();
+
             bulkButtonPressed = true;
+
+            this.penknifeBulkBuyButton?.setScale(0.96);
           },
         );
-
-        this.penknifeBulkBuyButton.on("pointerout", () => {
-          bulkButtonPressed = false;
-        });
 
         this.penknifeBulkBuyButton.on(
           "pointerup",
@@ -1080,6 +1101,8 @@ export default class BattleShop {
             event: Phaser.Types.Input.EventData,
           ) => {
             event.stopPropagation();
+
+            this.penknifeBulkBuyButton?.setScale(1);
 
             if (!bulkButtonPressed || this.shopWasDragged) {
               bulkButtonPressed = false;
@@ -1094,12 +1117,16 @@ export default class BattleShop {
 
         this.penknifeBulkBuyButton.on("pointerupoutside", () => {
           bulkButtonPressed = false;
+
+          this.penknifeBulkBuyButton?.setScale(1);
         });
 
-        this.scrollableContainer!.add(this.penknifeBulkBuyButton);
+        this.scrollableContainer?.add(this.penknifeBulkBuyButton);
       }
 
-      if (this.purchaseCounts.hasOwnProperty(upgrade.name)) {
+      if (
+        Object.prototype.hasOwnProperty.call(this.purchaseCounts, upgrade.name)
+      ) {
         const purchaseCountText = this.ui.add
           .text(
             startX + itemWidth - 10,
@@ -1112,7 +1139,7 @@ export default class BattleShop {
           )
           .setOrigin(1, 0);
 
-        this.scrollableContainer!.add(purchaseCountText);
+        this.scrollableContainer?.add(purchaseCountText);
 
         this.buyButtons.push({
           button: buyButton,
@@ -1120,7 +1147,12 @@ export default class BattleShop {
           upgradeName: upgrade.name,
           purchaseCountText,
         });
-      } else if (this.legendaryPurchaseCount.hasOwnProperty(upgrade.name)) {
+      } else if (
+        Object.prototype.hasOwnProperty.call(
+          this.legendaryPurchaseCount,
+          upgrade.name,
+        )
+      ) {
         const purchaseCountText = this.ui.add
           .text(
             startX + itemWidth - 10,
@@ -1133,7 +1165,7 @@ export default class BattleShop {
           )
           .setOrigin(1, 0);
 
-        this.scrollableContainer!.add(purchaseCountText);
+        this.scrollableContainer?.add(purchaseCountText);
 
         this.buyButtons.push({
           button: buyButton,
@@ -1166,6 +1198,7 @@ export default class BattleShop {
     const maxPurchases = Math.floor(this.ui.gold / cost);
     if (maxPurchases > 0) {
       this.ui.gold -= maxPurchases * cost;
+      audioManager.playSound("sfx-buy", 0.4);
       this.ui.updateGoldDisplay();
       (this.ui.scene.get("Game") as any).player.damage += maxPurchases;
       this.showPurchaseFeedback(
@@ -1339,10 +1372,7 @@ export default class BattleShop {
         upgradeName === "Thunderlord Seal" ||
         upgradeName === "Elixir of Life" ||
         upgradeName === "Winter Frost" ||
-        upgradeName === "Treasure Hunter" ||
-        upgradeName === "Forbidden Excalibur" ||
-        upgradeName === "Soul of the Phoenix" ||
-        upgradeName === "Cosmic Scimitar"
+        upgradeName === "Treasure Hunter"
       ) {
         if (!this.legendaryIcons.some((entry) => entry.name === upgradeName)) {
           const container = this.ui.legendaryIconsContainer;
@@ -1370,7 +1400,7 @@ export default class BattleShop {
 
           const icon = this.ui.add
             .image(localX, localY, upgradeIcon)
-            .setDisplaySize(30, 30)
+            .setDisplaySize(25, 25)
             .setOrigin(0.5)
             .setInteractive({
               useHandCursor: true,

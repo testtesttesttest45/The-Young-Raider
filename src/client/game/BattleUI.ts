@@ -110,8 +110,8 @@ export default class BattleUI extends Scene {
   tutorial: TutorialOverlay;
   legendaryIconsContainer: Phaser.GameObjects.Container | null = null;
 
-  fpsText: Phaser.GameObjects.Text | null;
-  private lastFpsUpdateTime = 0;
+  // fpsText: Phaser.GameObjects.Text | null;
+  // private lastFpsUpdateTime = 0;
 
   constructor() {
     super({ key: "BattleUI", active: false });
@@ -137,7 +137,7 @@ export default class BattleUI extends Scene {
     this.finalScore = 0;
     this.strengthenLabelText = null;
     this.tutorial = new TutorialOverlay(this);
-    this.fpsText = null;
+    // this.fpsText = null;
   }
 
   resetState(): void {
@@ -189,8 +189,8 @@ export default class BattleUI extends Scene {
     this.tutorial.reset();
     this.shop.reset();
     this.legendaryIconsContainer = null;
-    this.fpsText = null;
-    this.lastFpsUpdateTime = 0;
+    // this.fpsText = null;
+    // this.lastFpsUpdateTime = 0;
   }
 
   private isKingMode(): boolean {
@@ -466,7 +466,7 @@ export default class BattleUI extends Scene {
     // Catastrophe row
     this.catastropheIcon = this.add
       .image(timerIconX, 29, "catastrophe")
-      .setScale(0.29)
+      .setScale(0.25)
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(CONTENT_DEPTH);
@@ -498,7 +498,7 @@ export default class BattleUI extends Scene {
     // Strengthen row
     this.strengthenIcon = this.add
       .image(timerIconX, 77, "strengthen")
-      .setScale(0.29)
+      .setScale(0.25)
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(CONTENT_DEPTH);
@@ -627,7 +627,7 @@ export default class BattleUI extends Scene {
 
     this.shopIcon = this.add
       .image(rightContentX + 10, 52, "gold")
-      .setScale(0.34)
+      .setScale(0.25)
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(CONTENT_DEPTH);
@@ -642,7 +642,7 @@ export default class BattleUI extends Scene {
 
     this.cashIcon = this.add
       .image(rightContentX + 103, 52, "cash")
-      .setScale(0.34)
+      .setScale(0.25)
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(CONTENT_DEPTH);
@@ -707,11 +707,6 @@ export default class BattleUI extends Scene {
       this.shopText.setText("SHOP (Disabled)");
     }
 
-    /*
-     * Bottom-right utility controls:
-     *
-     * [ FPS: 60 ] [ 🔊 ] [ Ⅱ ]
-     */
     const utilityY = 84;
 
     const utilityRight = rightSectionX + rightSectionWidth - 14;
@@ -720,7 +715,7 @@ export default class BattleUI extends Scene {
 
     const pauseWidth = 34;
     const muteWidth = 38;
-    const fpsWidth = 72;
+    // const fpsWidth = 72;
 
     const controlGap = 7;
 
@@ -728,22 +723,22 @@ export default class BattleUI extends Scene {
 
     const muteX = pauseX - pauseWidth / 2 - controlGap - muteWidth / 2;
 
-    const fpsX = muteX - muteWidth / 2 - controlGap - fpsWidth / 2;
+    // const fpsX = muteX - muteWidth / 2 - controlGap - fpsWidth / 2;
 
-    const fpsBackground = this.add
-      .rectangle(fpsX, utilityY, fpsWidth, controlHeight, 0x101a22, 0.92)
-      .setStrokeStyle(1, 0x44758d, 0.9)
-      .setScrollFactor(0)
-      .setDepth(CONTENT_DEPTH + 1);
+    // const fpsBackground = this.add
+    //   .rectangle(fpsX, utilityY, fpsWidth, controlHeight, 0x101a22, 0.92)
+    //   .setStrokeStyle(1, 0x44758d, 0.9)
+    //   .setScrollFactor(0)
+    //   .setDepth(CONTENT_DEPTH + 1);
 
-    this.fpsText = this.add
-      .text(fpsX, utilityY, "FPS: --", {
-        font: "bold 11px monospace",
-        color: "#7dff8b",
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(CONTENT_DEPTH + 2);
+    // this.fpsText = this.add
+    //   .text(fpsX, utilityY, "FPS: --", {
+    //     font: "bold 11px monospace",
+    //     color: "#7dff8b",
+    //   })
+    //   .setOrigin(0.5)
+    //   .setScrollFactor(0)
+    //   .setDepth(CONTENT_DEPTH + 2);
 
     audioManager.createMuteButton(this, muteX, utilityY, CONTENT_DEPTH + 2);
 
@@ -1015,21 +1010,21 @@ export default class BattleUI extends Scene {
   }
 
   override update(time: number): void {
-    if (this.fpsText && time - this.lastFpsUpdateTime >= 250) {
-      const fps = Math.round(this.game.loop.actualFps);
+    // if (this.fpsText && time - this.lastFpsUpdateTime >= 250) {
+    //   const fps = Math.round(this.game.loop.actualFps);
 
-      this.fpsText.setText(`FPS: ${fps}`);
+    //   this.fpsText.setText(`FPS: ${fps}`);
 
-      if (fps >= 50) {
-        this.fpsText.setColor("#7dff8b");
-      } else if (fps >= 30) {
-        this.fpsText.setColor("#ffd84a");
-      } else {
-        this.fpsText.setColor("#ff6666");
-      }
+    //   if (fps >= 50) {
+    //     this.fpsText.setColor("#7dff8b");
+    //   } else if (fps >= 30) {
+    //     this.fpsText.setColor("#ffd84a");
+    //   } else {
+    //     this.fpsText.setColor("#ff6666");
+    //   }
 
-      this.lastFpsUpdateTime = time;
-    }
+    //   this.lastFpsUpdateTime = time;
+    // }
 
     this.displayPlayerStats();
 
@@ -1581,7 +1576,7 @@ export default class BattleUI extends Scene {
     const retryButton = createGameOverButton(
       panelX - buttonColumnOffset,
       buttonRowOneY,
-      "↻  RETRY",
+      "RETRY",
       "#17658c",
       0x63d5ff,
       () => {

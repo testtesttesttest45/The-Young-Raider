@@ -1264,11 +1264,6 @@ class Player {
     this.attackAnimationComplete = false;
     this.hasAppliedAttackDamage = false;
 
-    /*
-     * 1.0 at the character's original attack speed.
-     * Energy Gun increases attackSpeed, causing the attack
-     * animation and recovery lock to finish sooner.
-     */
     const attackSpeedMultiplier = Phaser.Math.Clamp(
       this.attackSpeed / this.originalAttackSpeed,
       0.25,
@@ -1308,10 +1303,6 @@ class Player {
         onAnimationUpdate,
       );
 
-      /*
-       * Reset this before playing idle so movement, idle,
-       * Slash and Dash animations keep their normal speed.
-       */
       this.robotSprite.anims.timeScale = 1;
 
       this.isActionLocked = false;
