@@ -78,10 +78,10 @@ export type CharacterDefinition = RaiderDefinition | EnemyDefinition;
 
 export const RAIDER_STATS = {
   range: 110,
-  speed: 220,
-  damage: 99,
-  health: 573,
-  attackSpeed: 1.4,
+  speed: 210,
+  damage: 54,
+  health: 373,
+  attackSpeed: 1.6,
   attackCount: 1,
   projectile: "",
 } as const;

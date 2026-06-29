@@ -420,7 +420,7 @@ export default class BattleShop {
     const attackSpeedUpgrades = [
       {
         name: "Energy Gun",
-        description: "Increase attack speed by 25%",
+        description: "Increase attack speed by 15%",
         cost: 660,
         icon: "attackSpeed1",
       },
@@ -1337,7 +1337,7 @@ export default class BattleShop {
       if (upgradeName === "Energy Gun") {
         (this.ui.scene.get("Game") as any).player.attackSpeed =
           Math.round(
-            (this.ui.scene.get("Game") as any).player.attackSpeed * 1.25 * 100,
+            (this.ui.scene.get("Game") as any).player.attackSpeed * 1.15 * 100,
           ) / 100;
       }
       if (upgradeName === "Lightning Core") {
