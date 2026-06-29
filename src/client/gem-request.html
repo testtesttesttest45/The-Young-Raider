@@ -8,11 +8,11 @@
             content="width=device-width, initial-scale=1.0"
         />
 
-        <title>Request Cash</title>
+        <title>Request gem</title>
 
         <link
             rel="stylesheet"
-            href="cash-request.css"
+            href="gem-request.css"
         />
     </head>
 
@@ -25,7 +25,7 @@
                 aria-live="polite"
             >
                 <div class="loading-spinner"></div>
-                <p>LOADING CASH REQUEST...</p>
+                <p>LOADING GEM REQUEST...</p>
             </section>
 
             <section
@@ -39,7 +39,7 @@
                     </p>
 
                     <h1>
-                        COMMUNITY CASH REQUEST
+                        COMMUNITY GEM REQUEST
                     </h1>
 
                     <p
@@ -54,8 +54,8 @@
 
                         <img
                             class="hero-coin"
-                            src="/assets/images/cash.png"
-                            alt="Cash"
+                            src="/assets/images/gem.png"
+                            alt="gem"
                         />
                     </div>
 
@@ -82,20 +82,19 @@
                             </div>
                         </div>
 
-                        <div class="cash-summary">
-                            <div class="cash-summary-label">
-                                CASH COLLECTED
+                        <div class="gem-summary">
+                            <div class="gem-summary-label">
                             </div>
 
-                            <div class="cash-summary-value">
+                            <div class="gem-summary-value">
                                 <img
-                                    class="cash-inline-icon"
-                                    src="/assets/images/cash.png"
-                                    alt="Cash"
+                                    class="gem-inline-icon"
+                                    src="/assets/images/gem.png"
+                                    alt="gem"
                                 />
 
-                                <span id="cash-collected">
-                                    0 CASH COLLECTED
+                                <span id="gem-collected">
+                                    0 GEM COLLECTED
                                 </span>
                             </div>
                         </div>
@@ -108,7 +107,7 @@
                         </div>
 
                         <button id="donate-button">
-                            DONATE 1 CASH
+                            DONATE 1 gem
                         </button>
 
                         <p
@@ -140,7 +139,7 @@
 
         <script
             type="module"
-            src="cash-request.ts"
+            src="gem-request.ts"
         ></script>
     </body>
 </html>

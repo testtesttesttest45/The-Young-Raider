@@ -397,7 +397,7 @@ class Base {
       let goldX = this.sprite.x + Math.random() * 100 - 50; // random between -50 and 50
       let goldY = this.sprite.y + Math.random() * 100 - 50;
       let gold = this.scene.add.sprite(goldX, goldY, "gold");
-      gold.setScale(0.1);
+      gold.setScale(0.25);
       gold.setData("value", this.goldValue);
       this.scene.time.delayedCall(
         500,
@@ -410,18 +410,18 @@ class Base {
     }
   }
 
-  dropCash() {
+  dropgem() {
     if (Math.random() < 0.5) {
-      let cash = this.scene.add.sprite(
+      let gem = this.scene.add.sprite(
         this.sprite.x - 70,
         this.sprite.y,
-        "cash",
+        "gem",
       );
-      cash.setData("value", 1);
+      gem.setData("value", 1);
       this.scene.time.delayedCall(
         500,
         () => {
-          this.scene.collectCash(cash);
+          this.scene.collectgem(gem);
         },
         [],
         this,
@@ -580,10 +580,6 @@ class Base {
 
     const spriteBounds = this.sprite.getBounds();
 
-    /*
-     * Include the base Health bar and
-     * level marker above the sprite.
-     */
     return new Phaser.Geom.Rectangle(
       spriteBounds.x - 18,
       spriteBounds.y - 45,

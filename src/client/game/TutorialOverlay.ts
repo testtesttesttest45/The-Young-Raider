@@ -117,7 +117,7 @@ export default class TutorialOverlay {
         title: "CATASTROPHE IMMUNITY",
 
         description:
-          "A white outline around an enemy's right hexagon means that enemy is protected from catastrophe damage. Enemies inside camp, returning to camp and undetected patrollers may be protected.",
+          "A white outline around an enemy's right hexagon means that enemy is protected from catastrophe damage. Enemies inside camp, returning to camp and undetected patrollers are protected.",
 
         targets: () => {
           const bounds =
@@ -133,7 +133,7 @@ export default class TutorialOverlay {
         title: "ENEMIES STRENGTHEN",
 
         description:
-          "When this timer reaches zero, every enemy gains more Damage. Normal camp enemies also gain maximum Health, while patrolling enemies gain Damage only.",
+          "When this timer reaches zero, every enemy gains more Damage and Maximum Health.",
 
         targets: () => {
           const bounds = this.getCombinedTutorialBounds([
@@ -189,7 +189,7 @@ export default class TutorialOverlay {
         title: "ENRAGED DEFENDERS",
 
         description:
-          "Damaging the enemy base enrages every living enemy for five seconds. Their left marker burns with fire, their Damage doubles and they move much faster.",
+          "Damaging the enemy base enrages every living enemy for five seconds. Their left marker turns orange, their Damage doubles and they move much faster.",
 
         targets: () => {
           const baseBounds = gameScene.getBaseTutorialScreenBounds?.();
@@ -236,7 +236,7 @@ export default class TutorialOverlay {
         title: "ENEMIES HEAL AT CAMP",
 
         description:
-          "After returning to camp, damaged enemies recover five percent of their maximum Health every second. Returning enemies are also temporarily protected from damage.",
+          "After returning to camp, damaged enemies recover Health.",
 
         targets: () => {
           const campBounds = gameScene.getEnemyCampTutorialScreenBounds?.();
@@ -251,7 +251,7 @@ export default class TutorialOverlay {
         title: "DODGE ENEMY ATTACKS",
 
         description:
-          "Move outside the enemy's attack area before its weapon or damaging animation frame reaches you. The yellow cone shows the area covered by this melee attack.",
+          "Move outside the enemy's attack area before its weapon or damaging animation frame reaches you. The yellow cone shows the area covered by this attack.",
 
         targets: () => {
           const enemyBounds = gameScene.getEnemyTutorialScreenBounds?.();
@@ -431,7 +431,7 @@ export default class TutorialOverlay {
 
     this.tutorialDescription = this.ui.add
       .text(0, -44, "", {
-        font: "15px Arial",
+        font: "16px Orbitron",
 
         color: "#ffffff",
 
@@ -451,7 +451,7 @@ export default class TutorialOverlay {
 
     this.tutorialProgressText = this.ui.add
       .text(0, 88, "", {
-        font: "11px Orbitron",
+        font: "16px Orbitron",
 
         color: "#91a8b6",
       })
@@ -459,7 +459,7 @@ export default class TutorialOverlay {
 
     this.tutorialPrevButton = this.ui.add
       .text(-panelWidth / 2 + 20, 82, "PREV", {
-        font: "bold 14px Orbitron",
+        font: "bold 16px Orbitron",
 
         color: "#ffffff",
 
@@ -478,7 +478,7 @@ export default class TutorialOverlay {
 
     this.tutorialNextButton = this.ui.add
       .text(panelWidth / 2 - 20, 82, "NEXT", {
-        font: "bold 14px Orbitron",
+        font: "bold 16px Orbitron",
 
         color: "#ffffff",
 
@@ -878,7 +878,7 @@ export default class TutorialOverlay {
 
       // if not logged in, just complete the tutorial locally without saving to server
       if (response.status === 401) {
-        console.log("[Tutorial] Guest player completed tutorial locally.");
+        // console.log("[Tutorial] Guest player completed tutorial locally.");
 
         this.finishTutorial();
 

@@ -30,7 +30,7 @@ class Catastrophe {
 
   constructor(scene: any, baseLevel: number) {
     this.stormInterval = 12000;
-    this.baseDamage = 220;
+    this.baseDamage = 120;
     this.baseLevel = baseLevel;
     this.scene = scene;
     this.minX = 100;
@@ -51,7 +51,7 @@ class Catastrophe {
   }
 
   startStormTimer() {
-    console.log("Storm Interval:", this.stormInterval);
+    // console.log("Storm Interval:", this.stormInterval);
     if (!this.timerStarted) {
       this.fireballTimer = this.stormInterval + this.scene.activeGameTime;
       this.isStorming = false;

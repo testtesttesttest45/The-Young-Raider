@@ -352,13 +352,13 @@ export class Leaderboard extends Scene {
     kingSlayerButton.setFixedSize(250, 42);
 
     if (this.activeTab === "normal") {
-      normalButton.setStroke("#63d5ff", 3).setAlpha(1);
+      normalButton.setStroke("#63d5ff", 1).setAlpha(1);
 
-      kingSlayerButton.setStroke("#000000", 3).setAlpha(0.72);
+      kingSlayerButton.setStroke("#000000", 1).setAlpha(0.72);
     } else {
-      normalButton.setStroke("#000000", 3).setAlpha(0.72);
+      normalButton.setStroke("#000000", 1).setAlpha(0.72);
 
-      kingSlayerButton.setStroke("#ffd36b", 3).setAlpha(1);
+      kingSlayerButton.setStroke("#ffd36b", 1).setAlpha(1);
     }
 
     audioManager.addButtonSound(normalButton);

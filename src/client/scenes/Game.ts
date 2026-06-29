@@ -193,7 +193,7 @@ export class Game extends Scene {
 
   create(): void {
     this.initializationVersion += 1;
-    audioManager.playMusic("music-main");
+    // audioManager.playMusic("music-main");
     const currentInitialization = this.initializationVersion;
     this.gameInitialized = false;
     this.shouldShowTutorial = false;
@@ -421,12 +421,12 @@ export class Game extends Scene {
       this.isGamePaused = true;
       this.allowInput = false;
 
-      console.log("[Game] First-time player. Tutorial required.");
+      // console.log("[Game] First-time player. Tutorial required.");
     } else {
       this.isGamePaused = false;
       this.allowInput = true;
 
-      console.log("[Game] Returning player. Starting normally.");
+      // console.log("[Game] Returning player. Starting normally.");
     }
   }
 
@@ -494,7 +494,7 @@ export class Game extends Scene {
         throw new Error("Unexpected tutorial-status response.");
       }
 
-      console.log("[Game] Tutorial completed:", data.completed);
+      // console.log("[Game] Tutorial completed:", data.completed);
 
       return data.completed;
     } catch (error) {
@@ -626,7 +626,7 @@ export class Game extends Scene {
   collectGold(gold: any): void {
     const value = gold.getData("value") ?? 0;
 
-    console.log("Gold Collected:", value);
+    // console.log("Gold Collected:", value);
 
     this.gold += value;
 
@@ -637,16 +637,14 @@ export class Game extends Scene {
     gold.destroy();
   }
 
-  collectCash(cash: any): void {
-    const value = cash.getData("value") ?? 1;
-
-    console.log("Cash Collected:", value);
+  collectgem(gem: any): void {
+    const value = gem.getData("value") ?? 1;
 
     const battleUI = this.scene.get("BattleUI") as any;
 
-    battleUI?.addCash?.(value);
+    battleUI?.addgem?.(value);
 
-    cash.destroy();
+    gem.destroy();
   }
 
   private createLevelEnemies(baseLevel: number): void {
@@ -936,7 +934,7 @@ export class Game extends Scene {
     });
 
     if (missingAssets.length === 0) {
-      console.log("[Game] Raider assets already loaded:", characterCode);
+      // console.log("[Game] Raider assets already loaded:", characterCode);
 
       return;
     }
@@ -1011,7 +1009,7 @@ export class Game extends Scene {
     );
 
     if (missingAssets.length === 0) {
-      console.log("[Game] King assets already loaded:", characterCode);
+      // console.log("[Game] King assets already loaded:", characterCode);
 
       return;
     }

@@ -33,14 +33,14 @@ export type PlayerProfileResponse = {
   allTimeHighScore: number;
   todayHighScore: number;
   highestBaseSeen: number;
-  cash: number;
+  gem: number;
   globalRank: number | null;
-  canRequestCash: boolean;
-  cashRequestAvailableAt: number;
-  cashRequestCooldownRemainingMs: number;
+  canRequestgem: boolean;
+  gemRequestAvailableAt: number;
+  gemRequestCooldownRemainingMs: number;
 
   canClaimDailyReward: boolean;
-  dailyRewardCash: number;
+  dailyRewardgem: number;
   dailyRewardNextResetAt: number;
   dailyRewardRemainingMs: number;
 };
@@ -49,13 +49,13 @@ export type ClaimDailyRewardResponse = {
   type: "claim-daily-reward";
   status: "success";
   message: string;
-  rewardCash: number;
-  totalCash: number;
+  rewardgem: number;
+  totalgem: number;
   nextResetAt: number;
 };
 
-export type CreateCashRequestResponse = {
-  type: "create-cash-request";
+export type CreategemRequestResponse = {
+  type: "create-gem-request";
   status: "success";
   message: string;
   requestId: string;
@@ -64,7 +64,7 @@ export type CreateCashRequestResponse = {
 
 export type SubmitHighScoreRequest = {
   score: number;
-  cashEarned: number;
+  gemEarned: number;
   highestBaseSeen: number;
 };
 
@@ -81,8 +81,8 @@ export type SubmitHighScoreResponse = {
 
   highestBaseSeen: number;
 
-  totalCash: number;
-  cashEarned: number;
+  totalgem: number;
+  gemEarned: number;
 
   rank: number | null;
 
@@ -161,20 +161,20 @@ export type SharedProfilePostResponse = {
   data: SharedProfilePostData;
 };
 
-export type CashDonationEntry = { username: string; donatedAt: number };
-export type CashRequestViewData = {
+export type gemDonationEntry = { username: string; donatedAt: number };
+export type gemRequestViewData = {
   requestId: string;
 
   requesterUsername: string;
 
   receivedCount: number;
   limit: number;
-  cashCollected: number;
+  gemCollected: number;
 
-  donors: CashDonationEntry[];
+  donors: gemDonationEntry[];
 
   currentUsername: string | null;
-  currentUserCash: number | null;
+  currentUsergem: number | null;
 
   hasDonated: boolean;
   isRequester: boolean;
@@ -187,15 +187,15 @@ export type CashRequestViewData = {
   canDonate: boolean;
 };
 
-export type CashRequestPostResponse = {
-  type: "cash-request-post";
-  data: CashRequestViewData;
+export type gemRequestPostResponse = {
+  type: "gem-request-post";
+  data: gemRequestViewData;
 };
-export type DonateCashResponse = {
-  type: "donate-cash";
+export type DonategemResponse = {
+  type: "donate-gem";
   status: "success";
   message: string;
-  data: CashRequestViewData;
+  data: gemRequestViewData;
 };
 
 export type GetSelectedRaiderResponse = {
@@ -214,7 +214,7 @@ export type SaveSelectedRaiderResponse = {
   message: string;
 };
 
-export type RaiderUnlockType = "free" | "highscore" | "cash" | "king";
+export type RaiderUnlockType = "free" | "highscore" | "gem" | "king";
 
 export type RaiderCollectionItem = {
   characterCode: number;
@@ -235,7 +235,7 @@ export type RaiderCollectionResponse = {
   selectedRaider: number;
 
   allTimeHighScore: number;
-  cash: number;
+  gem: number;
 
   raiders: RaiderCollectionItem[];
 };
@@ -249,7 +249,7 @@ export type UnlockRaiderResponse = {
   status: "success";
 
   characterCode: number;
-  remainingCash: number;
+  remaininggem: number;
 
   message: string;
 };

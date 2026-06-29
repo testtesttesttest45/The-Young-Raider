@@ -19,7 +19,7 @@ export type RaiderUnlockRequirement =
       amount: number;
     }
   | {
-      type: "cash";
+      type: "gem";
       amount: number;
     }
   | {
@@ -45,7 +45,7 @@ export type KingStatusResponse = {
 
   entryCost: number;
 
-  currentCash: number;
+  currentgem: number;
   canEnter: boolean;
   alreadyUnlocked: boolean;
 
@@ -69,7 +69,7 @@ export type EnterKingBattleResponse = {
   defeatsToday: number;
 
   entryCost: number;
-  remainingCash: number;
+  remaininggem: number;
 
   battleToken: string;
 };
@@ -128,7 +128,7 @@ export const RAIDER_UNLOCK_REQUIREMENTS: Record<
   },
 
   18: {
-    type: "cash",
+    type: "gem",
     amount: 500,
   },
 
@@ -175,7 +175,7 @@ export const RAIDER_UNLOCK_REQUIREMENTS: Record<
   },
 
   33: {
-    type: "cash",
+    type: "gem",
     amount: 350,
   },
 

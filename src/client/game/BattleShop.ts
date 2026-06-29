@@ -437,10 +437,10 @@ export default class BattleShop {
 
     const legendaryUpgrades = [
       {
-        name: "Cash",
-        description: "Exchange 300 Gold for 1 Cash",
+        name: "GEM",
+        description: "Exchange 300 Gold for 1 GEM",
         cost: 300,
-        icon: "cash",
+        icon: "gem",
       },
       {
         name: "Thunderlord Seal",
@@ -1276,7 +1276,7 @@ export default class BattleShop {
 
       if (
         this.legendaryPurchaseCount.hasOwnProperty(upgradeName) &&
-        upgradeName !== "Cash"
+        upgradeName !== "GEM"
       ) {
         if (
           this.legendaryPurchaseCount[upgradeName]! <
@@ -1301,7 +1301,7 @@ export default class BattleShop {
       }
 
       this.ui.gold -= cost;
-      console.log(`Purchased Upgrade: ${upgradeName}`);
+      // console.log(`Purchased Upgrade: ${upgradeName}`);
       this.ui.updateGoldDisplay();
       audioManager.playSound("sfx-buy", 0.4);
       this.showPurchaseFeedback(
@@ -1345,9 +1345,9 @@ export default class BattleShop {
           (this.ui.scene.get("Game") as any).player.speed * 1.06,
         );
       }
-      if (upgradeName === "Cash") {
-        this.ui.cash++;
-        this.ui.updateCashDisplay();
+      if (upgradeName === "GEM") {
+        this.ui.gem++;
+        this.ui.updategemDisplay();
       }
       if (upgradeName === "Thunderlord Seal") {
         (this.ui.scene.get("Game") as any).player.isImmuneToStorms = true;

@@ -502,10 +502,10 @@ const characterMap: Record<number, CharacterDefinition> = {
     cost: 100,
     tier: "hard",
     health: 195,
-    damage: 34,
+    damage: 18,
     range: 180,
     speed: 195,
-    attackSpeed: 5.2,
+    attackSpeed: 3.2,
     attackCount: 1,
     projectile: "blueBullet",
     icon: "bat",
@@ -591,11 +591,11 @@ const characterMap: Record<number, CharacterDefinition> = {
     name: "Bishop Knight",
     cost: 100,
     tier: "hard",
-    health: 195,
-    damage: 65,
+    health: 130,
+    damage: 35,
     range: 160,
     speed: 195,
-    attackSpeed: 1.73,
+    attackSpeed: 1.43,
     attackCount: 1,
     projectile: "",
     icon: "bishopKnight",
@@ -637,10 +637,10 @@ const characterMap: Record<number, CharacterDefinition> = {
     cost: 100,
     tier: "hard",
     health: 295,
-    damage: 100,
-    range: 160,
+    damage: 25,
+    range: 132,
     speed: 154,
-    attackSpeed: 5.03,
+    attackSpeed: 3.03,
     attackCount: 1,
     projectile: "",
     icon: "golem",
@@ -801,7 +801,7 @@ const characterMap: Record<number, CharacterDefinition> = {
     tier: "hard",
     icon: "raider2Icon",
     idle: "raider2Idle",
-    description: "A heavily armoured Raider trained to defend the castle.",
+    description: "A brave raider who has fought many battles and is ready to take on any challenge.",
   },
   18: {
     type: "raider",
@@ -820,7 +820,7 @@ const characterMap: Record<number, CharacterDefinition> = {
     icon: "raider3Icon",
     idle: "raider3Idle",
     description:
-      "Shiny armour and a big sword, this Raider is ready to take on any enemy.",
+      "The Raider in shining armor",
   },
   19: {
     type: "raider",
@@ -839,7 +839,7 @@ const characterMap: Record<number, CharacterDefinition> = {
     icon: "raider4Icon",
     idle: "raider4Idle",
     description:
-      "Not your average Raider, this one has a chicken on his head and is ready to fight.",
+      "The King of Chickens, this raider can be unlocked by defeating the Saturday King stage.",
   },
   20: {
     type: "enemy",
@@ -850,13 +850,13 @@ const characterMap: Record<number, CharacterDefinition> = {
 
     tier: "king",
 
-    health: RAIDER_STATS.health * 3,
+    health: RAIDER_STATS.health * 2.89,
 
-    damage: RAIDER_STATS.damage * 3,
+    damage: RAIDER_STATS.damage * 2.89,
 
-    range: RAIDER_STATS.range,
+    range: RAIDER_STATS.range - 0.3,
 
-    speed: RAIDER_STATS.speed,
+    speed: RAIDER_STATS.speed - 30,
 
     attackSpeed: RAIDER_STATS.attackSpeed,
 
@@ -935,7 +935,7 @@ const characterMap: Record<number, CharacterDefinition> = {
     icon: "raider5Icon",
     idle: "raider5Idle",
     description:
-      "Not your average Raider, this one has a bear on his head and is ready to fight.",
+      "The King of Bears, this raider can be unlocked by defeating the Sunday King stage.",
   },
   22: {
     type: "enemy",
@@ -950,9 +950,9 @@ const characterMap: Record<number, CharacterDefinition> = {
 
     damage: RAIDER_STATS.damage * 3,
 
-    range: RAIDER_STATS.range,
+    range: RAIDER_STATS.range - 0.3,
 
-    speed: RAIDER_STATS.speed,
+    speed: RAIDER_STATS.speed - 30,
 
     attackSpeed: RAIDER_STATS.attackSpeed,
 
@@ -1031,7 +1031,7 @@ const characterMap: Record<number, CharacterDefinition> = {
     icon: "raider6Icon",
     idle: "raider6Idle",
     description:
-      "Not your average Raider, this one has a chemist on his head and is ready to fight.",
+      "A former chemist turned raider, this raider can be unlocked by defeating the Monday King stage.",
   },
   24: {
     type: "enemy",
@@ -1042,13 +1042,13 @@ const characterMap: Record<number, CharacterDefinition> = {
 
     tier: "king",
 
-    health: RAIDER_STATS.health * 3,
+    health: RAIDER_STATS.health * 2.75,
 
-    damage: RAIDER_STATS.damage * 3,
+    damage: RAIDER_STATS.damage * 2.75,
 
-    range: RAIDER_STATS.range,
+    range: RAIDER_STATS.range - 0.3,
 
-    speed: RAIDER_STATS.speed,
+    speed: RAIDER_STATS.speed - 30,
 
     attackSpeed: RAIDER_STATS.attackSpeed,
 
@@ -1127,7 +1127,7 @@ const characterMap: Record<number, CharacterDefinition> = {
     icon: "raider7Icon",
     idle: "raider7Idle",
     description:
-      "Not your average Raider, this one has a space helmet on his head and is ready to fight.",
+      "A raider from outer space, this raider can be unlocked by defeating the Tuesday King stage.",
   },
   26: {
     type: "enemy",
@@ -1138,13 +1138,13 @@ const characterMap: Record<number, CharacterDefinition> = {
 
     tier: "king",
 
-    health: RAIDER_STATS.health * 3,
+    health: RAIDER_STATS.health * 2.67,
 
-    damage: RAIDER_STATS.damage * 3,
+    damage: RAIDER_STATS.damage * 2.67,
 
-    range: RAIDER_STATS.range,
+    range: RAIDER_STATS.range - 0.3,
 
-    speed: RAIDER_STATS.speed,
+    speed: RAIDER_STATS.speed - 30,
 
     attackSpeed: RAIDER_STATS.attackSpeed,
 
@@ -1223,7 +1223,7 @@ const characterMap: Record<number, CharacterDefinition> = {
     icon: "raider8Icon",
     idle: "raider8Idle",
     description:
-      "A futuristic Raider equipped with advanced technology and a powerful arsenal.",
+      "Created from advanced technology to defend mankind, this raider can be unlocked by defeating the Wednesday King stage.",
   },
   28: {
     type: "enemy",
@@ -1234,13 +1234,13 @@ const characterMap: Record<number, CharacterDefinition> = {
 
     tier: "king",
 
-    health: RAIDER_STATS.health * 3,
+    health: RAIDER_STATS.health * 3.5,
 
-    damage: RAIDER_STATS.damage * 3,
+    damage: RAIDER_STATS.damage * 3.5,
 
-    range: RAIDER_STATS.range,
+    range: RAIDER_STATS.range - 0.3,
 
-    speed: RAIDER_STATS.speed,
+    speed: RAIDER_STATS.speed - 30,
 
     attackSpeed: RAIDER_STATS.attackSpeed,
 
@@ -1319,7 +1319,7 @@ const characterMap: Record<number, CharacterDefinition> = {
     icon: "raider9Icon",
     idle: "raider9Idle",
     description:
-      "A heavily armored Raider with a full metal suit, ready to take on any challenge.",
+      "A raider with a full metal armor, this raider can be unlocked by defeating the Thursday King stage.",
   },
   30: {
     type: "enemy",
@@ -1330,13 +1330,13 @@ const characterMap: Record<number, CharacterDefinition> = {
 
     tier: "king",
 
-    health: RAIDER_STATS.health * 3,
+    health: RAIDER_STATS.health * 4,
 
-    damage: RAIDER_STATS.damage * 3,
+    damage: RAIDER_STATS.damage * 3.3,
 
-    range: RAIDER_STATS.range,
+    range: RAIDER_STATS.range - 0.3,
 
-    speed: RAIDER_STATS.speed,
+    speed: RAIDER_STATS.speed - 30,
 
     attackSpeed: RAIDER_STATS.attackSpeed,
 
@@ -1415,7 +1415,7 @@ const characterMap: Record<number, CharacterDefinition> = {
     icon: "raider10Icon",
     idle: "raider10Idle",
     description:
-      "A mysterious Raider from another world, equipped with alien technology and advanced weaponry.",
+      "A mysterious Raider from another world, this raider can be unlocked by defeating the Friday King stage.",
   },
   32: {
     type: "enemy",
@@ -1426,13 +1426,13 @@ const characterMap: Record<number, CharacterDefinition> = {
 
     tier: "king",
 
-    health: RAIDER_STATS.health * 3,
+    health: RAIDER_STATS.health * 3.4,
 
-    damage: RAIDER_STATS.damage * 3,
+    damage: RAIDER_STATS.damage * 3.25,
 
-    range: RAIDER_STATS.range,
+    range: RAIDER_STATS.range - 0.3,
 
-    speed: RAIDER_STATS.speed,
+    speed: RAIDER_STATS.speed - 30,
 
     attackSpeed: RAIDER_STATS.attackSpeed,
 
@@ -1530,7 +1530,7 @@ const characterMap: Record<number, CharacterDefinition> = {
     icon: "raider12Icon",
     idle: "raider12Idle",
     description:
-      "A disciplined and skilled Raider, the Samurai Raider wields a katana and follows a strict code of honor.",
+      "A skilled and disciplined warrior, the Samurai Raider leaves no room for error in battle.",
   },
   35: {
     type: "raider",
@@ -1549,7 +1549,7 @@ const characterMap: Record<number, CharacterDefinition> = {
     icon: "raider13Icon",
     idle: "raider13Idle",
     description:
-      "Silent and swift, the Ninja Raider strikes from the shadows and disappears just as quickly.",
+      "The Ninja Raider leaves no trace behind.",
   },
 };
 export default characterMap;

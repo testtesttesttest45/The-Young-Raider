@@ -68,7 +68,7 @@ export class Collections extends Scene {
   private characterCards = new Map<number, CharacterCard>();
 
   private allTimeHighScore = 0;
-  private playerCash = 0;
+  private playergem = 0;
 
   private actionButton: {
     container: GameObjects.Container;
@@ -81,6 +81,7 @@ export class Collections extends Scene {
 
   private actionInProgress = false;
   private isLoggedIn = false;
+  private selectedGemIcon: GameObjects.Image | null = null;
 
   constructor() {
     super("Collections");
@@ -120,11 +121,12 @@ export class Collections extends Scene {
     this.characterCards.clear();
 
     this.allTimeHighScore = 0;
-    this.playerCash = 0;
+    this.playergem = 0;
 
     this.actionButton = null;
     this.actionInProgress = false;
     this.isLoggedIn = false;
+    this.selectedGemIcon = null;
   }
 
   async create(): Promise<void> {
@@ -436,8 +438,8 @@ export class Collections extends Scene {
       });
 
     const label = this.add
-      .text(0, 0, "‹  BACK", {
-        font: "bold 14px Orbitron",
+      .text(0, 0, "<  BACK", {
+        font: "bold 18px Orbitron",
 
         color: "#ffffff",
 
@@ -557,7 +559,7 @@ export class Collections extends Scene {
     const unlockTypeOrder = {
       free: 0,
       highscore: 1,
-      cash: 2,
+      gem: 2,
       king: 3,
     } as const;
 
@@ -583,10 +585,10 @@ export class Collections extends Scene {
       const secondState = this.raiderStates.get(secondCode);
 
       const firstType =
-        firstState?.unlockType ?? (firstCode === 16 ? "free" : "cash");
+        firstState?.unlockType ?? (firstCode === 16 ? "free" : "gem");
 
       const secondType =
-        secondState?.unlockType ?? (secondCode === 16 ? "free" : "cash");
+        secondState?.unlockType ?? (secondCode === 16 ? "free" : "gem");
 
       const typeDifference =
         unlockTypeOrder[firstType] - unlockTypeOrder[secondType];
@@ -1080,6 +1082,13 @@ export class Collections extends Scene {
       .setOrigin(0.5)
       .setDepth(7);
 
+    this.selectedGemIcon = this.add
+      .image(centerX, panelY + panelHeight - 103, "gem")
+      .setDisplaySize(18, 18)
+      .setOrigin(0.5)
+      .setDepth(7)
+      .setVisible(false);
+
     this.updateSelectedLabel();
 
     this.actionButton = this.createSelectButton(
@@ -1111,9 +1120,15 @@ export class Collections extends Scene {
   }
 
   private updateSelectedLabel(): void {
-    if (!this.selectedLabel) {
+    if (!this.selectedLabel || !this.actionButton) {
       return;
     }
+
+    const labelCenterX = this.actionButton.container.x;
+
+    this.selectedLabel.setOrigin(0.5).setX(labelCenterX);
+
+    this.selectedGemIcon?.setVisible(false).setX(labelCenterX);
 
     const state = this.raiderStates.get(this.selectedCharacter);
     const isEquipped = this.equippedCharacter === this.selectedCharacter;
@@ -1121,11 +1136,37 @@ export class Collections extends Scene {
 
     if (isEquipped) {
       this.selectedLabel.setText("CURRENTLY SELECTED").setColor("#8cffad");
+
       return;
     }
 
     if (isOwned) {
       this.selectedLabel.setText("OWNED").setColor("#a9efff");
+
+      return;
+    }
+
+    if (state?.unlockType === "gem") {
+      const text =
+        `${this.playergem.toLocaleString()} / ` +
+        state.requirementAmount.toLocaleString();
+
+      this.selectedLabel
+        .setText(text)
+        .setColor(state.requirementMet ? "#ffe58a" : "#9ba8ae");
+
+      const iconSize = 18;
+      const gap = 6;
+      const totalWidth = iconSize + gap + this.selectedLabel.width;
+
+      const leftX = labelCenterX - totalWidth / 2;
+
+      this.selectedGemIcon
+        ?.setVisible(true)
+        .setPosition(leftX + iconSize / 2, this.selectedLabel.y);
+
+      this.selectedLabel.setOrigin(0, 0.5).setX(leftX + iconSize + gap);
+
       return;
     }
 
@@ -1133,24 +1174,18 @@ export class Collections extends Scene {
       this.selectedLabel
         .setText("UNLOCK REQUIREMENT COMPLETE")
         .setColor("#ffe58a");
+
       return;
     }
 
     if (state?.unlockType === "highscore") {
       this.selectedLabel
         .setText(
-          `HIGH SCORE ${this.allTimeHighScore.toLocaleString()} / ${state.requirementAmount.toLocaleString()}`,
+          `HIGH SCORE ${this.allTimeHighScore.toLocaleString()} / ` +
+            state.requirementAmount.toLocaleString(),
         )
         .setColor("#9ba8ae");
-      return;
-    }
 
-    if (state?.unlockType === "cash") {
-      this.selectedLabel
-        .setText(
-          `CASH ${this.playerCash.toLocaleString()} / ${state.requirementAmount.toLocaleString()}`,
-        )
-        .setColor("#9ba8ae");
       return;
     }
 
@@ -1163,6 +1198,7 @@ export class Collections extends Scene {
 
       return;
     }
+
     this.selectedLabel.setText("LOCKED").setColor("#9ba8ae");
   }
 
@@ -1202,7 +1238,7 @@ export class Collections extends Scene {
 
       this.allTimeHighScore = data.allTimeHighScore;
 
-      this.playerCash = data.cash;
+      this.playergem = data.gem;
 
       this.raiderStates.clear();
 
@@ -1281,7 +1317,7 @@ export class Collections extends Scene {
         state.selected = state.characterCode === data.characterCode;
       });
 
-      console.log("[Collections] Selected Raider:", this.equippedCharacter);
+      // console.log("[Collections] Selected Raider:", this.equippedCharacter);
 
       this.refreshCharacterCards();
       this.updateSelectedLabel();
@@ -1345,8 +1381,8 @@ export class Collections extends Scene {
     } else if (state?.requirementMet) {
       label = "UNLOCK RAIDER";
 
-      if (state.unlockType === "cash") {
-        subtitle = `${state.requirementAmount.toLocaleString()} CASH REQUIRED`;
+      if (state.unlockType === "gem") {
+        subtitle = `${state.requirementAmount.toLocaleString()} gem REQUIRED`;
       } else if (state.unlockType === "highscore") {
         subtitle = `${state.requirementAmount.toLocaleString()} HIGH SCORE REQUIRED`;
       } else if (state.unlockType === "king") {
@@ -1365,14 +1401,11 @@ export class Collections extends Scene {
     } else if (state?.unlockType === "highscore") {
       label = "LOCKED";
       subtitle = `HIGH SCORE ${this.allTimeHighScore.toLocaleString()} / ${state.requirementAmount.toLocaleString()}`;
-    } else if (state?.unlockType === "cash") {
-      const missingCash = Math.max(
-        0,
-        state.requirementAmount - this.playerCash,
-      );
+    } else if (state?.unlockType === "gem") {
+      const missinggem = Math.max(0, state.requirementAmount - this.playergem);
 
       label = "LOCKED";
-      subtitle = `NEED ${missingCash.toLocaleString()} MORE CASH`;
+      subtitle = `NEED ${missinggem.toLocaleString()} MORE gem`;
     } else if (state?.unlockType === "king") {
       const kingDay = this.formatKingDay(state.kingDay);
 
@@ -1405,7 +1438,9 @@ export class Collections extends Scene {
     const state = this.raiderStates.get(this.selectedCharacter);
     const isOwned = this.selectedCharacter === 16 || state?.owned === true;
     if (!this.isLoggedIn) {
-      this.selectedLabel?.setText("LOGIN TO CHECK REQUIREMENT").setColor("#9ba8ae");
+      this.selectedLabel
+        ?.setText("LOGIN TO CHECK REQUIREMENT")
+        .setColor("#9ba8ae");
 
       return;
     }
@@ -1463,7 +1498,7 @@ export class Collections extends Scene {
         state.requirementMet = true;
       }
 
-      this.playerCash = data.remainingCash;
+      this.playergem = data.remaininggem;
 
       this.selectedLabel?.setText("RAIDER UNLOCKED").setColor("#8cffad");
       this.refreshCharacterCards();

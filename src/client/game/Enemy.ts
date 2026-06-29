@@ -729,10 +729,6 @@ class Enemy {
 
     const isInsideDetectionRadius = distanceSquared < detectionRadiusSquared;
 
-    /*
-     * Enraged enemies always pursue the player,
-     * even when the player is outside normal detection range.
-     */
     if (this.isEnraged) {
       this.hasPlayerBeenDetected = true;
       this.isAlert = true;
@@ -770,10 +766,6 @@ class Enemy {
       return;
     }
 
-    /*
-     * Player is currently detectable, or remains within
-     * attack range after previously being detected.
-     */
     if (
       isInsideDetectionRadius ||
       (isInsideAttackRange && this.hasPlayerBeenDetected)
@@ -810,17 +802,10 @@ class Enemy {
       return;
     }
 
-    /*
-     * Nothing else is necessary when the player was
-     * never detected.
-     */
     if (!this.hasPlayerBeenDetected) {
       return;
     }
 
-    /*
-     * Keep the bar full during the alert grace period.
-     */
     if (this.timeInAlert < this.alertTime) {
       this.timeInAlert += Math.round(delta);
       this.isAlert = true;
@@ -844,10 +829,6 @@ class Enemy {
       return;
     }
 
-    /*
-     * Grace period is finished. isAlert must become false,
-     * otherwise update() will keep displaying a full bar.
-     */
     this.isAlert = false;
 
     this.timeOutOfDetection += Math.round(delta);
@@ -860,9 +841,6 @@ class Enemy {
 
     this.updateDetectionBar(detectionPercentage);
 
-    /*
-     * Enemy continues pursuing while the bar drains.
-     */
     if (this.timeOutOfDetection < 3000) {
       if (isInsideAttackRange && !this.isAttacking) {
         this.isMoving = false;
@@ -881,9 +859,6 @@ class Enemy {
       return;
     }
 
-    /*
-     * Detection bar has completely drained.
-     */
     this.hasPlayerBeenDetected = false;
     this.isAlert = false;
 
@@ -1325,7 +1300,7 @@ class Enemy {
       this.scene.scene.get("BattleUI").updateScore(scoreAward);
 
       this.dropGold(causedByBaseDestruction);
-      this.dropCash();
+      this.dropgem();
     }
     // Stop any ongoing movement
     if (this.moveTween) {
@@ -1405,19 +1380,19 @@ class Enemy {
     }
   }
 
-  dropCash() {
+  dropgem() {
     if (Math.random() < 0.5) {
-      let cash = this.scene.add.sprite(
+      let gem = this.scene.add.sprite(
         this.sprite.x - 70,
         this.sprite.y,
-        "cash",
+        "gem",
       );
-      cash.setScale(0.25);
-      cash.setData("value", 1);
+      gem.setScale(0.25);
+      gem.setData("value", 1);
       this.scene.time.delayedCall(
         500,
         () => {
-          this.scene.collectCash(cash);
+          this.scene.collectgem(gem);
         },
         [],
         this,
@@ -1623,10 +1598,6 @@ class Enemy {
 
     this.customSquareContainer.setDepth(1);
 
-    /*
-     * Strength-level badge:
-     * two cached images inside the existing Container.
-     */
     this.strengthenedSquareContainer = this.scene.add.container(0, 0);
 
     this.strengthenedSquare = this.scene.add.image(
@@ -2032,11 +2003,6 @@ class Enemy {
       this.healthBarDirty = false;
     }
 
-    /*
-     * Keep the detection bar following the enemy visually.
-     * The optimized updateDetectionBar() will avoid redrawing
-     * when the position and percentage have not changed.
-     */
     if (this.hasPlayerBeenDetected || this.tutorialPursuitBarActive) {
       const detectionPercentage =
         this.isAlert || this.isEnraged || this.timeInAlert < this.alertTime
@@ -2055,10 +2021,6 @@ class Enemy {
       this.sprite.y >= camera.worldView.y - margin &&
       this.sprite.y <= camera.worldView.bottom + margin;
 
-    /*
-     * Nearby enemies think 10 times per second.
-     * Far-away enemies think twice per second.
-     */
     const currentAIInterval = isNearCamera ? 100 : 500;
 
     if (time < this.nextAIUpdateTime) {
@@ -2071,11 +2033,6 @@ class Enemy {
         : currentAIInterval;
 
     this.lastAIUpdateTime = time;
-
-    /*
-     * Small random offset prevents many enemies from updating
-     * on exactly the same frame.
-     */
     this.nextAIUpdateTime =
       time + currentAIInterval + Phaser.Math.Between(0, 20);
 

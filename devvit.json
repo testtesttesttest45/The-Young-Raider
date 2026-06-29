@@ -15,9 +15,9 @@
         "inline": true,
         "entry": "profile-share.html"
       },
-      "cashRequest": {
+      "gemRequest": {
         "inline": true,
-        "entry": "cash-request.html"
+        "entry": "gem-request.html"
       },
       "game": {
         "entry": "game.html"

@@ -30,11 +30,11 @@ import type {
   SharedScorePostResponse,
   SharedProfilePostResponse,
   ShareProfileResponse,
-  CashDonationEntry,
-  CashRequestPostResponse,
-  CashRequestViewData,
-  CreateCashRequestResponse,
-  DonateCashResponse,
+  gemDonationEntry,
+  gemRequestPostResponse,
+  gemRequestViewData,
+  CreategemRequestResponse,
+  DonategemResponse,
   ClaimDailyRewardResponse,
   GetSelectedRaiderResponse,
   SaveSelectedRaiderRequest,
@@ -60,7 +60,7 @@ export const api = new Hono();
 
 const LEADERBOARD_KEY = "the-young-raider:leaderboard:all-time";
 
-const PLAYER_CASH_KEY = "the-young-raider:players:cash";
+const PLAYER_gem_KEY = "the-young-raider:players:gem";
 
 const PLAYER_HIGHEST_BASE_KEY = "the-young-raider:players:highest-base-seen";
 
@@ -68,18 +68,18 @@ const LEADERBOARD_SIZE = 100;
 
 const MAXIMUM_ALLOWED_SCORE = 1_000_000_000;
 
-const MAXIMUM_CASH_PER_RUN = 1_000_000;
+const MAXIMUM_gem_PER_RUN = 1_000_000;
 
 const MAXIMUM_BASE_LEVEL = 1_000_000;
 
-const CASH_REQUEST_LIMIT = 10;
-const CASH_DONATION_AMOUNT = 1;
-const CASH_REQUEST_DURATION_MS = 5 * 60 * 60 * 1000; // request accepts donations for five hours.
-const CASH_REQUEST_COOLDOWN_MS = 6 * 60 * 60 * 1000; // user can only create a new request every six hours.
-const CASH_REQUEST_COOLDOWN_KEY = "the-young-raider:cash-request:cooldowns";
-const CASH_REQUEST_KEY_PREFIX = "the-young-raider:cash-request:";
+const gem_REQUEST_LIMIT = 10;
+const gem_DONATION_AMOUNT = 1;
+const gem_REQUEST_DURATION_MS = 5 * 60 * 60 * 1000; // request accepts donations for five hours.
+const gem_REQUEST_COOLDOWN_MS = 6 * 60 * 60 * 1000; // user can only create a new request every six hours.
+const gem_REQUEST_COOLDOWN_KEY = "the-young-raider:gem-request:cooldowns";
+const gem_REQUEST_KEY_PREFIX = "the-young-raider:gem-request:";
 
-const DAILY_REWARD_CASH = 5;
+const DAILY_REWARD_gem = 5;
 const DAILY_REWARD_CLAIM_KEY = "the-young-raider:daily-reward:last-claim-date";
 
 const PLAYER_SELECTED_RAIDER_KEY = "the-young-raider:players:selected-raider";
@@ -504,7 +504,7 @@ async function playerOwnsRaider(
   return value === "1";
 }
 
-function parseStoredCash(rawValue: string | undefined | null): number {
+function parseStoredgem(rawValue: string | undefined | null): number {
   if (!rawValue) {
     return 0;
   }
@@ -522,12 +522,12 @@ function getRaiderRequirement(
 
 async function getPlayerCollectionValues(username: string): Promise<{
   allTimeHighScore: number;
-  cash: number;
+  gem: number;
 }> {
-  const [scoreValue, cashValue] = await Promise.all([
+  const [scoreValue, gemValue] = await Promise.all([
     redis.zScore(LEADERBOARD_KEY, username),
 
-    redis.hGet(PLAYER_CASH_KEY, username),
+    redis.hGet(PLAYER_gem_KEY, username),
   ]);
 
   return {
@@ -536,14 +536,14 @@ async function getPlayerCollectionValues(username: string): Promise<{
         ? 0
         : Math.max(0, Math.floor(scoreValue)),
 
-    cash: parseStoredCash(cashValue),
+    gem: parseStoredgem(gemValue),
   };
 }
 
 function hasMetRaiderRequirement(
   requirement: RaiderUnlockRequirement,
   allTimeHighScore: number,
-  cash: number,
+  gem: number,
 ): boolean {
   switch (requirement.type) {
     case "free":
@@ -552,8 +552,8 @@ function hasMetRaiderRequirement(
     case "highscore":
       return allTimeHighScore >= requirement.amount;
 
-    case "cash":
-      return cash >= requirement.amount;
+    case "gem":
+      return gem >= requirement.amount;
 
     case "king":
       return false;
@@ -566,31 +566,31 @@ type GameDayInfo = {
   remainingMs: number;
 };
 
-type CashRequestState = {
+type gemRequestState = {
   requestId: string;
 
   requesterUsername: string;
 
   limit: number;
 
-  donors: CashDonationEntry[];
+  donors: gemDonationEntry[];
 
   createdAt: number;
   expiresAt: number;
 };
 
-function getCashRequestKey(requestId: string): string {
-  return `${CASH_REQUEST_KEY_PREFIX}${requestId}`;
+function getgemRequestKey(requestId: string): string {
+  return `${gem_REQUEST_KEY_PREFIX}${requestId}`;
 }
-function parseCashRequestState(
+function parsegemRequestState(
   rawValue: string | undefined | null,
-): CashRequestState | null {
+): gemRequestState | null {
   if (!rawValue) {
     return null;
   }
 
   try {
-    const parsed = JSON.parse(rawValue) as Partial<CashRequestState>;
+    const parsed = JSON.parse(rawValue) as Partial<gemRequestState>;
 
     if (
       typeof parsed.requestId !== "string" ||
@@ -609,11 +609,11 @@ function parseCashRequestState(
 
     const expiresAt = Number.isFinite(parsed.expiresAt)
       ? Math.floor(Number(parsed.expiresAt))
-      : createdAt + CASH_REQUEST_DURATION_MS;
+      : createdAt + gem_REQUEST_DURATION_MS;
 
-    const donors: CashDonationEntry[] = parsed.donors
+    const donors: gemDonationEntry[] = parsed.donors
       .filter(
-        (donor): donor is CashDonationEntry =>
+        (donor): donor is gemDonationEntry =>
           typeof donor === "object" &&
           donor !== null &&
           typeof donor.username === "string" &&
@@ -644,15 +644,15 @@ function parseCashRequestState(
   }
 }
 
-async function buildCashRequestView(
-  state: CashRequestState,
+async function buildgemRequestView(
+  state: gemRequestState,
   currentUsername: string | null,
-): Promise<CashRequestViewData> {
-  let currentUserCash: number | null = null;
+): Promise<gemRequestViewData> {
+  let currentUsergem: number | null = null;
   if (currentUsername) {
-    const cashValue = await redis.hGet(PLAYER_CASH_KEY, currentUsername);
-    const parsedCash = cashValue ? Number.parseInt(cashValue, 10) : 0;
-    currentUserCash = Number.isFinite(parsedCash) ? Math.max(0, parsedCash) : 0;
+    const gemValue = await redis.hGet(PLAYER_gem_KEY, currentUsername);
+    const parsedgem = gemValue ? Number.parseInt(gemValue, 10) : 0;
+    currentUsergem = Number.isFinite(parsedgem) ? Math.max(0, parsedgem) : 0;
   }
   const receivedCount = state.donors.length;
 
@@ -675,8 +675,8 @@ async function buildCashRequestView(
     !hasDonated &&
     !isComplete &&
     !isExpired &&
-    currentUserCash !== null &&
-    currentUserCash >= CASH_DONATION_AMOUNT;
+    currentUsergem !== null &&
+    currentUsergem >= gem_DONATION_AMOUNT;
   return {
     expiresAt: state.expiresAt,
     remainingTimeMs,
@@ -685,10 +685,10 @@ async function buildCashRequestView(
     requesterUsername: state.requesterUsername,
     receivedCount,
     limit: state.limit,
-    cashCollected: receivedCount * CASH_DONATION_AMOUNT,
+    gemCollected: receivedCount * gem_DONATION_AMOUNT,
     donors: [...state.donors],
     currentUsername,
-    currentUserCash,
+    currentUsergem,
     hasDonated,
     isRequester,
     isComplete,
@@ -948,7 +948,7 @@ api.post("/decrement", async (c) => {
   });
 });
 
-// save highest score, daily highest, cash, and highest base seen
+// save highest score, daily highest, gem, and highest base seen
 api.post("/highscore", async (c) => {
   try {
     const username = await reddit.getCurrentUsername();
@@ -971,7 +971,7 @@ api.post("/highscore", async (c) => {
         {
           status: "error",
 
-          message: "A score, Cash value and highest base are required.",
+          message: "A score, gem value and highest base are required.",
         },
         400,
       );
@@ -979,7 +979,7 @@ api.post("/highscore", async (c) => {
 
     const submittedScore = Number(body.score);
 
-    const cashEarned = Number(body.cashEarned);
+    const gemEarned = Number(body.gemEarned);
 
     const submittedBaseSeen = Number(body.highestBaseSeen);
 
@@ -1000,16 +1000,16 @@ api.post("/highscore", async (c) => {
     }
 
     if (
-      !Number.isFinite(cashEarned) ||
-      !Number.isInteger(cashEarned) ||
-      cashEarned < 0 ||
-      cashEarned > MAXIMUM_CASH_PER_RUN
+      !Number.isFinite(gemEarned) ||
+      !Number.isInteger(gemEarned) ||
+      gemEarned < 0 ||
+      gemEarned > MAXIMUM_gem_PER_RUN
     ) {
       return c.json<ApiErrorResponse>(
         {
           status: "error",
 
-          message: "The submitted Cash value is invalid.",
+          message: "The submitted gem value is invalid.",
         },
         400,
       );
@@ -1104,11 +1104,11 @@ api.post("/highscore", async (c) => {
       });
     }
 
-    // add cash to player's total cash in profile
-    const totalCash = await redis.hIncrBy(
-      PLAYER_CASH_KEY,
+    // add gem to player's total gem in profile
+    const totalgem = await redis.hIncrBy(
+      PLAYER_gem_KEY,
       username,
-      cashEarned,
+      gemEarned,
     );
 
     const rank = await getPlayerRank(username);
@@ -1158,9 +1158,9 @@ api.post("/highscore", async (c) => {
 
       highestBaseSeen,
 
-      totalCash,
+      totalgem,
 
-      cashEarned,
+      gemEarned,
 
       rank,
 
@@ -1280,37 +1280,37 @@ api.get("/player-profile", async (c) => {
     const [
       allTimeScore,
       todayScore,
-      cashValue,
+      gemValue,
       highestBaseValue,
       globalRank,
-      cashRequestCooldownValue,
+      gemRequestCooldownValue,
       lastDailyRewardDate,
     ] = await Promise.all([
       redis.zScore(LEADERBOARD_KEY, username),
       redis.zScore(dailyLeaderboardKey, username),
-      redis.hGet(PLAYER_CASH_KEY, username),
+      redis.hGet(PLAYER_gem_KEY, username),
       redis.hGet(PLAYER_HIGHEST_BASE_KEY, username),
       getPlayerRank(username),
-      redis.hGet(CASH_REQUEST_COOLDOWN_KEY, username),
+      redis.hGet(gem_REQUEST_COOLDOWN_KEY, username),
       redis.hGet(DAILY_REWARD_CLAIM_KEY, username),
     ]);
-    const cash = cashValue ? Number.parseInt(cashValue, 10) : 0;
+    const gem = gemValue ? Number.parseInt(gemValue, 10) : 0;
 
     const highestBaseSeen = highestBaseValue
       ? Number.parseInt(highestBaseValue, 10)
       : 0;
 
-    const parsedCashRequestAvailableAt = cashRequestCooldownValue
-      ? Number.parseInt(cashRequestCooldownValue, 10)
+    const parsedgemRequestAvailableAt = gemRequestCooldownValue
+      ? Number.parseInt(gemRequestCooldownValue, 10)
       : 0;
-    const cashRequestAvailableAt = Number.isFinite(parsedCashRequestAvailableAt)
-      ? Math.max(0, parsedCashRequestAvailableAt)
+    const gemRequestAvailableAt = Number.isFinite(parsedgemRequestAvailableAt)
+      ? Math.max(0, parsedgemRequestAvailableAt)
       : 0;
-    const cashRequestCooldownRemainingMs = Math.max(
+    const gemRequestCooldownRemainingMs = Math.max(
       0,
-      cashRequestAvailableAt - Date.now(),
+      gemRequestAvailableAt - Date.now(),
     );
-    const canRequestCash = cashRequestCooldownRemainingMs <= 0;
+    const canRequestgem = gemRequestCooldownRemainingMs <= 0;
     const gameDay = getGameDayInfo();
     const canClaimDailyReward = lastDailyRewardDate !== gameDay.dateKey;
     return c.json<PlayerProfileResponse>({
@@ -1325,13 +1325,13 @@ api.get("/player-profile", async (c) => {
           ? 0
           : Math.floor(todayScore),
       highestBaseSeen: Number.isFinite(highestBaseSeen) ? highestBaseSeen : 0,
-      cash: Number.isFinite(cash) ? cash : 0,
+      gem: Number.isFinite(gem) ? gem : 0,
       globalRank,
-      canRequestCash,
-      cashRequestAvailableAt,
-      cashRequestCooldownRemainingMs,
+      canRequestgem,
+      gemRequestAvailableAt,
+      gemRequestCooldownRemainingMs,
       canClaimDailyReward,
-      dailyRewardCash: DAILY_REWARD_CASH,
+      dailyRewardgem: DAILY_REWARD_gem,
       dailyRewardNextResetAt: gameDay.nextResetAt,
       dailyRewardRemainingMs: gameDay.remainingMs,
     });
@@ -1368,7 +1368,7 @@ api.post("/claim-daily-reward", async (c) => {
       const gameDay = getGameDayInfo();
       const transaction = await redis.watch(
         DAILY_REWARD_CLAIM_KEY,
-        PLAYER_CASH_KEY,
+        PLAYER_gem_KEY,
       );
       const lastClaimDate = await redis.hGet(DAILY_REWARD_CLAIM_KEY, username);
       if (lastClaimDate === gameDay.dateKey) {
@@ -1384,25 +1384,25 @@ api.post("/claim-daily-reward", async (c) => {
       await transaction.multi();
       await transaction.hSet(DAILY_REWARD_CLAIM_KEY, {
         [username]: gameDay.dateKey,
-      }); // add 5 cash
-      await transaction.hIncrBy(PLAYER_CASH_KEY, username, DAILY_REWARD_CASH);
+      }); // add 5 gem
+      await transaction.hIncrBy(PLAYER_gem_KEY, username, DAILY_REWARD_gem);
       const result = await transaction.exec();
       if (result === null) {
         continue;
       }
-      const updatedCashValue = await redis.hGet(PLAYER_CASH_KEY, username);
-      const parsedTotalCash = updatedCashValue
-        ? Number.parseInt(updatedCashValue, 10)
+      const updatedgemValue = await redis.hGet(PLAYER_gem_KEY, username);
+      const parsedTotalgem = updatedgemValue
+        ? Number.parseInt(updatedgemValue, 10)
         : 0;
-      const totalCash = Number.isFinite(parsedTotalCash)
-        ? Math.max(0, parsedTotalCash)
+      const totalgem = Number.isFinite(parsedTotalgem)
+        ? Math.max(0, parsedTotalgem)
         : 0;
       return c.json<ClaimDailyRewardResponse>({
         type: "claim-daily-reward",
         status: "success",
-        message: `Daily reward claimed! You received ${DAILY_REWARD_CASH} cash.`,
-        rewardCash: DAILY_REWARD_CASH,
-        totalCash,
+        message: `Daily reward claimed! You received ${DAILY_REWARD_gem} gem.`,
+        rewardgem: DAILY_REWARD_gem,
+        totalgem,
         nextResetAt: gameDay.nextResetAt,
       });
     }
@@ -2084,7 +2084,7 @@ api.get("/shared-profile-post", async (c) => {
   }
 });
 
-api.post("/request-cash", async (c) => {
+api.post("/request-gem", async (c) => {
   let requestKey: string | null = null;
 
   try {
@@ -2094,7 +2094,7 @@ api.post("/request-cash", async (c) => {
       return c.json<ApiErrorResponse>(
         {
           status: "error",
-          message: "You must be logged in to request cash.",
+          message: "You must be logged in to request gem.",
         },
         401,
       );
@@ -2102,7 +2102,7 @@ api.post("/request-cash", async (c) => {
 
     const now = Date.now();
 
-    const cooldownValue = await redis.hGet(CASH_REQUEST_COOLDOWN_KEY, username);
+    const cooldownValue = await redis.hGet(gem_REQUEST_COOLDOWN_KEY, username);
 
     const parsedAvailableAt = cooldownValue
       ? Number.parseInt(cooldownValue, 10)
@@ -2127,7 +2127,7 @@ api.post("/request-cash", async (c) => {
         {
           status: "error",
 
-          message: `You can create another cash request in ${timeText}.`,
+          message: `You can create another gem request in ${timeText}.`,
         },
         429,
       );
@@ -2147,34 +2147,34 @@ api.post("/request-cash", async (c) => {
 
     const requestId = randomUUID();
 
-    requestKey = getCashRequestKey(requestId);
+    requestKey = getgemRequestKey(requestId);
 
     const createdAt = Date.now();
 
-    const state: CashRequestState = {
+    const state: gemRequestState = {
       requestId,
 
       requesterUsername: username,
 
-      limit: CASH_REQUEST_LIMIT,
+      limit: gem_REQUEST_LIMIT,
 
       donors: [],
 
       createdAt,
 
-      expiresAt: createdAt + CASH_REQUEST_DURATION_MS,
+      expiresAt: createdAt + gem_REQUEST_DURATION_MS,
     };
 
     await redis.set(requestKey, JSON.stringify(state));
 
-    const title = `u/${username} is requesting cash in The Young Raider`;
+    const title = `u/${username} is requesting gem in The Young Raider`;
 
     const postText = [
       `u/${username} is requesting help from the community.`,
       "",
-      `0 / ${CASH_REQUEST_LIMIT} received`,
+      `0 / ${gem_REQUEST_LIMIT} received`,
       "",
-      `Each Raider may donate ${CASH_DONATION_AMOUNT} cash once.`,
+      `Each Raider may donate ${gem_DONATION_AMOUNT} gem once.`,
     ].join("\n");
 
     await reddit.submitCustomPost({
@@ -2182,10 +2182,10 @@ api.post("/request-cash", async (c) => {
 
       title,
 
-      entry: "cashRequest",
+      entry: "gemRequest",
 
       postData: {
-        postType: "cash-request",
+        postType: "gem-request",
         requestId,
         requesterUsername: username,
       },
@@ -2195,16 +2195,16 @@ api.post("/request-cash", async (c) => {
       },
     });
 
-    const nextRequestAvailableAt = createdAt + CASH_REQUEST_COOLDOWN_MS;
+    const nextRequestAvailableAt = createdAt + gem_REQUEST_COOLDOWN_MS;
 
-    await redis.hSet(CASH_REQUEST_COOLDOWN_KEY, {
+    await redis.hSet(gem_REQUEST_COOLDOWN_KEY, {
       [username]: String(nextRequestAvailableAt),
     });
 
-    return c.json<CreateCashRequestResponse>({
-      type: "create-cash-request",
+    return c.json<CreategemRequestResponse>({
+      type: "create-gem-request",
       status: "success",
-      message: `Cash request shared to r/${subredditName}!`,
+      message: `Gem request shared to r/${subredditName}!`,
       requestId,
       nextRequestAvailableAt,
     });
@@ -2213,26 +2213,26 @@ api.post("/request-cash", async (c) => {
       try {
         await redis.del(requestKey);
       } catch (cleanupError) {
-        console.error("[Request Cash] Cleanup failed:", cleanupError);
+        console.error("[Request gem] Cleanup failed:", cleanupError);
       }
     }
 
-    console.error("[Request Cash] Failed:", error);
+    console.error("[Request gem] Failed:", error);
 
     const message =
-      error instanceof Error ? error.message : "Unknown request-cash error";
+      error instanceof Error ? error.message : "Unknown request-gem error";
 
     return c.json<ApiErrorResponse>(
       {
         status: "error",
-        message: `Unable to create cash request: ${message}`,
+        message: `Unable to create gem request: ${message}`,
       },
       500,
     );
   }
 });
 
-api.get("/cash-request-post", async (c) => {
+api.get("/gem-request-post", async (c) => {
   try {
     const postData = context.postData as
       | {
@@ -2244,13 +2244,13 @@ api.get("/cash-request-post", async (c) => {
 
     if (
       !postData ||
-      postData.postType !== "cash-request" ||
+      postData.postType !== "gem-request" ||
       typeof postData.requestId !== "string"
     ) {
       return c.json<ApiErrorResponse>(
         {
           status: "error",
-          message: "This post does not contain a valid cash request.",
+          message: "This post does not contain a valid gem request.",
         },
         404,
       );
@@ -2258,17 +2258,17 @@ api.get("/cash-request-post", async (c) => {
 
     const requestId = postData.requestId;
 
-    const requestKey = getCashRequestKey(requestId);
+    const requestKey = getgemRequestKey(requestId);
 
     const rawState = await redis.get(requestKey);
 
-    const state = parseCashRequestState(rawState);
+    const state = parsegemRequestState(rawState);
 
     if (!state) {
       return c.json<ApiErrorResponse>(
         {
           status: "error",
-          message: "This cash request could not be found.",
+          message: "This gem request could not be found.",
         },
         404,
       );
@@ -2276,17 +2276,17 @@ api.get("/cash-request-post", async (c) => {
 
     const currentUsername = (await reddit.getCurrentUsername()) ?? null;
 
-    const data = await buildCashRequestView(state, currentUsername);
+    const data = await buildgemRequestView(state, currentUsername);
 
-    return c.json<CashRequestPostResponse>({
-      type: "cash-request-post",
+    return c.json<gemRequestPostResponse>({
+      type: "gem-request-post",
       data,
     });
   } catch (error) {
-    console.error("[Cash Request Post] Failed:", error);
+    console.error("[gem Request Post] Failed:", error);
 
     const message =
-      error instanceof Error ? error.message : "Unknown cash-request error";
+      error instanceof Error ? error.message : "Unknown gem-request error";
 
     return c.json<ApiErrorResponse>(
       {
@@ -2298,8 +2298,8 @@ api.get("/cash-request-post", async (c) => {
   }
 });
 
-// donate 1 cash
-api.post("/donate-cash", async (c) => {
+// donate 1 gem
+api.post("/donate-gem", async (c) => {
   try {
     const donorUsername = await reddit.getCurrentUsername();
 
@@ -2307,7 +2307,7 @@ api.post("/donate-cash", async (c) => {
       return c.json<ApiErrorResponse>(
         {
           status: "error",
-          message: "You must be logged in to donate cash.",
+          message: "You must be logged in to donate gem.",
         },
         401,
       );
@@ -2322,13 +2322,13 @@ api.post("/donate-cash", async (c) => {
 
     if (
       !postData ||
-      postData.postType !== "cash-request" ||
+      postData.postType !== "gem-request" ||
       typeof postData.requestId !== "string"
     ) {
       return c.json<ApiErrorResponse>(
         {
           status: "error",
-          message: "This post does not contain a valid cash request.",
+          message: "This post does not contain a valid gem request.",
         },
         400,
       );
@@ -2336,17 +2336,17 @@ api.post("/donate-cash", async (c) => {
 
     const requestId = postData.requestId;
 
-    const requestKey = getCashRequestKey(requestId);
+    const requestKey = getgemRequestKey(requestId);
 
     for (let attempt = 0; attempt < 5; attempt++) {
-      const transaction = await redis.watch(requestKey, PLAYER_CASH_KEY);
+      const transaction = await redis.watch(requestKey, PLAYER_gem_KEY);
 
-      const [rawState, donorCashValue] = await Promise.all([
+      const [rawState, donorgemValue] = await Promise.all([
         redis.get(requestKey),
-        redis.hGet(PLAYER_CASH_KEY, donorUsername),
+        redis.hGet(PLAYER_gem_KEY, donorUsername),
       ]);
 
-      const state = parseCashRequestState(rawState);
+      const state = parsegemRequestState(rawState);
 
       if (!state) {
         await transaction.unwatch();
@@ -2354,7 +2354,7 @@ api.post("/donate-cash", async (c) => {
         return c.json<ApiErrorResponse>(
           {
             status: "error",
-            message: "This cash request could not be found.",
+            message: "This gem request could not be found.",
           },
           404,
         );
@@ -2367,7 +2367,7 @@ api.post("/donate-cash", async (c) => {
           {
             status: "error",
 
-            message: "This cash request has expired.",
+            message: "This gem request has expired.",
           },
           410,
         );
@@ -2379,7 +2379,7 @@ api.post("/donate-cash", async (c) => {
         return c.json<ApiErrorResponse>(
           {
             status: "error",
-            message: "You cannot donate to your own cash request.",
+            message: "You cannot donate to your own gem request.",
           },
           400,
         );
@@ -2407,33 +2407,33 @@ api.post("/donate-cash", async (c) => {
         return c.json<ApiErrorResponse>(
           {
             status: "error",
-            message: "This cash request has already been fulfilled.",
+            message: "This gem request has already been fulfilled.",
           },
           409,
         );
       }
 
-      const parsedDonorCash = donorCashValue
-        ? Number.parseInt(donorCashValue, 10)
+      const parsedDonorgem = donorgemValue
+        ? Number.parseInt(donorgemValue, 10)
         : 0;
 
-      const donorCash = Number.isFinite(parsedDonorCash)
-        ? Math.max(0, parsedDonorCash)
+      const donorgem = Number.isFinite(parsedDonorgem)
+        ? Math.max(0, parsedDonorgem)
         : 0;
 
-      if (donorCash < CASH_DONATION_AMOUNT) {
+      if (donorgem < gem_DONATION_AMOUNT) {
         await transaction.unwatch();
 
         return c.json<ApiErrorResponse>(
           {
             status: "error",
-            message: "You need at least 1 cash to donate.",
+            message: "You need at least 1 gem to donate.",
           },
           400,
         );
       }
 
-      const updatedState: CashRequestState = {
+      const updatedState: gemRequestState = {
         ...state,
 
         donors: [
@@ -2449,15 +2449,15 @@ api.post("/donate-cash", async (c) => {
       await transaction.multi();
 
       await transaction.hIncrBy(
-        PLAYER_CASH_KEY,
+        PLAYER_gem_KEY,
         donorUsername,
-        -CASH_DONATION_AMOUNT,
+        -gem_DONATION_AMOUNT,
       );
 
       await transaction.hIncrBy(
-        PLAYER_CASH_KEY,
+        PLAYER_gem_KEY,
         state.requesterUsername,
-        CASH_DONATION_AMOUNT,
+        gem_DONATION_AMOUNT,
       );
 
       await transaction.set(requestKey, JSON.stringify(updatedState));
@@ -2468,12 +2468,12 @@ api.post("/donate-cash", async (c) => {
         continue;
       }
 
-      const data = await buildCashRequestView(updatedState, donorUsername);
+      const data = await buildgemRequestView(updatedState, donorUsername);
 
-      return c.json<DonateCashResponse>({
-        type: "donate-cash",
+      return c.json<DonategemResponse>({
+        type: "donate-gem",
         status: "success",
-        message: `You donated ${CASH_DONATION_AMOUNT} cash to u/${state.requesterUsername}!`,
+        message: `You donated ${gem_DONATION_AMOUNT} gem to u/${state.requesterUsername}!`,
         data,
       });
     }
@@ -2487,7 +2487,7 @@ api.post("/donate-cash", async (c) => {
       409,
     );
   } catch (error) {
-    console.error("[Donate Cash] Failed:", error);
+    console.error("[Donate gem] Failed:", error);
 
     const message =
       error instanceof Error ? error.message : "Unknown donation error";
@@ -2495,7 +2495,7 @@ api.post("/donate-cash", async (c) => {
     return c.json<ApiErrorResponse>(
       {
         status: "error",
-        message: `Unable to donate cash: ${message}`,
+        message: `Unable to donate gem: ${message}`,
       },
       500,
     );
@@ -2712,7 +2712,7 @@ api.get("/raider-collection", async (c) => {
             requirementMet = hasMetRaiderRequirement(
               requirement,
               playerValues.allTimeHighScore,
-              playerValues.cash,
+              playerValues.gem,
             );
           }
         }
@@ -2743,7 +2743,7 @@ api.get("/raider-collection", async (c) => {
 
       allTimeHighScore: playerValues.allTimeHighScore,
 
-      cash: playerValues.cash,
+      gem: playerValues.gem,
 
       raiders,
     });
@@ -2821,7 +2821,7 @@ api.post("/unlock-raider", async (c) => {
     const alreadyOwned = await playerOwnsRaider(username, characterCode);
 
     if (alreadyOwned) {
-      const cashValue = await redis.hGet(PLAYER_CASH_KEY, username);
+      const gemValue = await redis.hGet(PLAYER_gem_KEY, username);
 
       return c.json<UnlockRaiderResponse>({
         type: "unlock-raider",
@@ -2829,7 +2829,7 @@ api.post("/unlock-raider", async (c) => {
 
         characterCode,
 
-        remainingCash: parseStoredCash(cashValue),
+        remaininggem: parseStoredgem(gemValue),
 
         message: "This Raider is already unlocked.",
       });
@@ -2842,7 +2842,7 @@ api.post("/unlock-raider", async (c) => {
 
         characterCode,
 
-        remainingCash: (await getPlayerCollectionValues(username)).cash,
+        remaininggem: (await getPlayerCollectionValues(username)).gem,
 
         message: "This Raider is already available.",
       });
@@ -2871,7 +2871,7 @@ api.post("/unlock-raider", async (c) => {
         [getOwnedRaiderField(username, characterCode)]: "1",
       });
 
-      const cashValue = await redis.hGet(PLAYER_CASH_KEY, username);
+      const gemValue = await redis.hGet(PLAYER_gem_KEY, username);
 
       return c.json<UnlockRaiderResponse>({
         type: "unlock-raider",
@@ -2879,7 +2879,7 @@ api.post("/unlock-raider", async (c) => {
 
         characterCode,
 
-        remainingCash: parseStoredCash(cashValue),
+        remaininggem: parseStoredgem(gemValue),
 
         message: "Raider unlocked!",
       });
@@ -2905,7 +2905,7 @@ api.post("/unlock-raider", async (c) => {
         [getOwnedRaiderField(username, characterCode)]: "1",
       });
 
-      const cashValue = await redis.hGet(PLAYER_CASH_KEY, username);
+      const gemValue = await redis.hGet(PLAYER_gem_KEY, username);
 
       return c.json<UnlockRaiderResponse>({
         type: "unlock-raider",
@@ -2913,21 +2913,21 @@ api.post("/unlock-raider", async (c) => {
 
         characterCode,
 
-        remainingCash: parseStoredCash(cashValue),
+        remaininggem: parseStoredgem(gemValue),
 
         message: "King reward unlocked!",
       });
     }
 
-    // cash unlock with hash transaction
+    // gem unlock with hash transaction
     for (let attempt = 0; attempt < 5; attempt++) {
       const transaction = await redis.watch(
-        PLAYER_CASH_KEY,
+        PLAYER_gem_KEY,
         PLAYER_OWNED_RAIDERS_KEY,
       );
 
-      const [cashValue, ownershipValue] = await Promise.all([
-        redis.hGet(PLAYER_CASH_KEY, username),
+      const [gemValue, ownershipValue] = await Promise.all([
+        redis.hGet(PLAYER_gem_KEY, username),
 
         redis.hGet(
           PLAYER_OWNED_RAIDERS_KEY,
@@ -2935,7 +2935,7 @@ api.post("/unlock-raider", async (c) => {
         ),
       ]);
 
-      const currentCash = parseStoredCash(cashValue);
+      const currentgem = parseStoredgem(gemValue);
 
       if (ownershipValue === "1") {
         await transaction.unwatch();
@@ -2946,22 +2946,22 @@ api.post("/unlock-raider", async (c) => {
 
           characterCode,
 
-          remainingCash: currentCash,
+          remaininggem: currentgem,
 
           message: "This Raider is already unlocked.",
         });
       }
 
-      if (currentCash < requirement.amount) {
+      if (currentgem < requirement.amount) {
         await transaction.unwatch();
 
-        const missingCash = requirement.amount - currentCash;
+        const missinggem = requirement.amount - currentgem;
 
         return c.json<ApiErrorResponse>(
           {
             status: "error",
 
-            message: `You need ${missingCash} more cash to unlock this Raider.`,
+            message: `You need ${missinggem} more gem to unlock this Raider.`,
           },
           403,
         );
@@ -2969,7 +2969,7 @@ api.post("/unlock-raider", async (c) => {
 
       await transaction.multi();
 
-      await transaction.hIncrBy(PLAYER_CASH_KEY, username, -requirement.amount);
+      await transaction.hIncrBy(PLAYER_gem_KEY, username, -requirement.amount);
 
       await transaction.hSet(PLAYER_OWNED_RAIDERS_KEY, {
         [getOwnedRaiderField(username, characterCode)]: "1",
@@ -2987,9 +2987,9 @@ api.post("/unlock-raider", async (c) => {
 
         characterCode,
 
-        remainingCash: currentCash - requirement.amount,
+        remaininggem: currentgem - requirement.amount,
 
-        message: `Raider unlocked for ${requirement.amount} cash!`,
+        message: `Raider unlocked for ${requirement.amount} gem!`,
       });
     }
 
@@ -3113,10 +3113,7 @@ api.get("/king-status", async (c) => {
 
     const username = await reddit.getCurrentUsername();
 
-    /*
-     * Public defaults for logged-out users.
-     */
-    let currentCash = 0;
+    let currentgem = 0;
     let defeatsToday = 0;
     let alreadyUnlocked = false;
 
@@ -3126,25 +3123,21 @@ api.get("/king-status", async (c) => {
         gameDay.dateKey,
       );
 
-      const [cashValue, ownedValue, dailyDefeatsValue] = await Promise.all([
-        redis.hGet(PLAYER_CASH_KEY, username),
+      const [gemValue, ownedValue, dailyDefeatsValue] = await Promise.all([
+        redis.hGet(PLAYER_gem_KEY, username),
 
         playerOwnsRaider(username, configuration.unlockCharacterCode),
 
         redis.hGet(PLAYER_DAILY_KING_DEFEATS_KEY, dailyDefeatsField),
       ]);
 
-      currentCash = parseStoredCash(cashValue);
+      currentgem = parseStoredgem(gemValue);
 
       alreadyUnlocked = ownedValue;
 
       defeatsToday = parseKingDefeatCount(dailyDefeatsValue);
     }
 
-    /*
-     * Logged-out users see Level 1 and its
-     * normal entry cost.
-     */
     const kingLevel = getKingLevelFromDefeats(defeatsToday);
 
     const entryCost = getKingEntryCost(kingLevel);
@@ -3170,10 +3163,10 @@ api.get("/king-status", async (c) => {
 
       entryCost,
 
-      currentCash,
+      currentgem,
 
       canEnter:
-        username !== null && username !== undefined && currentCash >= entryCost,
+        username !== null && username !== undefined && currentgem >= entryCost,
 
       alreadyUnlocked,
 
@@ -3254,17 +3247,17 @@ api.post("/king-entry", async (c) => {
       );
 
       const transaction = await redis.watch(
-        PLAYER_CASH_KEY,
+        PLAYER_gem_KEY,
         PLAYER_DAILY_KING_DEFEATS_KEY,
       );
 
-      const [cashValue, dailyDefeatsValue] = await Promise.all([
-        redis.hGet(PLAYER_CASH_KEY, username),
+      const [gemValue, dailyDefeatsValue] = await Promise.all([
+        redis.hGet(PLAYER_gem_KEY, username),
 
         redis.hGet(PLAYER_DAILY_KING_DEFEATS_KEY, dailyDefeatsField),
       ]);
 
-      const currentCash = parseStoredCash(cashValue);
+      const currentgem = parseStoredgem(gemValue);
 
       const defeatsToday = parseKingDefeatCount(dailyDefeatsValue);
 
@@ -3272,14 +3265,14 @@ api.post("/king-entry", async (c) => {
 
       const entryCost = getKingEntryCost(kingLevel);
 
-      if (currentCash < entryCost) {
+      if (currentgem < entryCost) {
         await transaction.unwatch();
 
         return c.json<ApiErrorResponse>(
           {
             status: "error",
             message:
-              `You need ${entryCost} cash ` +
+              `You need ${entryCost} gem ` +
               `to enter Level ${kingLevel} King Battle.`,
           },
           403,
@@ -3312,7 +3305,7 @@ api.post("/king-entry", async (c) => {
 
       await transaction.multi();
 
-      await transaction.hIncrBy(PLAYER_CASH_KEY, username, -entryCost);
+      await transaction.hIncrBy(PLAYER_gem_KEY, username, -entryCost);
 
       const result = await transaction.exec();
 
@@ -3344,7 +3337,7 @@ api.post("/king-entry", async (c) => {
 
         entryCost,
 
-        remainingCash: currentCash - entryCost,
+        remaininggem: currentgem - entryCost,
 
         battleToken,
       });

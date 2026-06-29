@@ -1,4 +1,4 @@
-import type { ApiErrorResponse, CashRequestPostResponse, CashRequestViewData, DonateCashResponse } from '../shared/api';
+import type { ApiErrorResponse, gemRequestPostResponse, gemRequestViewData, DonategemResponse } from '../shared/api';
 
 const loadingView = document.querySelector<HTMLDivElement>('#loading-view');
 
@@ -10,7 +10,7 @@ const progressValue = document.querySelector<HTMLDivElement>('#progress-value');
 
 const progressFill = document.querySelector<HTMLDivElement>('#progress-fill');
 
-const cashCollected = document.querySelector<HTMLDivElement>('#cash-collected');
+const gemCollected = document.querySelector<HTMLDivElement>('#gem-collected');
 
 const donateButton = document.querySelector<HTMLButtonElement>('#donate-button');
 
@@ -22,7 +22,7 @@ const countdownText = document.querySelector<HTMLElement>('#countdown');
 
 const requestTimer = document.querySelector<HTMLDivElement>('.request-timer');
 
-let currentRequestData: CashRequestViewData | null = null;
+let currentRequestData: gemRequestViewData | null = null;
 
 let donationInProgress = false;
 
@@ -58,7 +58,7 @@ function showStatus(message: string, type: 'normal' | 'success' | 'error' = 'nor
     }
 }
 
-function renderDonationHistory(data: CashRequestViewData): void {
+function renderDonationHistory(data: gemRequestViewData): void {
     if (!donationHistory) {
         return;
     }
@@ -100,7 +100,7 @@ function renderDonationHistory(data: CashRequestViewData): void {
     });
 }
 
-function renderRequest(data: CashRequestViewData): void {
+function renderRequest(data: gemRequestViewData): void {
     currentRequestData = data;
 
     updateCountdown();
@@ -126,8 +126,8 @@ function renderRequest(data: CashRequestViewData): void {
         progressFill.style.width = `${percentage}%`;
     }
 
-    if (cashCollected) {
-        cashCollected.textContent = `${data.cashCollected} CASH COLLECTED`;
+    if (gemCollected) {
+        gemCollected.textContent = `${data.gemCollected} GEM COLLECTED`;
     }
 
     renderDonationHistory(data);
@@ -140,21 +140,21 @@ function renderRequest(data: CashRequestViewData): void {
         } else if (data.isComplete) {
             donateButton.textContent = 'REQUEST FULFILLED';
         } else if (data.isRequester) {
-            donateButton.textContent = 'YOUR CASH REQUEST';
+            donateButton.textContent = 'YOUR GEM REQUEST';
         } else if (data.hasDonated) {
             donateButton.textContent = 'DONATED!';
         } else if (data.currentUsername === null) {
             donateButton.textContent = 'LOG IN TO DONATE';
-        } else if (data.currentUserCash !== null && data.currentUserCash < 1) {
-            donateButton.textContent = 'YOU NEED 1 CASH';
+        } else if (data.currentUsergem !== null && data.currentUsergem < 1) {
+            donateButton.textContent = 'YOU NEED 1 gem';
         } else {
-            donateButton.textContent = 'DONATE 1 CASH';
+            donateButton.textContent = 'DONATE 1 gem';
         }
     }
 
     if (!donationInProgress) {
         if (data.isExpired) {
-            showStatus('This cash request has expired.');
+            showStatus('This gem request has expired.');
         } else if (data.isComplete) {
             showStatus('This request has been fully funded.', 'success');
         } else if (data.isRequester) {
@@ -163,8 +163,8 @@ function renderRequest(data: CashRequestViewData): void {
             showStatus('Thank you for supporting this Raider!', 'success');
         } else if (data.currentUsername === null) {
             showStatus('Log in to Reddit to donate.');
-        } else if (data.currentUserCash !== null && data.currentUserCash < 1) {
-            showStatus('Earn at least 1 cash in the game before donating.');
+        } else if (data.currentUsergem !== null && data.currentUsergem < 1) {
+            showStatus('Earn at least 1 gem in the game before donating.');
         } else {
             showStatus('Each Reddit user may donate once.');
         }
@@ -179,9 +179,9 @@ function renderRequest(data: CashRequestViewData): void {
     }
 }
 
-async function loadCashRequest(): Promise<void> {
+async function loadgemRequest(): Promise<void> {
     try {
-        const response = await fetch('/api/cash-request-post', {
+        const response = await fetch('/api/gem-request-post', {
             headers: {
                 Accept: 'application/json',
             },
@@ -189,35 +189,35 @@ async function loadCashRequest(): Promise<void> {
 
         const rawResponse = await response.text();
 
-        // console.log('[Cash Request] Response:', response.status, response.headers.get('content-type'), rawResponse);
+        // console.log('[gem Request] Response:', response.status, response.headers.get('content-type'), rawResponse);
 
         if (!rawResponse.trim()) {
             throw new Error(`The server returned an empty response (${response.status}).`);
         }
 
-        let responseData: CashRequestPostResponse | ApiErrorResponse;
+        let responseData: gemRequestPostResponse | ApiErrorResponse;
 
         try {
-            responseData = JSON.parse(rawResponse) as CashRequestPostResponse | ApiErrorResponse;
+            responseData = JSON.parse(rawResponse) as gemRequestPostResponse | ApiErrorResponse;
         } catch {
             throw new Error(`The server returned non-JSON data (${response.status}): ` + rawResponse.slice(0, 180));
         }
 
         if (!response.ok) {
-            const message = 'message' in responseData ? responseData.message : `Unable to load cash request (${response.status}).`;
+            const message = 'message' in responseData ? responseData.message : `Unable to load gem request (${response.status}).`;
 
             throw new Error(message);
         }
 
-        if (!('type' in responseData) || responseData.type !== 'cash-request-post') {
-            throw new Error('The server returned an unexpected cash-request response.');
+        if (!('type' in responseData) || responseData.type !== 'gem-request-post') {
+            throw new Error('The server returned an unexpected gem-request response.');
         }
 
         renderRequest(responseData.data);
     } catch (error) {
-        console.error('[Cash Request] Failed to load:', error);
+        console.error('[gem Request] Failed to load:', error);
 
-        showLoadingError(error instanceof Error ? error.message : 'Unable to load cash request.');
+        showLoadingError(error instanceof Error ? error.message : 'Unable to load gem request.');
     }
 }
 
@@ -255,7 +255,7 @@ function updateCountdown(): void {
             donateButton.textContent = 'REQUEST EXPIRED';
         }
 
-        showStatus('This cash request has expired.');
+        showStatus('This gem request has expired.');
 
         return;
     }
@@ -275,10 +275,10 @@ donateButton?.addEventListener('click', async () => {
     donateButton.disabled = true;
     donateButton.textContent = 'DONATING...';
 
-    showStatus('Transferring 1 cash...');
+    showStatus('Transferring 1 gem...');
 
     try {
-        const response = await fetch('/api/donate-cash', {
+        const response = await fetch('/api/donate-gem', {
             method: 'POST',
 
             headers: {
@@ -288,16 +288,16 @@ donateButton?.addEventListener('click', async () => {
 
         const rawResponse = await response.text();
 
-        let responseData: DonateCashResponse | ApiErrorResponse;
+        let responseData: DonategemResponse | ApiErrorResponse;
 
         try {
-            responseData = JSON.parse(rawResponse) as DonateCashResponse | ApiErrorResponse;
+            responseData = JSON.parse(rawResponse) as DonategemResponse | ApiErrorResponse;
         } catch {
             throw new Error('The donation response could not be read.');
         }
 
-        if (!response.ok || !('type' in responseData) || responseData.type !== 'donate-cash') {
-            const message = 'message' in responseData ? responseData.message : 'Unable to donate cash.';
+        if (!response.ok || !('type' in responseData) || responseData.type !== 'donate-gem') {
+            const message = 'message' in responseData ? responseData.message : 'Unable to donate gem.';
 
             throw new Error(message);
         }
@@ -310,19 +310,19 @@ donateButton?.addEventListener('click', async () => {
     } catch (error) {
         donationInProgress = false;
 
-        console.error('[Cash Request] Donation failed:', error);
+        console.error('[gem Request] Donation failed:', error);
 
-        showStatus(error instanceof Error ? error.message : 'Unable to donate cash.', 'error');
+        showStatus(error instanceof Error ? error.message : 'Unable to donate gem.', 'error');
 
-        await loadCashRequest();
+        await loadgemRequest();
     }
 });
 
-void loadCashRequest();
+void loadgemRequest();
 
 window.setInterval(() => {
     if (!donationInProgress) {
-        void loadCashRequest();
+        void loadgemRequest();
     }
 }, 15_000);
 

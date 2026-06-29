@@ -61,6 +61,9 @@ type MenuButtonOptions = {
   title: string;
   subtitle: string;
 
+  subtitleIconKey?: string;
+  subtitleIconSize?: number;
+
   backgroundColor: number;
   borderColor: number;
 
@@ -111,14 +114,14 @@ export class MainMenu extends Scene {
   private lastWidth = 0;
 
   private lastHeight = 0;
-  private cashRequestStatusText: GameObjects.Text | null = null;
+  private gemRequestStatusText: GameObjects.Text | null = null;
 
-  private cashRequestButton: GameObjects.Container | null = null;
-  private cashRequestButtonGfx: GameObjects.Graphics | null = null;
-  private cashRequestButtonHit: GameObjects.Rectangle | null = null;
-  private cashRequestButtonText: GameObjects.Text | null = null;
-  private cashRequestAvailableAt = 0;
-  private cashRequestCountdownEvent: Phaser.Time.TimerEvent | null = null;
+  private gemRequestButton: GameObjects.Container | null = null;
+  private gemRequestButtonGfx: GameObjects.Graphics | null = null;
+  private gemRequestButtonHit: GameObjects.Rectangle | null = null;
+  private gemRequestButtonText: GameObjects.Text | null = null;
+  private gemRequestAvailableAt = 0;
+  private gemRequestCountdownEvent: Phaser.Time.TimerEvent | null = null;
 
   private dailyRewardButton: GameObjects.Container | null = null;
   private dailyRewardButtonGfx: GameObjects.Graphics | null = null;
@@ -141,8 +144,8 @@ export class MainMenu extends Scene {
   private currentActionHeight = ACTION_HEIGHT;
 
   private dailyRewardAmountText: GameObjects.Text | null = null;
-  private dailyRewardCashIcon: GameObjects.Image | null = null;
-  private cashRequestIcon: GameObjects.Image | null = null;
+  private dailyRewardgemIcon: GameObjects.Image | null = null;
+  private gemRequestIcon: GameObjects.Image | null = null;
 
   private communityContainer: GameObjects.Container | null = null;
 
@@ -190,13 +193,13 @@ export class MainMenu extends Scene {
     this.profileContent = null;
     this.mainCard = null;
     this.layout = null;
-    this.cashRequestStatusText = null;
-    this.cashRequestButton = null;
-    this.cashRequestButtonGfx = null;
-    this.cashRequestButtonHit = null;
-    this.cashRequestButtonText = null;
-    this.cashRequestAvailableAt = 0;
-    this.cashRequestCountdownEvent = null;
+    this.gemRequestStatusText = null;
+    this.gemRequestButton = null;
+    this.gemRequestButtonGfx = null;
+    this.gemRequestButtonHit = null;
+    this.gemRequestButtonText = null;
+    this.gemRequestAvailableAt = 0;
+    this.gemRequestCountdownEvent = null;
     this.dailyRewardButton = null;
     this.dailyRewardButtonGfx = null;
     this.dailyRewardButtonHit = null;
@@ -246,13 +249,13 @@ export class MainMenu extends Scene {
     this.communityCardsContainer = null;
     this.isLoggedIn = false;
     this.dailyRewardAmountText = null;
-    this.dailyRewardCashIcon = null;
-    this.cashRequestIcon = null;
+    this.dailyRewardgemIcon = null;
+    this.gemRequestIcon = null;
   }
 
   async create(): Promise<void> {
     audioManager.initialize(this.game);
-    audioManager.playMusic("music-main");
+    // audioManager.playMusic("music-main");
     audioManager.createMuteButton(this, this.scale.width - 20, 18);
     const width = this.scale.width;
     const height = this.scale.height;
@@ -275,10 +278,10 @@ export class MainMenu extends Scene {
     this.events.once("shutdown", () => {
       this.scale.off("resize", this.handleResize, this);
 
-      this.cashRequestCountdownEvent?.remove();
+      this.gemRequestCountdownEvent?.remove();
       this.dailyRewardCountdownEvent?.remove();
 
-      this.cashRequestCountdownEvent = null;
+      this.gemRequestCountdownEvent = null;
       this.dailyRewardCountdownEvent = null;
     });
 
@@ -523,7 +526,7 @@ export class MainMenu extends Scene {
 
         stroke: "#03121b",
 
-        strokeThickness: mobile ? 4 : 5,
+        strokeThickness: 1,
 
         align: "center",
       })
@@ -556,8 +559,8 @@ export class MainMenu extends Scene {
   }
 
   private createProfilePanel(layout: MainMenuLayout): void {
-    const { centerX, profileY, profileWidth, profileHeight, mobile } = layout;
-
+    const { centerX, profileWidth, profileHeight, mobile } = layout;
+    const profileY = layout.profileY + 70;
     const radius = 14;
 
     const shadow = this.addSoftShadow(
@@ -657,13 +660,13 @@ export class MainMenu extends Scene {
 
     const todayKingPanel = this.createTodayKingPanel(
       todayKingX,
-      todayKingY,
+      todayKingY + 90,
       todayKingWidth,
     );
 
     const communityPanel = this.createCommunityPanel(
       communityX,
-      communityY,
+      communityY + 90,
       communityWidth,
       communityHeight,
     );
@@ -676,13 +679,13 @@ export class MainMenu extends Scene {
 
     const rightButtonX = centerX + buttonGap / 2 + buttonWidth / 2;
 
-    const mainButtonHeight = compact ? 46 : 50;
+    const mainButtonHeight = 60;
 
-    const secondaryButtonHeight = compact ? 42 : 46;
+    const secondaryButtonHeight = 50;
 
     const playButton = this.createMenuButton({
       x: leftButtonX,
-      y: playY,
+      y: playY + 110,
 
       width: buttonWidth,
       height: mainButtonHeight,
@@ -702,15 +705,18 @@ export class MainMenu extends Scene {
 
     const kingButton = this.createMenuButton({
       x: rightButtonX,
-      y: kingBattleY,
+      y: kingBattleY + 110,
 
       width: buttonWidth,
       height: mainButtonHeight,
 
       title: "KING BATTLE",
+
       subtitle:
-        `LV.${this.currentKingLevel}` +
-        `  •  ${this.currentKingEntryCost} CASH`,
+        `LV.${this.currentKingLevel}` + `  •  ${this.currentKingEntryCost}`,
+
+      subtitleIconKey: "gem",
+      subtitleIconSize: 14,
 
       backgroundColor: 0x6b3515,
       borderColor: 0xffb45c,
@@ -722,7 +728,7 @@ export class MainMenu extends Scene {
 
     const collectionsButton = this.createMenuButton({
       x: centerX - secondaryGap,
-      y: secondaryY,
+      y: secondaryY + 120,
 
       width: secondaryWidth,
       height: secondaryButtonHeight,
@@ -740,7 +746,7 @@ export class MainMenu extends Scene {
 
     const leaderboardButton = this.createMenuButton({
       x: centerX + secondaryGap,
-      y: secondaryY,
+      y: secondaryY + 120,
 
       width: secondaryWidth,
       height: secondaryButtonHeight,
@@ -824,11 +830,9 @@ export class MainMenu extends Scene {
       0.045,
     );
 
-    const subtitleSize = options.width < 190 ? 5 : 6;
-
     const titleText = this.add
       .text(0, options.height >= 48 ? -6 : -5, options.title, {
-        font: `bold 14px Orbitron`,
+        font: "bold 20px Orbitron",
         color: TEXT.bright,
         stroke: "#03121b",
         strokeThickness: 2,
@@ -837,16 +841,42 @@ export class MainMenu extends Scene {
       })
       .setOrigin(0.5);
 
+    const subtitleY = options.height >= 48 ? 13 : 11;
+
+    const subtitleContainer = this.add.container(0, subtitleY);
+
     const subtitleText = this.add
-      .text(0, options.height >= 48 ? 13 : 11, options.subtitle, {
-        font: `bold 14px Orbitron`,
+      .text(0, 0, options.subtitle, {
+        font: "bold 14px Orbitron",
         color: "#cfe6ef",
         letterSpacing: 1,
         align: "center",
       })
       .setOrigin(0.5);
 
-    subtitleText.setCrop(0, 0, options.width - 16, subtitleText.height);
+    if (options.subtitleIconKey) {
+      const iconSize = options.subtitleIconSize ?? 18;
+      const iconGap = 5;
+
+      const totalWidth = subtitleText.width + iconGap + iconSize;
+
+      subtitleText.setOrigin(0, 0.5).setPosition(-totalWidth / 2, 0);
+
+      const subtitleIcon = this.add
+        .image(
+          -totalWidth / 2 + subtitleText.width + iconGap + iconSize / 2,
+          2,
+          options.subtitleIconKey,
+        )
+        .setDisplaySize(iconSize, iconSize)
+        .setOrigin(0.5);
+
+      subtitleContainer.add([subtitleText, subtitleIcon]);
+    } else {
+      subtitleText.setCrop(0, 0, options.width - 16, subtitleText.height);
+
+      subtitleContainer.add(subtitleText);
+    }
 
     const hit = this.add
       .rectangle(0, 0, options.width, options.height, 0xffffff, 0)
@@ -861,7 +891,7 @@ export class MainMenu extends Scene {
       button,
       topHighlight,
       titleText,
-      subtitleText,
+      subtitleContainer,
       hit,
     ]);
 
@@ -1255,43 +1285,90 @@ export class MainMenu extends Scene {
       mobile,
     );
 
-    const saveY = panelY + panelHeight / 2 - 72;
+    const actionY = panelY + panelHeight / 2 - 58;
+
+    const actionGap = mobile ? 8 : 12;
+
+    const availableActionWidth = panelWidth - 44;
+
+    const saveButtonWidth = Math.floor(availableActionWidth * 0.64);
+
+    const cancelButtonWidth =
+      availableActionWidth - saveButtonWidth - actionGap;
+
+    const saveButtonX = panelX - availableActionWidth / 2 + saveButtonWidth / 2;
+
+    const cancelButtonX =
+      panelX + availableActionWidth / 2 - cancelButtonWidth / 2;
 
     this.communitySaveButton = this.createCommunitySaveButton(
-      panelX,
-      saveY,
-      Math.min(panelWidth - 50, 360),
-      mobile ? 50 : 56,
+      saveButtonX,
+      actionY,
+      saveButtonWidth,
+      mobile ? 48 : 54,
     );
 
+    const cancelButton = this.add.container(cancelButtonX, actionY);
+
+    const cancelBackground = this.add
+      .rectangle(0, 0, cancelButtonWidth, mobile ? 48 : 54, 0x26343c, 1)
+      .setStrokeStyle(2, 0x71808a, 0.8);
+
     const closeText = this.add
-      .text(panelX, panelY + panelHeight / 2 - 28, "CANCEL", {
+      .text(0, 0, "CANCEL", {
         font: `bold 14px Orbitron`,
-        color: TEXT.muted,
+        color: TEXT.bright,
         letterSpacing: 1,
       })
-      .setOrigin(0.5)
+      .setOrigin(0.5);
+
+    const cancelHit = this.add
+      .rectangle(0, 0, cancelButtonWidth, mobile ? 48 : 54, 0xffffff, 0)
       .setInteractive({
         useHandCursor: true,
       });
 
-    audioManager.addButtonSound(closeText);
+    cancelButton.add([cancelBackground, closeText, cancelHit]);
 
-    closeText.on("pointerover", () => {
-      closeText.setColor(TEXT.bright);
+    audioManager.addButtonSound(cancelHit);
+
+    cancelHit.on("pointerover", () => {
+      if (this.communitySelectionInProgress) {
+        return;
+      }
+
+      cancelButton.setScale(1.02);
+
+      cancelBackground.setFillStyle(0x344750, 1);
     });
 
-    closeText.on("pointerout", () => {
-      closeText.setColor(TEXT.muted);
+    cancelHit.on("pointerout", () => {
+      cancelButton.setScale(1);
+
+      cancelBackground.setFillStyle(0x26343c, 1);
     });
 
-    closeText.on("pointerup", () => {
+    cancelHit.on("pointerdown", () => {
+      if (this.communitySelectionInProgress) {
+        return;
+      }
+
+      cancelButton.setScale(0.98);
+    });
+
+    cancelHit.on("pointerup", () => {
+      cancelButton.setScale(1);
+
       if (!this.communitySelectionInProgress) {
         this.closeCommunitySelectionModal();
       }
     });
 
-    modal.add([this.communitySaveButton, closeText]);
+    cancelHit.on("pointerupoutside", () => {
+      cancelButton.setScale(1);
+    });
+
+    modal.add([this.communitySaveButton, cancelButton]);
   }
 
   private rebuildCommunitySelectionCards(
@@ -1366,8 +1443,8 @@ export class MainMenu extends Scene {
   }
 
   private createFooter(layout: MainMenuLayout): void {
-    const { centerX, footerY, contentWidth, mobile } = layout;
-
+    const { centerX, contentWidth, mobile } = layout;
+    const footerY = layout.footerY + 150;
     const line = this.add
       .rectangle(
         centerX,
@@ -1715,7 +1792,7 @@ export class MainMenu extends Scene {
 
       this.rebuildCommunityPanel();
 
-      this.showCashRequestStatus(responseData.message, true);
+      this.showgemRequestStatus(responseData.message, true);
 
       this.time.delayedCall(700, () => {
         if (this.communitySelectionModal?.active) {
@@ -1727,7 +1804,7 @@ export class MainMenu extends Scene {
 
       this.communitySaveButtonText?.setText("SAVE FAILED — TRY AGAIN");
 
-      this.showCashRequestStatus(
+      this.showgemRequestStatus(
         error instanceof Error
           ? error.message
           : "Unable to save Community challenge.",
@@ -1764,7 +1841,7 @@ export class MainMenu extends Scene {
 
     this.communityContainer = this.createCommunityPanel(
       communityX,
-      communityY,
+      communityY + 90,
       communityWidth,
       communityHeight,
     );
@@ -1943,23 +2020,10 @@ export class MainMenu extends Scene {
 
     const contentRight = centerX + panelWidth / 2 - 16;
 
-    if (mobile) {
-      this.renderMobilePlayerProfile(
-        profile,
-        centerX,
-        panelY,
-        panelWidth,
-        contentLeft,
-        contentRight,
-      );
-
-      return;
-    }
-
     this.currentActionWidth = ACTION_WIDTH;
     this.currentActionHeight = ACTION_HEIGHT;
 
-    const topRowY = panelY - 29;
+    const topRowY = panelY + 50;
 
     // username card
     const usernameCardWidth = 230;
@@ -2017,11 +2081,11 @@ export class MainMenu extends Scene {
       1,
     );
 
-    const cashIcon = this.add
-      .image(walletX - 60, topRowY, "cash")
+    const gemIcon = this.add
+      .image(walletX - 60, topRowY, "gem")
       .setDisplaySize(26, 26);
 
-    const cashLabel = this.add
+    const gemLabel = this.add
       .text(walletX - 38, topRowY - 10, "WALLET", {
         font: "bold 14px Orbitron",
 
@@ -2031,8 +2095,8 @@ export class MainMenu extends Scene {
       })
       .setOrigin(0, 0.5);
 
-    const cashAmount = this.add
-      .text(walletX - 38, topRowY + 8, profile.cash.toLocaleString(), {
+    const gemAmount = this.add
+      .text(walletX - 38, topRowY + 8, profile.gem.toLocaleString(), {
         font: "bold 14px Orbitron",
 
         color: TEXT.green,
@@ -2044,7 +2108,7 @@ export class MainMenu extends Scene {
 
     this.dailyRewardNextResetAt = profile.dailyRewardNextResetAt;
 
-    const dailyX = contentRight - ACTION_WIDTH * 1.5 - 8;
+    const dailyX = contentRight - ACTION_WIDTH * 1.5 - 45;
 
     this.dailyRewardButton = this.add.container(dailyX, topRowY);
 
@@ -2065,8 +2129,8 @@ export class MainMenu extends Scene {
       })
       .setOrigin(0.5);
 
-    this.dailyRewardCashIcon = this.add
-      .image(-31, 11, "cash")
+    this.dailyRewardgemIcon = this.add
+      .image(-31, 11, "gem")
       .setDisplaySize(18, 18)
       .setOrigin(0.5);
 
@@ -2084,31 +2148,35 @@ export class MainMenu extends Scene {
     this.dailyRewardButton.add([
       this.dailyRewardButtonGfx,
       this.dailyRewardButtonText,
-      this.dailyRewardCashIcon,
+      this.dailyRewardgemIcon,
       this.dailyRewardAmountText,
       this.dailyRewardButtonHit,
     ]);
 
     audioManager.addButtonSound(this.dailyRewardButtonHit);
 
-    // request cash
-    this.cashRequestAvailableAt = profile.cashRequestAvailableAt;
+    // request gem
+    this.gemRequestAvailableAt = profile.gemRequestAvailableAt;
 
-    const requestX = contentRight - ACTION_WIDTH / 2;
+    const requestButtonWidth = 175;
 
-    this.cashRequestButton = this.add.container(requestX, topRowY);
+    const requestX = contentRight - requestButtonWidth / 2;
 
-    this.cashRequestButtonGfx = this.add.graphics();
+    this.gemRequestButton = this.add.container(requestX, topRowY);
+
+    this.gemRequestButtonGfx = this.add.graphics();
 
     this.drawActionButton(
-      this.cashRequestButtonGfx,
+      this.gemRequestButtonGfx,
       COLORS.greenFill,
       COLORS.greenStroke,
       0.65,
     );
 
-    this.cashRequestButtonText = this.add
-      .text(7, 0, "REQUEST\nFROM COMMUNITY", {
+    this.gemRequestButtonGfx.setScale(requestButtonWidth / ACTION_WIDTH, 1);
+
+    this.gemRequestButtonText = this.add
+      .text(10, 0, "REQUEST GEM\nFROM COMMUNITY", {
         font: "bold 14px Orbitron",
         color: TEXT.bright,
         align: "center",
@@ -2116,26 +2184,26 @@ export class MainMenu extends Scene {
       })
       .setOrigin(0.5);
 
-    this.cashRequestIcon = this.add
-      .image(-48, 0, "cash")
+    this.gemRequestIcon = this.add
+      .image(-60, -5, "gem")
       .setDisplaySize(24, 24)
       .setOrigin(0.5);
 
-    this.cashRequestButtonHit = this.add
-      .rectangle(0, 0, ACTION_WIDTH, ACTION_HEIGHT, 0xffffff, 0)
+    this.gemRequestButtonHit = this.add
+      .rectangle(0, 0, requestButtonWidth, ACTION_HEIGHT, 0xffffff, 0)
       .setOrigin(0.5);
 
-    this.cashRequestButton.add([
-      this.cashRequestButtonGfx,
-      this.cashRequestIcon,
-      this.cashRequestButtonText,
-      this.cashRequestButtonHit,
+    this.gemRequestButton.add([
+      this.gemRequestButtonGfx,
+      this.gemRequestIcon,
+      this.gemRequestButtonText,
+      this.gemRequestButtonHit,
     ]);
 
-    audioManager.addButtonSound(this.cashRequestButtonHit);
+    audioManager.addButtonSound(this.gemRequestButtonHit);
 
     // player stats
-    const statsY = panelY + 43;
+    const statsY = panelY + 125;
 
     const statGap = 10;
 
@@ -2177,12 +2245,12 @@ export class MainMenu extends Scene {
       username,
 
       walletCard,
-      cashIcon,
-      cashLabel,
-      cashAmount,
+      gemIcon,
+      gemLabel,
+      gemAmount,
 
       this.dailyRewardButton,
-      this.cashRequestButton,
+      this.gemRequestButton,
 
       allTimeBlock,
       dailyBlock,
@@ -2259,11 +2327,11 @@ export class MainMenu extends Scene {
       1,
     );
 
-    const cashIcon = this.add
-      .image(walletX - halfWidth / 2 + 24, firstRowY, "cash")
+    const gemIcon = this.add
+      .image(walletX - halfWidth / 2 + 24, firstRowY, "gem")
       .setDisplaySize(22, 22);
 
-    const cashLabel = this.add
+    const gemLabel = this.add
       .text(walletX - halfWidth / 2 + 42, firstRowY - 9, "WALLET", {
         font: "bold 14px Orbitron",
         color: TEXT.muted,
@@ -2271,11 +2339,11 @@ export class MainMenu extends Scene {
       })
       .setOrigin(0, 0.5);
 
-    const cashAmount = this.add
+    const gemAmount = this.add
       .text(
         walletX - halfWidth / 2 + 42,
         firstRowY + 8,
-        profile.cash.toLocaleString(),
+        profile.gem.toLocaleString(),
         {
           font: "bold 14px Orbitron",
           color: TEXT.green,
@@ -2288,7 +2356,7 @@ export class MainMenu extends Scene {
 
     this.dailyRewardNextResetAt = profile.dailyRewardNextResetAt;
 
-    this.cashRequestAvailableAt = profile.cashRequestAvailableAt;
+    this.gemRequestAvailableAt = profile.gemRequestAvailableAt;
 
     const mobileActionWidth = halfWidth;
     this.currentActionWidth = mobileActionWidth;
@@ -2316,8 +2384,8 @@ export class MainMenu extends Scene {
       })
       .setOrigin(0.5);
 
-    const dailyRewardCashIcon = this.add
-      .image(-20, 9, "cash")
+    const dailyRewardgemIcon = this.add
+      .image(-20, 9, "gem")
       .setDisplaySize(15, 15)
       .setOrigin(0.5);
 
@@ -2342,27 +2410,27 @@ export class MainMenu extends Scene {
     this.dailyRewardButton.add([
       this.dailyRewardButtonGfx,
       this.dailyRewardButtonText,
-      dailyRewardCashIcon,
+      dailyRewardgemIcon,
       dailyRewardAmountText,
       this.dailyRewardButtonHit,
     ]);
 
-    this.cashRequestButton = this.add.container(
+    this.gemRequestButton = this.add.container(
       contentRight - halfWidth / 2,
       secondRowY,
     );
 
-    this.cashRequestButtonGfx = this.add.graphics();
+    this.gemRequestButtonGfx = this.add.graphics();
 
     this.drawActionButton(
-      this.cashRequestButtonGfx,
+      this.gemRequestButtonGfx,
       COLORS.greenFill,
       COLORS.greenStroke,
       0.65,
     );
 
-    this.cashRequestButtonText = this.add
-      .text(0, 0, "REQUEST CASH\nCREATE POST", {
+    this.gemRequestButtonText = this.add
+      .text(0, 0, "REQUEST gem\nCREATE POST", {
         font: "bold 14px Orbitron",
         color: TEXT.bright,
         align: "center",
@@ -2370,7 +2438,7 @@ export class MainMenu extends Scene {
       })
       .setOrigin(0.5);
 
-    this.cashRequestButtonHit = this.add
+    this.gemRequestButtonHit = this.add
       .rectangle(
         0,
         0,
@@ -2381,10 +2449,10 @@ export class MainMenu extends Scene {
       )
       .setOrigin(0.5);
 
-    this.cashRequestButton.add([
-      this.cashRequestButtonGfx,
-      this.cashRequestButtonText,
-      this.cashRequestButtonHit,
+    this.gemRequestButton.add([
+      this.gemRequestButtonGfx,
+      this.gemRequestButtonText,
+      this.gemRequestButtonHit,
     ]);
 
     // stats
@@ -2428,12 +2496,12 @@ export class MainMenu extends Scene {
       usernameText,
 
       walletCard,
-      cashIcon,
-      cashLabel,
-      cashAmount,
+      gemIcon,
+      gemLabel,
+      gemAmount,
 
       this.dailyRewardButton,
-      this.cashRequestButton,
+      this.gemRequestButton,
 
       allTimeBlock,
       dailyBlock,
@@ -2490,7 +2558,7 @@ export class MainMenu extends Scene {
   }
 
   private finishProfileSetup(): void {
-    this.configureCashRequestButton();
+    this.configuregemRequestButton();
     this.configureDailyRewardButton();
 
     this.dailyRewardCountdownEvent?.remove();
@@ -2502,16 +2570,16 @@ export class MainMenu extends Scene {
       callbackScope: this,
     });
 
-    this.cashRequestCountdownEvent?.remove();
+    this.gemRequestCountdownEvent?.remove();
 
-    this.cashRequestCountdownEvent = this.time.addEvent({
+    this.gemRequestCountdownEvent = this.time.addEvent({
       delay: 1000,
       loop: true,
-      callback: this.updateCashRequestButton,
+      callback: this.updategemRequestButton,
       callbackScope: this,
     });
 
-    this.profileContent?.setAlpha(0).setY(5);
+    this.profileContent?.setAlpha(0).setY(13);
 
     if (this.profileContent) {
       this.tweens.add({
@@ -2595,7 +2663,7 @@ export class MainMenu extends Scene {
     return container;
   }
 
-  private formatCashRequestCountdown(milliseconds: number): string {
+  private formatgemRequestCountdown(milliseconds: number): string {
     const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
 
     const hours = Math.floor(totalSeconds / 3600);
@@ -2609,15 +2677,15 @@ export class MainMenu extends Scene {
       .join(":");
   }
 
-  private updateCashRequestButton(): void {
-    const icon = this.cashRequestIcon;
-    const button = this.cashRequestButton;
+  private updategemRequestButton(): void {
+    const icon = this.gemRequestIcon;
+    const button = this.gemRequestButton;
 
-    const graphics = this.cashRequestButtonGfx;
+    const graphics = this.gemRequestButtonGfx;
 
-    const hit = this.cashRequestButtonHit;
+    const hit = this.gemRequestButtonHit;
 
-    const text = this.cashRequestButtonText;
+    const text = this.gemRequestButtonText;
 
     if (!button || !graphics || !hit || !text || !icon) {
       return;
@@ -2627,7 +2695,7 @@ export class MainMenu extends Scene {
       return;
     }
 
-    const remainingMs = Math.max(0, this.cashRequestAvailableAt - Date.now());
+    const remainingMs = Math.max(0, this.gemRequestAvailableAt - Date.now());
 
     button.setAlpha(1);
 
@@ -2638,7 +2706,7 @@ export class MainMenu extends Scene {
 
       text
         .setText(
-          ["REQUEST AGAIN", this.formatCashRequestCountdown(remainingMs)].join(
+          ["REQUEST AGAIN", this.formatgemRequestCountdown(remainingMs)].join(
             "\n",
           ),
         )
@@ -2652,7 +2720,7 @@ export class MainMenu extends Scene {
       return;
     }
 
-    this.cashRequestAvailableAt = 0;
+    this.gemRequestAvailableAt = 0;
 
     icon.setVisible(true);
 
@@ -2663,21 +2731,21 @@ export class MainMenu extends Scene {
     hit.setInteractive({ useHandCursor: true });
   }
 
-  private configureCashRequestButton(): void {
-    const button = this.cashRequestButton;
+  private configuregemRequestButton(): void {
+    const button = this.gemRequestButton;
 
-    const graphics = this.cashRequestButtonGfx;
+    const graphics = this.gemRequestButtonGfx;
 
-    const hit = this.cashRequestButtonHit;
+    const hit = this.gemRequestButtonHit;
 
-    const text = this.cashRequestButtonText;
+    const text = this.gemRequestButtonText;
 
     if (!button || !graphics || !hit || !text) {
       return;
     }
 
     hit.on("pointerover", () => {
-      if (this.cashRequestAvailableAt > Date.now()) {
+      if (this.gemRequestAvailableAt > Date.now()) {
         return;
       }
 
@@ -2689,7 +2757,7 @@ export class MainMenu extends Scene {
     });
 
     hit.on("pointerdown", () => {
-      if (this.cashRequestAvailableAt > Date.now()) {
+      if (this.gemRequestAvailableAt > Date.now()) {
         return;
       }
 
@@ -2701,7 +2769,7 @@ export class MainMenu extends Scene {
 
       if (
         button.getData("creating") ||
-        this.cashRequestAvailableAt > Date.now()
+        this.gemRequestAvailableAt > Date.now()
       ) {
         return;
       }
@@ -2712,11 +2780,11 @@ export class MainMenu extends Scene {
 
       button.setAlpha(0.65);
 
-      this.cashRequestIcon?.setVisible(false);
+      this.gemRequestIcon?.setVisible(false);
 
       text.setText("CREATING\nREQUEST...").setPosition(0, 0).setOrigin(0.5);
 
-      void this.createCashRequest().then((nextRequestAvailableAt) => {
+      void this.creategemRequest().then((nextRequestAvailableAt) => {
         if (!button.active) {
           return;
         }
@@ -2724,20 +2792,20 @@ export class MainMenu extends Scene {
         button.setData("creating", false);
 
         if (nextRequestAvailableAt !== null) {
-          this.cashRequestAvailableAt = nextRequestAvailableAt;
+          this.gemRequestAvailableAt = nextRequestAvailableAt;
 
-          this.updateCashRequestButton();
+          this.updategemRequestButton();
 
           return;
         }
 
-        this.cashRequestAvailableAt = 0;
+        this.gemRequestAvailableAt = 0;
 
-        this.updateCashRequestButton();
+        this.updategemRequestButton();
       });
     });
 
-    this.updateCashRequestButton();
+    this.updategemRequestButton();
   }
 
   private handleResize(gameSize: Structs.Size): void {
@@ -2761,9 +2829,9 @@ export class MainMenu extends Scene {
     this.scene.restart();
   }
 
-  private showCashRequestStatus(message: string, success: boolean): void {
-    this.cashRequestStatusText?.destroy();
-    this.cashRequestStatusText = this.add
+  private showgemRequestStatus(message: string, success: boolean): void {
+    this.gemRequestStatusText?.destroy();
+    this.gemRequestStatusText = this.add
       .text(this.scale.width / 2, this.scale.height * 0.285, message, {
         font: "bold 14px Orbitron",
         color: success ? TEXT.green : "#ff9999",
@@ -2774,16 +2842,16 @@ export class MainMenu extends Scene {
       .setOrigin(0.5)
       .setDepth(500);
     this.time.delayedCall(5000, () => {
-      if (this.cashRequestStatusText?.active) {
-        this.cashRequestStatusText.destroy();
-        this.cashRequestStatusText = null;
+      if (this.gemRequestStatusText?.active) {
+        this.gemRequestStatusText.destroy();
+        this.gemRequestStatusText = null;
       }
     });
   }
 
-  private async createCashRequest(): Promise<number | null> {
+  private async creategemRequest(): Promise<number | null> {
     try {
-      const response = await fetch("/api/request-cash", {
+      const response = await fetch("/api/request-gem", {
         method: "POST",
 
         headers: {
@@ -2795,7 +2863,7 @@ export class MainMenu extends Scene {
 
       let responseData:
         | {
-            type?: "create-cash-request";
+            type?: "create-gem-request";
 
             status?: "success";
 
@@ -2816,12 +2884,12 @@ export class MainMenu extends Scene {
       if (
         !response.ok ||
         !("type" in responseData) ||
-        responseData.type !== "create-cash-request"
+        responseData.type !== "create-gem-request"
       ) {
         const message =
           "message" in responseData
             ? responseData.message
-            : "Unable to create cash request.";
+            : "Unable to create gem request.";
 
         throw new Error(message);
       }
@@ -2834,19 +2902,19 @@ export class MainMenu extends Scene {
         throw new Error("The server did not return the next request time.");
       }
 
-      this.showCashRequestStatus(
-        responseData.message ?? "Cash request shared!",
+      this.showgemRequestStatus(
+        responseData.message ?? "Gem request shared",
         true,
       );
 
       return nextRequestAvailableAt;
     } catch (error) {
-      console.error("[MainMenu] Failed to request cash:", error);
+      console.error("[MainMenu] Failed to request gem:", error);
 
-      this.showCashRequestStatus(
+      this.showgemRequestStatus(
         error instanceof Error
           ? error.message
-          : "Unable to create cash request.",
+          : "Unable to create gem request.",
         false,
       );
 
@@ -2863,16 +2931,9 @@ export class MainMenu extends Scene {
     const hit = this.dailyRewardButtonHit;
     const titleText = this.dailyRewardButtonText;
     const amountText = this.dailyRewardAmountText;
-    const cashIcon = this.dailyRewardCashIcon;
+    const gemIcon = this.dailyRewardgemIcon;
 
-    if (
-      !button ||
-      !graphics ||
-      !hit ||
-      !titleText ||
-      !amountText ||
-      !cashIcon
-    ) {
+    if (!button || !graphics || !hit || !titleText || !amountText || !gemIcon) {
       return;
     }
 
@@ -2886,12 +2947,12 @@ export class MainMenu extends Scene {
 
     amountText.setAlpha(1).setColor(TEXT.bright);
 
-    cashIcon.setAlpha(1);
+    gemIcon.setAlpha(1);
 
     if (this.dailyRewardCanClaim) {
       amountText.setText("CLAIM +5").setPosition(-18, 11).setOrigin(0, 0.5);
 
-      cashIcon.setVisible(true).setPosition(-31, 11);
+      gemIcon.setVisible(true).setPosition(-31, 11);
 
       this.drawActionButton(graphics, COLORS.goldFill, COLORS.goldStroke, 0.9);
 
@@ -2904,7 +2965,7 @@ export class MainMenu extends Scene {
 
     const remainingMs = Math.max(0, this.dailyRewardNextResetAt - Date.now());
 
-    cashIcon.setVisible(false);
+    gemIcon.setVisible(false);
 
     if (remainingMs <= 0) {
       amountText.setText("CHECKING...").setPosition(0, 11).setOrigin(0.5);
@@ -2919,7 +2980,7 @@ export class MainMenu extends Scene {
     }
 
     amountText
-      .setText(this.formatCashRequestCountdown(remainingMs))
+      .setText(this.formatgemRequestCountdown(remainingMs))
       .setPosition(0, 11)
       .setOrigin(0.5);
 
@@ -2934,16 +2995,9 @@ export class MainMenu extends Scene {
     const hit = this.dailyRewardButtonHit;
     const titleText = this.dailyRewardButtonText;
     const amountText = this.dailyRewardAmountText;
-    const cashIcon = this.dailyRewardCashIcon;
+    const gemIcon = this.dailyRewardgemIcon;
 
-    if (
-      !button ||
-      !graphics ||
-      !hit ||
-      !titleText ||
-      !amountText ||
-      !cashIcon
-    ) {
+    if (!button || !graphics || !hit || !titleText || !amountText || !gemIcon) {
       return;
     }
 
@@ -2984,7 +3038,7 @@ export class MainMenu extends Scene {
 
       amountText.setText("CLAIMING...").setPosition(0, 11).setOrigin(0.5);
 
-      cashIcon.setVisible(false);
+      gemIcon.setVisible(false);
 
       void this.claimDailyReward().then((success) => {
         if (!button.active) {
@@ -3014,8 +3068,8 @@ export class MainMenu extends Scene {
             type?: "claim-daily-reward";
             status?: "success";
             message?: string;
-            rewardCash?: number;
-            totalCash?: number;
+            rewardgem?: number;
+            totalgem?: number;
             nextResetAt?: number;
           }
         | ApiErrorResponse;
@@ -3037,15 +3091,15 @@ export class MainMenu extends Scene {
       }
       this.dailyRewardCanClaim = false;
       this.dailyRewardNextResetAt = Number(responseData.nextResetAt);
-      this.showCashRequestStatus(
-        responseData.message ?? "You received 5 cash!",
+      this.showgemRequestStatus(
+        responseData.message ?? "You received 5 gem!",
         true,
       );
       await this.loadPlayerProfile();
       return true;
     } catch (error) {
       console.error("[MainMenu] Daily reward failed:", error);
-      this.showCashRequestStatus(
+      this.showgemRequestStatus(
         error instanceof Error
           ? error.message
           : "Unable to claim daily reward.",
@@ -3063,7 +3117,7 @@ export class MainMenu extends Scene {
 
     this.kingEntryInProgress = true;
 
-    this.showCashRequestStatus(`Preparing ${this.currentKingName}...`, true);
+    this.showgemRequestStatus(`Preparing ${this.currentKingName}...`, true);
 
     try {
       const response = await fetch("/api/king-entry", {
@@ -3120,7 +3174,7 @@ export class MainMenu extends Scene {
     } catch (error) {
       console.error("[MainMenu] Failed to enter King Battle:", error);
 
-      this.showCashRequestStatus(
+      this.showgemRequestStatus(
         error instanceof Error ? error.message : "Unable to enter King Battle.",
         false,
       );
@@ -3160,8 +3214,6 @@ export class MainMenu extends Scene {
         );
       }
 
-      console.log("[DEV RESET]", data);
-
       await this.loadPlayerProfile();
     } catch (error) {
       console.error("[DEV RESET] Failed:", error);
@@ -3174,7 +3226,7 @@ export class MainMenu extends Scene {
   ): GameObjects.Container {
     const mobile = width < 500;
 
-    const panelHeight = this.layout?.compact ? 72 : 82;
+    const panelHeight = 90;
 
     const iconRadius = mobile ? 27 : 31;
 
@@ -3239,7 +3291,7 @@ export class MainMenu extends Scene {
         25,
         `DEFEAT TO UNLOCK ${this.currentKingRewardName.toUpperCase()}`,
         {
-          font: `bold  14px Orbitron`,
+          font: `14px Arial`,
 
           color: "#ffcf86",
 

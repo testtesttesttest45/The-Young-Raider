@@ -24,7 +24,7 @@ export default class BattleUI extends Scene {
   multiplierBarFill: any;
 
   goldText: any;
-  cashText: any;
+  gemText: any;
 
   multiplier: number;
   multiplierMin: number;
@@ -42,7 +42,7 @@ export default class BattleUI extends Scene {
   baseRebuilding: boolean;
   isMultiplierPaused: boolean;
 
-  cash: number;
+  gem: number;
 
   playerHealthBaseText: any;
   playerHealthBonusText: any;
@@ -105,7 +105,7 @@ export default class BattleUI extends Scene {
   private gameOverResultRows: Phaser.GameObjects.Container | null = null;
 
   fireballTimer: number;
-  cashIcon: any;
+  gemIcon: any;
   shop: BattleShop;
   tutorial: TutorialOverlay;
   legendaryIconsContainer: Phaser.GameObjects.Container | null = null;
@@ -116,7 +116,7 @@ export default class BattleUI extends Scene {
   constructor() {
     super({ key: "BattleUI", active: false });
     this.shop = new BattleShop(this);
-    this.gold = 20000;
+    this.gold = 2000;
     this.score = 0;
     this.scoreText = null;
     this.multiplier = 5;
@@ -129,7 +129,7 @@ export default class BattleUI extends Scene {
     this.baseRebuildBarFill = null;
     this.baseRebuilding = false;
     this.isMultiplierPaused = false;
-    this.cash = 0;
+    this.gem = 0;
     this.playerHealthBaseText = null;
     this.playerHealthBonusText = null;
     this.gameDataSaved = false;
@@ -141,7 +141,7 @@ export default class BattleUI extends Scene {
   }
 
   resetState(): void {
-    console.log("State reset");
+    // console.log("State reset");
 
     const gameScene = this.scene.get("Game") as any;
 
@@ -150,7 +150,7 @@ export default class BattleUI extends Scene {
         ? Math.max(0, Math.floor(gameScene.communityGoldBonus))
         : 0;
 
-    this.gold = 20000 + communityGoldBonus;
+    this.gold = 2000 + communityGoldBonus;
     this.score = 0;
     this.scoreText = null;
     this.multiplier = 5;
@@ -163,7 +163,7 @@ export default class BattleUI extends Scene {
     this.baseRebuildBarFill = null;
     this.baseRebuilding = false;
     this.isMultiplierPaused = false;
-    this.cash = 0;
+    this.gem = 0;
     this.strengthenLabelText = null;
     this.playerHealthText = null;
     this.playerDamageText = null;
@@ -245,14 +245,14 @@ export default class BattleUI extends Scene {
     this.shop.updateGoldDisplay();
   }
 
-  addCash(value: number) {
-    this.cash += value;
-    this.updateCashDisplay();
+  addgem(value: number) {
+    this.gem += value;
+    this.updategemDisplay();
   }
 
-  updateCashDisplay() {
-    if (this.cashText) {
-      this.cashText.setText(String(this.cash));
+  updategemDisplay() {
+    if (this.gemText) {
+      this.gemText.setText(String(this.gem));
     }
   }
 
@@ -385,7 +385,7 @@ export default class BattleUI extends Scene {
 
     this.playerHealthText = this.add
       .text(leftStatX, 39, "Health: --/--", {
-        font: "13px Orbitron",
+        font: "14px Orbitron",
         color: "#7dff8b",
       })
       .setScrollFactor(0)
@@ -393,7 +393,7 @@ export default class BattleUI extends Scene {
 
     this.playerHealthBonusText = this.add
       .text(playerSectionRight, 39, "", {
-        font: "11px Orbitron",
+        font: "14px Orbitron",
         color: "#31b8ff",
       })
       .setOrigin(1, 0)
@@ -402,7 +402,7 @@ export default class BattleUI extends Scene {
 
     this.playerDamageText = this.add
       .text(leftStatX, 64, "Damage: --", {
-        font: "12px Orbitron",
+        font: "14px Orbitron",
         color: "#ffffff",
       })
       .setScrollFactor(0)
@@ -410,7 +410,7 @@ export default class BattleUI extends Scene {
 
     this.playerDamageBonusText = this.add
       .text(leftBonusX, 64, "", {
-        font: "10px Orbitron",
+        font: "14px Orbitron",
         color: "#31b8ff",
       })
       .setOrigin(0, 0)
@@ -418,25 +418,25 @@ export default class BattleUI extends Scene {
       .setDepth(CONTENT_DEPTH);
 
     this.playerAttackSpeedText = this.add
-      .text(rightStatX, 64, "Attack Speed: --", {
-        font: "12px Orbitron",
+      .text(rightStatX, 59, "Attack Speed: --", {
+        font: "14px Orbitron",
         color: "#ffffff",
       })
       .setScrollFactor(0)
       .setDepth(CONTENT_DEPTH);
 
     this.playerAttackSpeedBonusText = this.add
-      .text(rightBonusX, 64, "", {
-        font: "10px Orbitron",
+      .text(rightStatX, 78, "", {
+        font: "14px Orbitron",
         color: "#31b8ff",
       })
-      .setOrigin(1, 0)
+      .setOrigin(0, 0)
       .setScrollFactor(0)
       .setDepth(CONTENT_DEPTH);
 
     this.playerSpeedText = this.add
       .text(leftStatX, 87, "Speed: --", {
-        font: "12px Orbitron",
+        font: "14px Orbitron",
         color: "#ffffff",
       })
       .setScrollFactor(0)
@@ -444,7 +444,7 @@ export default class BattleUI extends Scene {
 
     this.playerSpeedBonusText = this.add
       .text(leftBonusX, 87, "", {
-        font: "10px Orbitron",
+        font: "14px Orbitron",
         color: "#31b8ff",
       })
       .setOrigin(0, 0)
@@ -473,7 +473,7 @@ export default class BattleUI extends Scene {
 
     this.approachingText = this.add
       .text(timerBarX, 14, "Catastrophe", {
-        font: "12px Orbitron",
+        font: "14px Orbitron",
         color: "#ffffff",
       })
       .setScrollFactor(0)
@@ -505,7 +505,7 @@ export default class BattleUI extends Scene {
 
     this.strengthenLabelText = this.add
       .text(timerBarX, 62, "Enemy strengthens", {
-        font: "12px Orbitron",
+        font: "14px Orbitron",
         color: "#ffffff",
       })
       .setScrollFactor(0)
@@ -545,7 +545,7 @@ export default class BattleUI extends Scene {
 
     this.strengthenedSquareText = this.add
       .text(0, 0, "1", {
-        font: "13px Orbitron",
+        font: "14px Orbitron",
         color: "#ffffff",
       })
       .setOrigin(0.5);
@@ -562,18 +562,21 @@ export default class BattleUI extends Scene {
 
     // Multiplier title
     this.add
-      .text(multiplierX, 14, "SCORE MULTIPLIER", {
-        font: "10px Orbitron",
+      .text(multiplierX, 11, "SCORE\nMULTIPLIER", {
+        font: "bold 14px Orbitron",
         color: "#b9c8d6",
+        align: "center",
+        lineSpacing: 1,
       })
       .setOrigin(0.5, 0)
       .setScrollFactor(0)
       .setDepth(CONTENT_DEPTH);
 
     this.multiplierText = this.add
-      .text(multiplierX, 31, `x${this.multiplier}`, {
+      .text(multiplierX, 50, `x${this.multiplier}`, {
         font: "bold 18px Orbitron",
         color: "#ffe866",
+        align: "center",
       })
       .setOrigin(0.5, 0)
       .setScrollFactor(0)
@@ -584,7 +587,7 @@ export default class BattleUI extends Scene {
     const multiplierBarBackground = this.add
       .rectangle(
         multiplierX - multiplierBarWidth / 2,
-        57,
+        76,
         multiplierBarWidth,
         10,
         0xffffff,
@@ -634,22 +637,22 @@ export default class BattleUI extends Scene {
 
     this.goldText = this.add
       .text(rightContentX + 27, 43, String(this.gold), {
-        font: "13px Orbitron",
+        font: "14px Orbitron",
         color: "#ffd84a",
       })
       .setScrollFactor(0)
       .setDepth(CONTENT_DEPTH);
 
-    this.cashIcon = this.add
-      .image(rightContentX + 103, 52, "cash")
+    this.gemIcon = this.add
+      .image(rightContentX + 103, 52, "gem")
       .setScale(0.25)
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(CONTENT_DEPTH);
 
-    this.cashText = this.add
-      .text(rightContentX + 120, 43, String(this.cash), {
-        font: "13px Orbitron",
+    this.gemText = this.add
+      .text(rightContentX + 120, 43, String(this.gem), {
+        font: "14px Orbitron",
         color: "#82e6ff",
       })
       .setScrollFactor(0)
@@ -675,7 +678,7 @@ export default class BattleUI extends Scene {
 
     this.shopText = this.add
       .text(0, 0, "SHOP", {
-        font: "bold 13px Orbitron",
+        font: "bold 14px Orbitron",
         color: "#ffffff",
       })
       .setOrigin(0.5);
@@ -1054,14 +1057,14 @@ export default class BattleUI extends Scene {
   updateMultiplierFill() {
     if (!this.timerStarted || this.isMultiplierPaused) return;
     if (this.multiplier === this.multiplierMin) {
-      this.multiplierBarFill.width = 92; // Keep the bar full
+      this.multiplierBarFill.width = 76; // Keep the bar full
       return; // Stop further processing
     }
     const currentTime = (this.scene.get("Game") as any).activeGameTime;
     const elapsedTime = currentTime - this.lastMultiplierUpdate;
     const remainingTime = this.multiplierDuration - elapsedTime;
     const fillPercentage = remainingTime / this.multiplierDuration;
-    const newWidth = fillPercentage * 92;
+    const newWidth = fillPercentage * 76;
     this.multiplierBarFill.width = newWidth;
 
     // Check if it's time to decrement the multiplier
@@ -1075,7 +1078,7 @@ export default class BattleUI extends Scene {
 
       // If the multiplier is at its minimum, reset the fill width to full
       if (this.multiplier === this.multiplierMin) {
-        this.multiplierBarFill.width = 92;
+        this.multiplierBarFill.width = 76;
       }
     }
   }
@@ -1085,7 +1088,7 @@ export default class BattleUI extends Scene {
     this.multiplierText.setText(`x${this.multiplier}`);
     this.isMultiplierPaused = false;
 
-    this.multiplierBarFill.width = 92;
+    this.multiplierBarFill.width = 76;
 
     this.lastMultiplierUpdate = (this.scene.get("Game") as any).activeGameTime;
   }
@@ -1236,7 +1239,7 @@ export default class BattleUI extends Scene {
 
     const runCompleteLabel = this.add
       .text(panelX, panelTop + 39, "RUN COMPLETE", {
-        font: "bold 12px Orbitron",
+        font: "bold 14px Orbitron",
 
         color: "#ff8c92",
 
@@ -1351,7 +1354,7 @@ export default class BattleUI extends Scene {
 
     const scoreCaption = this.add
       .text(scoreCardX + statCardWidth / 2, statCardY + 22, "FINAL SCORE", {
-        font: "bold 11px Orbitron",
+        font: "bold 14px Orbitron",
 
         color: "#83dcff",
 
@@ -1378,7 +1381,7 @@ export default class BattleUI extends Scene {
 
     const baseCaption = this.add
       .text(baseCardX + statCardWidth / 2, statCardY + 22, "BASE REACHED", {
-        font: "bold 11px Orbitron",
+        font: "bold 14px Orbitron",
 
         color: "#ffe77c",
 
@@ -1478,7 +1481,7 @@ export default class BattleUI extends Scene {
 
     this.gameOverScoreStatus = this.add
       .text(panelX, statusAreaTop + 89, "Please wait...", {
-        font: "12px Orbitron",
+        font: "14px Orbitron",
 
         color: "#7fa6b8",
 
@@ -1674,7 +1677,7 @@ export default class BattleUI extends Scene {
     this.gameDataSaved = true;
 
     try {
-      const finalCashEarned = Math.max(0, Math.floor(this.cash));
+      const finalgemEarned = Math.max(0, Math.floor(this.gem));
 
       const response = await fetch("/api/highscore", {
         method: "POST",
@@ -1686,7 +1689,7 @@ export default class BattleUI extends Scene {
         body: JSON.stringify({
           score: this.finalScore,
 
-          cashEarned: finalCashEarned,
+          gemEarned: finalgemEarned,
 
           highestBaseSeen: this.finalBaseSeen,
         }),
@@ -1817,7 +1820,7 @@ export default class BattleUI extends Scene {
       return;
     }
 
-    console.log("pausing game");
+    // console.log("pausing game");
 
     this.scene.pause("Game");
     gameScene.isGamePaused = true;
@@ -2091,10 +2094,10 @@ export default class BattleUI extends Scene {
         color: "#82e6ff",
       },
       {
-        label: "CASH EARNED",
-        value: `+${data.cashEarned.toLocaleString()}`,
+        label: "GEM EARNED",
+        value: `+${data.gemEarned.toLocaleString()}`,
         color: "#72e7a3",
-        iconKey: "cash",
+        iconKey: "gem",
       },
       {
         label: "GLOBAL RANK",
@@ -2108,7 +2111,7 @@ export default class BattleUI extends Scene {
 
       const labelText = this.add
         .text(leftX, y, row.label, {
-          font: "11px Orbitron",
+          font: "14px Orbitron",
           color: "#ffffff",
           stroke: "#000000",
           strokeThickness: 2,
@@ -2313,7 +2316,7 @@ export default class BattleUI extends Scene {
 
     const modeLabel = this.add
       .text(panelX, panelTop + 47, `${this.getKingDayLabel()} KING BATTLE`, {
-        font: "bold 11px Orbitron",
+        font: "bold 14px Orbitron",
 
         color: options.victory ? "#ffe790" : "#ff9ca2",
 
@@ -2380,7 +2383,7 @@ export default class BattleUI extends Scene {
 
     const message = this.add
       .text(panelX, panelTop + 257, options.message, {
-        font: "13px Orbitron",
+        font: "14px Orbitron",
 
         color: "#d2e8f1",
 

@@ -103,7 +103,7 @@ export default class GameControls {
 
   private readonly mobileRightSafePadding = 115;
 
-  private readonly mobileButtonHitPadding = 8;
+  private readonly mobileButtonHitPadding = 12;
 
   constructor(scene: Game) {
     this.scene = scene;
@@ -586,7 +586,7 @@ export default class GameControls {
     this.scene.player?.stopJoystickMovement?.();
   }
   private createMobileAttackButton(): void {
-    const buttonRadius = 58;
+    const buttonRadius = 64;
 
     const hitRadius = buttonRadius + this.mobileButtonHitPadding;
 
@@ -692,7 +692,7 @@ export default class GameControls {
   }
 
   private createMobileSlashButton(): void {
-    const buttonRadius = 50;
+    const buttonRadius = 56;
 
     const hitRadius = buttonRadius + this.mobileButtonHitPadding;
 
@@ -808,7 +808,7 @@ export default class GameControls {
       return;
     }
 
-    const buttonRadius = 50;
+    const buttonRadius = 56;
     const ringRadius = buttonRadius + 7;
 
     const unavailable =
@@ -915,7 +915,7 @@ export default class GameControls {
       return;
     }
 
-    const buttonRadius = 58;
+    const buttonRadius = 64;
     const ringRadius = buttonRadius + 7;
 
     const unavailable =
@@ -1309,7 +1309,7 @@ export default class GameControls {
   }
 
   private createMobileDashButton(): void {
-    const buttonRadius = 48;
+    const buttonRadius = 54;
 
     const hitRadius = buttonRadius + this.mobileButtonHitPadding;
 
@@ -1420,7 +1420,7 @@ export default class GameControls {
       return;
     }
 
-    const buttonRadius = 48;
+    const buttonRadius = 54;
     const ringRadius = buttonRadius + 7;
 
     const unavailable =
@@ -1622,7 +1622,7 @@ export default class GameControls {
   }
 
   private createMobileShieldButton(): void {
-    const buttonRadius = 48;
+    const buttonRadius = 54;
 
     const hitRadius = buttonRadius + this.mobileButtonHitPadding;
 
@@ -1735,7 +1735,7 @@ export default class GameControls {
       return;
     }
 
-    const buttonRadius = 48;
+    const buttonRadius = 54;
     const ringRadius = buttonRadius + 7;
 
     const unavailable =
@@ -1944,11 +1944,11 @@ export default class GameControls {
 
     this.attackButtonContainer?.setPosition(attackX, attackY);
 
-    this.dashButtonContainer?.setPosition(attackX - 145, attackY);
+    this.dashButtonContainer?.setPosition(attackX - 158, attackY);
 
-    this.slashButtonContainer?.setPosition(attackX - 125, attackY - 125);
+    this.slashButtonContainer?.setPosition(attackX - 137, attackY - 137);
 
-    this.shieldButtonContainer?.setPosition(attackX, attackY - 150);
+    this.shieldButtonContainer?.setPosition(attackX, attackY - 164);
   }
 
   private isAbilityActionLocked(): boolean {

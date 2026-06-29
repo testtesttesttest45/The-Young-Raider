@@ -941,7 +941,7 @@ class Player {
 
     this.isDead = true;
 
-    console.log("Player died");
+    // console.log("Player died");
     audioManager.playSound("sfx-player-die", 0.85);
     if (this.currentTween) {
       this.currentTween.stop();
