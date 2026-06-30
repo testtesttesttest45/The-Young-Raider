@@ -158,28 +158,6 @@ High scores are submitted to the global leaderboard.
 
 Players can compare their best runs with other Raiders, compete for higher positions, and continue improving their personal records.
 
-## Controls
-
-### Desktop
-
-| Input     | Action                            |
-| --------- | --------------------------------- |
-| **Mouse** | Move toward the selected location |
-| **Q**     | Attack                            |
-| **W**     | Shield                            |
-| **E**     | Slash                             |
-| **R**     | Dash                              |
-
-### Mobile
-
-| Input                | Action                                |
-| -------------------- | ------------------------------------- |
-| **Virtual joystick** | Move                                  |
-| **Attack button**    | Perform a standard attack             |
-| **Shield button**    | Raise or lower the shield             |
-| **Slash button**     | Perform a powerful close-range attack |
-| **Dash button**      | Quickly dash forward                  |
-
 ## Game Modes
 
 ### Normal Run
@@ -224,12 +202,6 @@ The project was created to explore and demonstrate:
 * Daily content and reward systems
 * Cross-platform user-interface design
 * Integration with Reddit Devvit
-
-### Development
-
-Developed by [u/Easy_Comfortable8106](https://www.reddit.com/user/Easy_Comfortable8106/) on Reddit.
-
-## Credits
 
 ### Development
 
