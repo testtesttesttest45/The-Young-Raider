@@ -2,7 +2,7 @@
 
 > **Survive, grow stronger, overcome relentless enemies, and climb the global ranks.**
 
-**The Young Raider** is a fast-paced action-survival game developed for the **Reddit Devvit Hackathon**.
+**The Young Raider** is a fast-paced action-survival game developed for the **Reddit’s Games with a Hook Hackathon**.
 
 Built as an interactive Reddit experience, the game challenges players to control a Raider, battle increasingly dangerous enemies, destroy bases, survive devastating catastrophes, and compete for the highest score on a persistent global leaderboard.
 
@@ -10,13 +10,11 @@ Every run is a new opportunity to grow stronger, survive longer, surpass your pr
 
 ## Play the Game
 
-Play **The Young Raider** on Reddit:
-
-[Play The Young Raider](https://www.reddit.com/r/TheYoungRaider/)
+[Play it on Reddit](https://www.reddit.com/r/TheYoungRaider/)
 
 ## About the Project
 
-The Young Raider was created for the Reddit Devvit Hackathon using Reddit's interactive-post platform.
+The Young Raider was created for the Reddit’s Games with a Hook Hackathon using Reddit's interactive-post platform.
 
 The project was adapted from a larger browser-game concept and redesigned to work as a short, replayable experience suitable for Reddit users on both desktop and mobile devices.
 
@@ -203,9 +201,7 @@ The project was created to explore and demonstrate:
 * Cross-platform user-interface design
 * Integration with Reddit Devvit
 
-### Development
-
-Developed by [u/Easy_Comfortable8106](https://www.reddit.com/user/Easy_Comfortable8106/) on Reddit.
+## Credits
 
 ### Music
 
