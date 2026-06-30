@@ -18,8 +18,8 @@
     "node": ">=22.2.0"
   },
   "dependencies": {
-    "@devvit/start": "0.13.5",
-    "@devvit/web": "^0.13.5",
+    "@devvit/start": "0.13.6",
+    "@devvit/web": "^0.13.6",
     "@hono/node-server": "2.0.3",
     "chroma-js": "^3.2.0",
     "hono": "4.12.21",
@@ -29,7 +29,7 @@
     "@eslint/js": "10.0.1",
     "@types/chroma-js": "^3.1.2",
     "@types/node": "^22.19.19",
-    "devvit": "0.13.5",
+    "devvit": "0.13.6",
     "eslint": "10.4.0",
     "globals": "17.6.0",
     "prettier": "3.8.3",
