@@ -80,7 +80,7 @@ export const RAIDER_STATS = {
   range: 110,
   speed: 210,
   damage: 54,
-  health: 373,
+  health: 310,
   attackSpeed: 1.6,
   attackCount: 1,
   projectile: "",

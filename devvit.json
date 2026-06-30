@@ -58,6 +58,6 @@
     "dev": "vite build --watch"
   },
   "dev": {
-    "subreddit": "theyoungraider_test"
+    "subreddit": "TheYoungRaider"
   }
 }

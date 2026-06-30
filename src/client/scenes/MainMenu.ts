@@ -255,7 +255,7 @@ export class MainMenu extends Scene {
 
   async create(): Promise<void> {
     audioManager.initialize(this.game);
-    // audioManager.playMusic("music-main");
+    audioManager.playMusic("music-main");
     audioManager.createMuteButton(this, this.scale.width - 20, 18);
     const width = this.scale.width;
     const height = this.scale.height;

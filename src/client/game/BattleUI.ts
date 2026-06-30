@@ -1,4 +1,3 @@
-// import musicManager from './music_manager.js';
 const HUD_HEIGHT = 110;
 import { Scene } from "phaser";
 import * as Phaser from "phaser";

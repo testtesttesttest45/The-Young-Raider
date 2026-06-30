@@ -193,7 +193,7 @@ export class Game extends Scene {
 
   create(): void {
     this.initializationVersion += 1;
-    // audioManager.playMusic("music-main");
+    audioManager.playMusic("music-main");
     const currentInitialization = this.initializationVersion;
     this.gameInitialized = false;
     this.shouldShowTutorial = false;

@@ -445,13 +445,13 @@ export default class BattleShop {
       {
         name: "Thunderlord Seal",
         description: "Permanent immunity to catastrophe storms",
-        cost: 3500,
+        cost: 7200,
         icon: "thunderlordSeal",
       },
       {
         name: "Elixir of Life",
         description: "Triple passive healing",
-        cost: 3500,
+        cost: 4500,
         icon: "elixirOfLife",
       },
       {
@@ -462,8 +462,8 @@ export default class BattleShop {
       },
       {
         name: "Treasure Hunter",
-        description: "Every Gold drop is worth twice as much",
-        cost: 4000,
+        description: "Every Gold's value is worth twice as much",
+        cost: 7500,
         icon: "treasureFinder",
       },
     ];
